@@ -1,0 +1,11 @@
+TODO;
+- install shadcn
+- check for other packages i have in djl that i might want here.
+- have claude turn the spec sheet into drizzle files so we can migrate to db
+  - check djl for drizzle forlder structure
+  - Run npm run db:push to update your database schema  
+
+
+if i want to make a module... for email and text order intake / processing.. which will eventually be in the admin panel.... lets think about how to do it.  lets ask how vendure does it.  cuz whats the file structure?
+ - it can use other bits and blocks and ui components yeah? but it also has its own components too? is the mvc all in one folder or spread out?
+
