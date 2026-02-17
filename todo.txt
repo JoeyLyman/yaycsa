@@ -1,9 +1,9 @@
 ## Phase 0: Project Setup
-- [ ] Update SvelteKit packages (Svelte 5, Tailwind v4, shadcn-svelte)
-- [ ] Remove drizzle-orm, drizzle-kit, postgres packages
-- [ ] Remove drizzle.config.ts, src/lib/server/db/ (drizzle schema)
-- [ ] Remove supabase .env vars
-- [ ] Update Claude Code settings (copy useful permissions from djl project)
+- [x] Update SvelteKit packages (Svelte 5, Tailwind v4, shadcn-svelte)
+- [x] Remove drizzle-orm, drizzle-kit, postgres packages
+- [x] Remove drizzle.config.ts, src/lib/server/db/ (drizzle schema)
+- [x] Remove supabase .env vars
+- [x] Update Claude Code settings (copy useful permissions from djl project)
 
 ## Phase 1: Monorepo + Vendure Scaffold
 - [ ] Create apps/ directory structure
