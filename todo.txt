@@ -1,11 +1,53 @@
-TODO;
-- install shadcn
-- check for other packages i have in djl that i might want here.
-- have claude turn the spec sheet into drizzle files so we can migrate to db
-  - check djl for drizzle forlder structure
-  - Run npm run db:push to update your database schema  
+## Phase 0: Project Setup
+- [ ] Update SvelteKit packages (Svelte 5, Tailwind v4, shadcn-svelte)
+- [ ] Remove drizzle-orm, drizzle-kit, postgres packages
+- [ ] Remove drizzle.config.ts, src/lib/server/db/ (drizzle schema)
+- [ ] Remove supabase .env vars
+- [ ] Update Claude Code settings (copy useful permissions from djl project)
 
+## Phase 1: Monorepo + Vendure Scaffold
+- [ ] Create apps/ directory structure
+- [ ] Move existing SvelteKit app into apps/storefront/
+- [ ] Scaffold Vendure server with `npx @vendure/create apps/server` (Postgres, skip Next.js storefront)
+- [ ] Set up workspace config at repo root (pnpm-workspace.yaml or npm workspaces)
+- [ ] Verify both apps start with a single `dev` command
 
-if i want to make a module... for email and text order intake / processing.. which will eventually be in the admin panel.... lets think about how to do it.  lets ask how vendure does it.  cuz whats the file structure?
- - it can use other bits and blocks and ui components yeah? but it also has its own components too? is the mvc all in one folder or spread out?
+## Phase 2: Vendure Configuration
+- [ ] Add custom fields to vendure-config.ts (Order, OrderLine, Customer, ProductVariant)
+- [ ] Create customer groups (restaurant, coop, grocery, distributor)
+- [ ] Set up delivery routes (ShippingMethod or custom entity)
+- [ ] Evaluate pricing strategy: ProductVariantPriceCalculationStrategy vs custom plugin entity for quantity breaks
+- [ ] Run initial migration with custom fields
+- [ ] Seed products, customers, delivery options via Admin API
 
+## Phase 3: Order Intake Plugin
+- [ ] Scaffold order-intake plugin with Vendure CLI (`npx vendure add -p`)
+- [ ] Add webhook endpoint (POST /order-intake/webhook) for n8n
+- [ ] Implement customer email matching logic
+- [ ] Implement product name fuzzy matching logic
+- [ ] Implement draft order creation (using Vendure's draft order API)
+- [ ] Add custom GraphQL extensions for intake UI queries
+- [ ] Implement custom pricing calculation strategy
+
+## Phase 4: SvelteKit Intake UI
+- [ ] Set up GraphQL client (Houdini or similar) connected to Vendure Admin API
+- [ ] Build dashboard / draft order queue page
+- [ ] Build order intake review UI (side-by-side: raw email vs parsed order)
+- [ ] Build order line editing (product search, quantity, price recalculation)
+- [ ] Build customer/delivery dropdowns
+- [ ] Build confirm/reject actions
+- [ ] Build orders list page (filterable by status)
+- [ ] Build customer management pages
+- [ ] Build product/pricing management pages
+
+## Phase 5: n8n Integration
+- [ ] Set up email trigger (Outlook)
+- [ ] Set up LLM node (Claude API) with parsing prompt
+- [ ] Connect to order-intake webhook
+- [ ] Set up order confirmation → email flow
+- [ ] Test end-to-end: email → parsed draft → review → confirm → confirmation email
+
+## Phase 6: Polish & Extras
+- [ ] Google Sheets export (plugin or n8n flow)
+- [ ] Error handling & edge cases
+- [ ] Auth for the SvelteKit admin UI
