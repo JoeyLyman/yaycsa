@@ -5,6 +5,7 @@ yarn.lock
 bun.lock
 bun.lockb
 
-# Miscellaneous
-/static/
-/drizzle/
+# Build output
+**/static/
+**/dist/
+**/node_modules/

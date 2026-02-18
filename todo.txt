@@ -6,11 +6,12 @@
 - [x] Update Claude Code settings (copy useful permissions from djl project)
 
 ## Phase 1: Monorepo + Vendure Scaffold
-- [ ] Create apps/ directory structure
-- [ ] Move existing SvelteKit app into apps/storefront/
-- [ ] Scaffold Vendure server with `npx @vendure/create apps/server` (Postgres, skip Next.js storefront)
-- [ ] Set up workspace config at repo root (pnpm-workspace.yaml or npm workspaces)
-- [ ] Verify both apps start with a single `dev` command
+- [x] Create apps/ directory structure
+- [x] Move existing SvelteKit app into apps/storefront/
+- [x] Scaffold Vendure server with `npx @vendure/create` (Postgres, skip Next.js storefront)
+- [x] Set up workspace config at repo root (npm workspaces)
+- [x] Verify both apps start with a single `dev` command
+- [x] Set up Supabase dev project and configure DB connection
 
 ## Phase 2: Vendure Configuration
 - [ ] Add custom fields to vendure-config.ts (Order, OrderLine, Customer, ProductVariant)
