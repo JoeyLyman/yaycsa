@@ -1,34 +1,25 @@
 ## Shared Architecture Docs
 
-Feature specs and architecture decisions are maintained in a shared git submodule (`shared-docs/`).
+Feature specs and architecture decisions are maintained in a shared git submodule (`apps/docs/`).
 This repo is shared with Wally (AI assistant on the server) — both of us can read and write.
 
 **On session start:** Pull latest shared docs:
-\`\`\`bash
-cd shared-docs && git pull origin main && cd ..
-\`\`\`
 
-**Feature docs location:** `shared-docs/library/yaycsa/`
+```bash
+cd apps/docs && git pull origin main && cd ../..
+```
 
-Before implementing any feature, read the relevant doc:
+**Feature docs location:** `apps/docs/library/yaycsa/`
 
-- Order ingest system: `shared-docs/library/yaycsa/features/order-ingest-architecture.md`
-- Unified accounts (multi-role): `shared-docs/library/yaycsa/features/unified-business-accounts.md`
-- Supply chain transparency: `shared-docs/library/yaycsa/features/supply-chain-transparency.md`
-- Value propositions: `shared-docs/library/yaycsa/features/value-propositions.md`
-- Pricing model: `shared-docs/library/yaycsa/features/pricing-model.md`
-- Decentralization/blockchain: `shared-docs/library/yaycsa/features/decentralization-analysis.md`
-- Overall vision: `shared-docs/library/yaycsa/vision.md`
+Before implementing any feature, scan `apps/docs/library/yaycsa/features/` for relevant docs and read them. The vision doc at `apps/docs/library/yaycsa/vision.md` has an index of all features.
 
-**If you update a feature doc:** Commit and push the submodule separately:
-\`\`\`bash
-cd shared-docs
+**If you update a feature doc:** Commit and push the submodule:
+
+```bash
+cd apps/docs
 git add -A && git commit -m "Update: [description]" && git push
-cd ..
-git add shared-docs && git commit -m "Update shared-docs ref"
-\`\`\`
-
-You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
+cd ../..
+```
 
 ## Available MCP Tools:
 
@@ -62,11 +53,12 @@ Agent teams are enabled. When a task would clearly benefit from parallel work, *
 - Research/investigation tasks that can be split up
 
 **Do not suggest agent teams for:**
+
 - Sequential tasks where each step depends on the last
 - Changes that touch the same files
 - Simple single-file edits or bug fixes
 
-When suggesting, say something like: *"This task could benefit from agent teams — want me to spin up a team?"*
+When suggesting, say something like: _"This task could benefit from agent teams — want me to spin up a team?"_
 
 ## Model Selection
 
@@ -75,4 +67,4 @@ Suggest switching models when it would meaningfully help the user. Use `/model` 
 - **Opus 4.6** — best for: complex architecture decisions, multi-file refactors, tricky debugging, planning, tasks requiring deep reasoning
 - **Sonnet 4.6** — best for: straightforward edits, boilerplate generation, well-defined single-file changes, rapid iteration, simple bug fixes
 
-When you notice the current model isn't ideal for the task, suggest switching. For example: *"This is mostly boilerplate — want to switch to Sonnet for speed?"* or *"This is a complex refactor — might be worth switching to Opus if you're not already on it."*
+When you notice the current model isn't ideal for the task, suggest switching. For example: _"This is mostly boilerplate — want to switch to Sonnet for speed?"_ or _"This is a complex refactor — might be worth switching to Opus if you're not already on it."_
