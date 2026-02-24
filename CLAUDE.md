@@ -51,3 +51,28 @@ You MUST use this tool whenever writing Svelte code before sending it to the use
 
 Generates a Svelte Playground link with the provided code.
 After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+
+## Agent Teams
+
+Agent teams are enabled. When a task would clearly benefit from parallel work, **suggest to the user** that they use agent teams. Good candidates:
+
+- Work that spans both `apps/server/` and `apps/storefront/` independently (e.g., one teammate on a Vendure plugin, another on SvelteKit routes)
+- Building multiple independent features or modules at once
+- Parallel code review (security, performance, tests)
+- Research/investigation tasks that can be split up
+
+**Do not suggest agent teams for:**
+- Sequential tasks where each step depends on the last
+- Changes that touch the same files
+- Simple single-file edits or bug fixes
+
+When suggesting, say something like: *"This task could benefit from agent teams — want me to spin up a team?"*
+
+## Model Selection
+
+Suggest switching models when it would meaningfully help the user. Use `/model` to switch.
+
+- **Opus 4.6** — best for: complex architecture decisions, multi-file refactors, tricky debugging, planning, tasks requiring deep reasoning
+- **Sonnet 4.6** — best for: straightforward edits, boilerplate generation, well-defined single-file changes, rapid iteration, simple bug fixes
+
+When you notice the current model isn't ideal for the task, suggest switching. For example: *"This is mostly boilerplate — want to switch to Sonnet for speed?"* or *"This is a complex refactor — might be worth switching to Opus if you're not already on it."*
