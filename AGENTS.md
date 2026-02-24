@@ -1,3 +1,33 @@
+## Shared Architecture Docs
+
+Feature specs and architecture decisions are maintained in a shared git submodule (`shared-docs/`).
+This repo is shared with Wally (AI assistant on the server) — both of us can read and write.
+
+**On session start:** Pull latest shared docs:
+\`\`\`bash
+cd shared-docs && git pull origin main && cd ..
+\`\`\`
+
+**Feature docs location:** `shared-docs/library/yaycsa/`
+
+Before implementing any feature, read the relevant doc:
+
+- Order ingest system: `shared-docs/library/yaycsa/features/order-ingest-architecture.md`
+- Unified accounts (multi-role): `shared-docs/library/yaycsa/features/unified-business-accounts.md`
+- Supply chain transparency: `shared-docs/library/yaycsa/features/supply-chain-transparency.md`
+- Value propositions: `shared-docs/library/yaycsa/features/value-propositions.md`
+- Pricing model: `shared-docs/library/yaycsa/features/pricing-model.md`
+- Decentralization/blockchain: `shared-docs/library/yaycsa/features/decentralization-analysis.md`
+- Overall vision: `shared-docs/library/yaycsa/vision.md`
+
+**If you update a feature doc:** Commit and push the submodule separately:
+\`\`\`bash
+cd shared-docs
+git add -A && git commit -m "Update: [description]" && git push
+cd ..
+git add shared-docs && git commit -m "Update shared-docs ref"
+\`\`\`
+
 You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
 
 ## Available MCP Tools:
