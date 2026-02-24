@@ -1,7 +1,7 @@
-## Shared Architecture Docs
+## Shared Docs & Todo (git submodule: `apps/docs/`)
 
-Feature specs and architecture decisions are maintained in a shared git submodule (`apps/docs/`).
-This repo is shared with Wally (AI assistant on the server) — both of us can read and write.
+Architecture docs and the project todo are maintained in a shared git submodule (`apps/docs/`).
+This repo is shared with **Wally** — Joe's OpenClaw bot (runs on Opus 4.6, accessed via Discord). Joe does a lot of YAYCSA planning with Wally, and the results get distilled into the docs here. The docs in this submodule are the **single source of truth** for architecture and feature specs (not SPEC.md, which is outdated).
 
 **On session start:** Pull latest shared docs:
 
@@ -9,11 +9,14 @@ This repo is shared with Wally (AI assistant on the server) — both of us can r
 cd apps/docs && git pull origin main && cd ../..
 ```
 
-**Feature docs location:** `apps/docs/library/yaycsa/`
+**Key locations:**
+- `apps/docs/library/yaycsa/vision.md` — project vision + feature index
+- `apps/docs/library/yaycsa/features/` — feature specs (order ingest, unified accounts, pricing, etc.)
+- `apps/docs/todos/yaycsa.md` — project todo / phase tracker
 
-Before implementing any feature, scan `apps/docs/library/yaycsa/features/` for relevant docs and read them. The vision doc at `apps/docs/library/yaycsa/vision.md` has an index of all features.
+Before implementing any feature, scan `apps/docs/library/yaycsa/features/` for relevant docs and read them.
 
-**If you update a feature doc:** Commit and push the submodule:
+**If you update docs or the todo:** Commit and push the submodule:
 
 ```bash
 cd apps/docs
