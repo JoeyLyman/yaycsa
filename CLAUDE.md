@@ -10,6 +10,7 @@ cd apps/docs && git pull origin main && cd ../..
 ```
 
 **Key locations:**
+
 - `apps/docs/library/yaycsa/vision.md` — project vision + feature index
 - `apps/docs/library/yaycsa/features/` — feature specs (order ingest, unified accounts, pricing, etc.)
 - `apps/docs/todos/yaycsa.md` — project todo / phase tracker
@@ -71,3 +72,25 @@ Suggest switching models when it would meaningfully help the user. Use `/model` 
 - **Sonnet 4.6** — best for: straightforward edits, boilerplate generation, well-defined single-file changes, rapid iteration, simple bug fixes
 
 When you notice the current model isn't ideal for the task, suggest switching. For example: _"This is mostly boilerplate — want to switch to Sonnet for speed?"_ or _"This is a complex refactor — might be worth switching to Opus if you're not already on it."_
+
+## External Review Tools
+
+Scripts live in `apps/docs/scripts/`. Run them from the YAYCSA project root.
+
+Requires `OPENAI_API_KEY` set in your shell environment.
+
+### Plan/architecture review (GPT-5.2):
+
+```bash
+apps/docs/scripts/ask-chatgpt-plan.sh "your question" < path/to/plan.md
+```
+
+### Code review (GPT-5.3-Codex):
+
+```bash
+apps/docs/scripts/ask-chatgpt-code.sh "review this" < path/to/file.ts
+# or for a diff:
+git diff HEAD~1 | apps/docs/scripts/ask-chatgpt-code.sh "review this diff"
+```
+
+When asked to consult ChatGPT, run the appropriate script and include the output in your response.
