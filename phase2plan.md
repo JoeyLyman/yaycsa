@@ -7,7 +7,7 @@ Core principles:
 
 Offers are mandatory for buying — a customer can't order without an active offer. Sellers can have zero active offers (nothing to sell right now).
 Offer → OfferLineItem[] (1:many), mirrors Vendure's Order → OrderLine[]
-One Vendure Channel per seller (admin isolation). Sales segmentation handled by customer groups + fulfillment options on offers, NOT by multiple channels.
+Default channel = marketplace (buyer-facing Shop API) + one seller channel per seller (admin isolation). Products and Offers assigned to both. Buyers browse via default channel. This is the standard Vendure multi-vendor pattern. OrderLine.sellerChannelId is a built-in Vendure field that tracks seller ownership.
 One seller order = one offer — Vendure's native aggregate order pattern: buyer sees one cart/checkout, but behind the scenes each seller+offer combination is a separate sub-order. Cart UI shows sections per seller+offer+fulfillment.
 Inventory is opt-in — line items can be unlimited, offer-capped, or linked to Vendure's built-in StockLevel
 Prices on offer line items — per-offer, defaults from last offer. Two pricing modes: tiered (unit price drops at qty thresholds) and case (discrete package sizes, greedy auto-pack)
@@ -20,26 +20,34 @@ Convention: All dates/times in the database use timestamptz (Postgres timestamp 
 Step 1: Custom Fields in vendure-config.ts
 ProductVariant:
 
-unitType: string dropdown (ct, lb, oz, pt, cs) — standardized unit for cross-seller aggregation. No unitLabel — packaging info goes in variant name.
+unitType: string dropdown — standardized unit for cross-seller aggregation. No unitLabel — packaging info goes in variant name. Values organized by category for future conversion:
+Count: ct (count/each)
+Weight: lb, oz, kg, g
+Volume: pt, qt, gal
+Packaging: cs (case), bu (bunch)
+Unit conversion logic is deferred. Phase 2 just stores the code.
 Customer:
 
 notes: text, nullable — global notes only. Per-vendor prefs on Orders.
 Seller:
 
-timezone: string — IANA timezone (e.g., America/Los_Angeles). Used for recurrence/deadline calculations. Stored dates are UTC, but "Wednesday 8am" means 8am in the seller's timezone.
+timezone: string, nullable — IANA timezone (e.g., America/Los_Angeles). Optional for Phase 2. Recurrence uses UTC math (add X hours from anchor). Timezone needed later if DST precision matters (1-hour drift in delivery windows). Nullable = UTC assumed.
 CustomerGroup:
 
 sellerId: string, nullable — scopes group to a seller
 Order:
 
-offerId: string, nullable — links to the Offer this (seller) order was placed against. Enables easy querying/reporting.
-fulfillmentOptionId: string, nullable — which FulfillmentOption was selected for this order
+offer: relation (M2O → Offer), nullable — proper FK. Links this (seller) order to the Offer it was placed against. Enables easy querying/reporting.
+fulfillmentOption: relation (M2O → FulfillmentOption), nullable — proper FK. Which fulfillment option was selected.
 OrderLine:
 
-offerLineItemId: string, nullable — links to the OfferLineItem
+offerLineItem: relation (M2O → OfferLineItem), nullable — proper FK. Links to the OfferLineItem for pricing/availability.
 lineStatus: string enum (pending, confirmed, adjusted, cancelled), default pending
 selectedCaseQuantity: int, nullable — for case pricing: which case size selected
 agreedUnitPrice: int (Money, cents), nullable — snapshot of the unit price at order placement. Used to detect offer price changes after order was placed.
+buyerNotes: text, nullable — buyer's per-line note (e.g., "if you have watercress we'd love 5 lbs"). Seller can read and respond by adding items or adjusting.
+Note: Using Vendure's type: 'relation' custom fields creates real FK columns with referential integrity, proper joins, and eager/lazy loading — not just string IDs stored in JSON.
+
 Step 2: Entities
 FulfillmentOption
 A proper entity for delivery/pickup options. Sellers create their own. Offers reference a subset.
@@ -96,7 +104,7 @@ Lifecycle rules:
 
 Multiple active offers allowed. A seller can have several active offers simultaneously — e.g., one for restaurants (Thu delivery) and one for farmers market (Sat pickup), both targeting the same customers but with different items and fulfillment options.
 Permanent offers (validUntil = null) stay active until manually paused or expired.
-Soft expiry on read: queries filter validUntil IS NULL OR validUntil > now().
+Soft expiry on read: queries filter status = 'active' AND validFrom <= now() AND (validUntil IS NULL OR validUntil > now()).
 Simple setup: one permanent, public offer with all products.
 Advanced setup: separate offers per fulfillment option, customer group, or time window.
 OfferLineItem (per-product)
@@ -109,13 +117,13 @@ priceIncludesTax boolean
 pricingMode enum: tiered, case Tiered = unit price drops at qty thresholds. Case = discrete package sizes. (flat is just tiered with one tier.)
 priceTiers jsonb, nullable Price tier array (see below)
 quantityLimitMode enum: unlimited, offer_specific, inventory_linked
-quantityLimit decimal, nullable Max available for this offer. Used when quantityLimitMode = offer_specific.
+quantityLimit int, nullable Max available for this offer. Used when quantityLimitMode = offer_specific. Integer (matches Vendure OrderLine.quantity).
 autoConfirm boolean, default false
 notes text, nullable Per-item buyer notes
 sortOrder int, default 0 Display order within the offer table
 Computed fields (NOT stored, resolved at query time):
 
-quantityOrdered: sum of OrderLines where offerLineItemId = this.id AND lineStatus != 'cancelled' AND parent Order not cancelled/voided
+quantityOrdered: sum of OrderLines where offerLineItemId = this.id AND lineStatus != 'cancelled' AND parent Order state NOT in (Cancelled, Draft). Includes all active states: AddingItems, ArrangingPayment, PaymentAuthorized, PaymentSettled, PartiallyShipped, Shipped, PartiallyDelivered, Delivered.
 quantityRemaining: for offer_specific = quantityLimit - ordered; for inventory_linked = StockLevel.stockOnHand - allocated; for unlimited = null
 Price Tiers (jsonb)
 pricingMode: 'tiered' — unit price drops at quantity thresholds. All units priced at the tier rate.
@@ -152,7 +160,7 @@ CRUD, scoped to seller's channel
 Pricing Logic (in OfferPriceCalculationStrategy)
 Custom OrderItemPriceCalculationStrategy — Vendure calls this per order line:
 
-Look up OfferLineItem via orderLine.customFields.offerLineItemId
+Look up OfferLineItem via orderLine.customFields.offerLineItem (relation, may need EntityHydrator if not eager)
 If not found → reject (offers mandatory)
 Tiered: find tier where minQuantity <= quantity, return tierUnitPrice
 Case: use selectedCaseQuantity from OrderLine custom fields to find the matching case tier, return casePrice / quantity as unit price
@@ -175,6 +183,8 @@ Shop API (buyer):
 
 Query: activeOffers(sellerId: ID): [Offer!]! — offers visible to buyer (filtered by group membership)
 Query: offerLineItem(id: ID!): OfferLineItem
+Mutation: addOfferItemToOrder(offerLineItemId: ID!, quantity: Int!, selectedCaseQuantity: Int, buyerNotes: String): Order! — wraps Vendure's addItemToOrder with offer-aware validation: resolves productVariantId from offerLineItem, sets custom fields (offerLineItem relation, selectedCaseQuantity, agreedUnitPrice snapshot, buyerNotes), validates offer is active + within validity window + visible to buyer, checks quantity limits. This is the ONLY way buyers add items — never raw addItemToOrder.
+Mutation: adjustOfferItemQuantity(orderLineId: ID!, quantity: Int!): Order! — wraps Vendure's adjustOrderLine with same offer-aware validation: re-checks offer active/visible, re-validates quantity limits against new qty, updates agreedUnitPrice snapshot to match new tier (tiered pricing tier may change when qty crosses threshold). Guards the same invariants as addOfferItemToOrder.
 Computed fields on OfferLineItem:
 
 quantityOrdered: Float
@@ -205,7 +215,8 @@ apps/server/src/plugins/offer-plugin/
 │ ├── offer.service.ts
 │ └── fulfillment-option.service.ts
 ├── strategies/
-│ └── offer-price-calculation.strategy.ts
+│ ├── offer-price-calculation.strategy.ts
+│ └── offer-seller.strategy.ts
 ├── api/
 │ ├── api-extensions.ts
 │ ├── offer-admin.resolver.ts
@@ -220,17 +231,21 @@ FulfillmentOptionService
 OfferService (CRUD, activation, prefill, deadline validation)
 GraphQL API (admin + shop resolvers)
 OfferPriceCalculationStrategy
+OrderSellerStrategy (assign sellerChannelId, enforce one offer per seller order)
 Smoke test via GraphiQL
 Invariants (must be enforced in code)
 One seller order = one offer. All OrderLines in a seller sub-order must belong to the same Offer. Enforce in addItemToOrder wrapper — if order already has offerId, reject items from a different offer.
 Order.fulfillmentOptionId must belong to the order's offer. Validate that the selected fulfillment option is in the offer's fulfillmentOptions M2M.
 Order.fulfillmentOptionId must be set before payment transition. Guard the ArrangingPayment state transition.
-Offer must be active at order placement. Check status = active and soft expiry (validUntil IS NULL OR > now()).
+Offer must be active at order placement. Check status = active, validFrom <= now(), and soft expiry (validUntil IS NULL OR > now()).
 Deadline validated at state transition. Re-check deadline at ArrangingPayment, not just at add-to-cart.
 Quantity lock is transactional. For offer_specific limits, SELECT ... FOR UPDATE on OfferLineItem within the order transition transaction.
-No OrderLine without offerLineItemId. Pricing strategy rejects if missing.
+No OrderLine without offerLineItem. Pricing strategy rejects if missing. Enforce at addItemToOrder API boundary, not just in the strategy.
 Recurrence is anchor-based. Multi-week recurrences (every_2_weeks, every_4_weeks, etc.) count from fulfillmentStartDate, not from calendar week parity.
-Recurrence calculations use seller timezone. Convert fulfillmentStartDate to seller's IANA timezone before computing next occurrence/deadline.
+Recurrence calculations use UTC. Phase 2 uses pure UTC math (add hours from anchor). If seller has timezone set, use it for DST-aware next-occurrence calculation. Otherwise, UTC is fine — delivery windows are wide enough to absorb 1-hour DST drift.
+CustomerGroupFilters must match seller. When setting customerGroupFilters on an Offer, all referenced groups must either be global (sellerId = null) or match the offer's sellerId. Validate in OfferService.
+OfferLineItem access is scoped. The offerLineItem(id) Shop API resolver must verify the parent Offer is active, within validity window, and visible to the buyer (public or buyer is in a filter group).
+Entities assigned to both channels. Offers and FulfillmentOptions must be assigned to both the default marketplace channel AND the seller's channel via ChannelService.assignToCurrentChannel() + explicit assignment to default channel.
 Gotchas & Implementation Notes
 OrderLine merging (case pricing): Vendure's addItemToOrder compares custom fields when deciding whether to merge or create a new OrderLine. Since different case sizes have different selectedCaseQuantity values, they'll naturally stay as separate OrderLines. Verify this during testing.
 
@@ -240,9 +255,17 @@ Tax handling: Our OrderItemPriceCalculationStrategy only overrides price, not ta
 
 Case pricing monotonicity: Validate in OfferService.create/update that larger case sizes have equal or better unit price. The greedy auto-pack algorithm depends on this invariant.
 
-Aggregate orders: Vendure natively splits multi-seller carts into seller sub-orders. We extend this so each sub-order maps to one offer. Use OrderService.getSellerOrders() and getAggregateOrder().
+Aggregate orders: Vendure natively splits multi-seller carts into seller sub-orders via OrderSellerStrategy. We implement a custom OrderSellerStrategy that: (a) sets sellerChannelId on OrderLines, and (b) enforces one offer per seller sub-order. Use OrderService.getSellerOrders() and getAggregateOrder().
 
-DB indexes needed: offerLineItemId on OrderLine custom field, offerId on Order custom field, sellerId on Offer/FulfillmentOption entities.
+DB indexes: Relation custom fields (offer, fulfillmentOption, offerLineItem) create real FK columns which are indexable. Add indexes on sellerId FK columns on Offer/FulfillmentOption.
+
+Quantity locking nuance: SELECT FOR UPDATE on OfferLineItem locks the row but doesn't prevent concurrent OrderLine inserts that increase the computed sum. For Phase 2 (low concurrency), validate-then-insert within a transaction is sufficient. At scale, may need an atomic reservation counter or advisory locks.
+
+State transition guards via OrderProcess: Invariants #3 (fulfillmentOption required), #5 (deadline re-check), and #6 (quantity lock) are enforced in a custom OrderProcess that guards the ArrangingPayment transition — not in resolver logic. This is Vendure's standard pattern for order state validation. The addOfferItemToOrder Shop mutation handles add-time validation (offer active, visible, quantity available), while OrderProcess handles transition-time re-validation.
+
+agreedUnitPrice updated on quantity adjustment. When a buyer adjusts quantity via adjustOfferItemQuantity and crosses a tier threshold (e.g., 5→15 units), the pricing strategy recalculates correctly, but agreedUnitPrice must also be re-snapshotted. The adjustOfferItemQuantity mutation handles this. For seller-initiated qty adjustments (Phase 3 modifyOrder), the same re-snapshot logic applies.
+
+One-offer-per-order enforced at add-item, not in OrderSellerStrategy. Vendure splits orders into seller sub-orders AFTER items are added (at checkout). So invariant #1 (one offer per seller order) must be enforced in addOfferItemToOrder: if the aggregate order already has items from this seller under a different offer, reject. OrderSellerStrategy then naturally splits by seller channel.
 
 Deferred
 Feature Notes
@@ -253,6 +276,10 @@ Customer group auto-matching Business type matching, request system, approval fl
 Customer group pricing Different tier per group on same line item
 Offer versioning/audit trail Snapshot offer state per order for historical accuracy
 Cancellation request flow Custom OrderProcess with CancellationRequested state, reactive price-change detection, buyer notifications
+Conditional contracts Per-line conditions: substitutions ("if salad out, use braising mix"), cancellation chains ("if X cancelled, cancel order"). Common in fresh food — harvest failures, quality issues require flexibility. Future jsonb or entity on OrderLine.
+Unit conversion Convert between units of same type (oz↔lb, pt↔gal). Enables cross-seller product comparison.
+Seller adds items to order Vendure modifyOrder supports this. Buyer approval flow needed (same lineStatus pattern as price adjustments).
+Cart TTL / reservation expiry quantityOrdered includes AddingItems (carts), so abandoned carts can block other buyers. Phase 2 low traffic = fine. At scale, add a TTL that releases quantity reservations from stale carts.
 Offer email/SMS blast Phase 6
 Frontend Phase 4
 Docs Updates (on approval)
@@ -263,6 +290,7 @@ Create apps/docs/library/yaycsa/features/fulfillment-options.md (types, scheduli
 Update apps/docs/todos/yaycsa.md Phase 2 tasks
 Add timezone convention to CLAUDE.md: all dates in DB are timestamptz, stored UTC, always full date+time
 Create apps/docs/library/yaycsa/data-conventions.md — DB date/time convention (timestamptz, UTC, consistency) + any other schema conventions
+Update apps/docs/library/yaycsa/vision.md — add marketplace philosophy: seller-first browsing (buyers discover sellers, then products — not product-first like Amazon). Local food = proximity to buyer is a primary filter. Fresh food variability = harvest failures, quality issues require flexible order modification (substitutions, partial fills, conditional contracts).
 Verification
 npm run dev — Vendure boots clean
 Tables exist: offer, offer_line_item, fulfillment_option
