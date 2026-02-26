@@ -15,7 +15,14 @@ cd apps/docs && git pull origin main && cd ../..
 - `apps/docs/library/yaycsa/features/` — feature specs (order ingest, unified accounts, pricing, etc.)
 - `apps/docs/todos/yaycsa.md` — project todo / phase tracker
 
-Before implementing any feature, scan `apps/docs/library/yaycsa/features/` for relevant docs and read them.
+Before implementing any feature, scan `apps/docs/library/yaycsa/features/` and `apps/docs/library/yaycsa/plugins/` for relevant docs and read them.
+
+## Data Conventions
+
+- **All DB dates/times use `timestamptz`** (Postgres timestamp with time zone), stored in UTC, always full date+time. No bare `date` or `time` types.
+- **Money stored as integers in cents** (Vendure convention). `400` = $4.00.
+- **Channel assignment:** Custom entities that are `ChannelAware` must be assigned to both the seller's channel AND the default (marketplace) channel. For new unsaved entities, set `entity.channels = [sellerChannel, defaultChannel]` directly — do not use `channelService.assignToCurrentChannel()` on unsaved entities.
+- See `apps/docs/library/yaycsa/data-conventions.md` for full details.
 
 **If you update docs or the todo:** Commit and push the submodule:
 
