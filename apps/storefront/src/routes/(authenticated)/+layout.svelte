@@ -1,36 +1,27 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { logout } from '$lib/api/shop/auth.remote';
-	import { Button } from '$lib/components/bits/button';
+	import * as Avatar from '$lib/components/bits/avatar';
 
 	let { data, children } = $props();
 
 	const navLinks = [
-		{ href: '/', label: 'Dashboard' },
 		{ href: '/offers', label: 'Offers' },
-		{ href: '/orders', label: 'Orders' },
-		{ href: '/account', label: 'Account' }
+		{ href: '/orders', label: 'Orders' }
 	];
 
 	function isActive(href: string) {
-		if (href === '/') return page.url.pathname === '/';
 		return page.url.pathname.startsWith(href);
 	}
 
-	let loggingOut = $state(false);
-
-	async function handleLogout() {
-		loggingOut = true;
-		await logout();
-		goto('/login');
-	}
+	const initials = $derived(
+		(data.customer.firstName?.[0] ?? '') + (data.customer.lastName?.[0] ?? '')
+	);
 </script>
 
 <div class="mx-auto max-w-5xl px-4">
 	<header class="flex items-center justify-between border-b py-4">
-		<div class="flex items-center gap-6">
-			<a href="/" class="text-lg font-bold">YAY CSA</a>
+		<a href="/" class="text-lg font-bold">yaycsa</a>
+		<div class="flex items-center gap-4">
 			<nav class="flex gap-4">
 				{#each navLinks as { href, label }}
 					<a
@@ -43,12 +34,15 @@
 					</a>
 				{/each}
 			</nav>
-		</div>
-		<div class="flex items-center gap-4">
-			<span class="text-muted-foreground text-sm">{data.customer.firstName}</span>
-			<Button variant="ghost" size="sm" disabled={loggingOut} onclick={handleLogout}>
-				{loggingOut ? 'Logging out...' : 'Log out'}
-			</Button>
+			<a href="/account" class="ml-2 flex items-center">
+				<Avatar.Root
+					class={page.url.pathname.startsWith('/account')
+						? 'ring-foreground ring-2 ring-offset-2 ring-offset-background'
+						: 'hover:ring-muted-foreground hover:ring-2 hover:ring-offset-2 hover:ring-offset-background transition-shadow'}
+				>
+					<Avatar.Fallback>{initials}</Avatar.Fallback>
+				</Avatar.Root>
+			</a>
 		</div>
 	</header>
 	<main class="py-6">

@@ -1,9 +1,18 @@
 <script lang="ts">
-	import { requestUpdateEmail, updatePassword } from '$lib/api/shop/auth.remote';
+	import { goto } from '$app/navigation';
+	import { requestUpdateEmail, updatePassword, logout } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
 
 	let { data } = $props();
+
+	let loggingOut = $state(false);
+
+	async function handleLogout() {
+		loggingOut = true;
+		await logout();
+		goto('/login');
+	}
 </script>
 
 <h1 class="text-2xl font-bold">Account</h1>
@@ -121,4 +130,10 @@
 			{/if}
 		</Card.Content>
 	</Card.Root>
+
+	<div class="pt-6 border-t">
+		<Button variant="destructive" disabled={loggingOut} onclick={handleLogout}>
+			{loggingOut ? 'Logging out...' : 'Log out'}
+		</Button>
+	</div>
 </div>
