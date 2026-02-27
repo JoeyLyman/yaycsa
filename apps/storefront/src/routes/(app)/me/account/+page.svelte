@@ -19,6 +19,7 @@
 <h1 class="text-2xl font-bold">Account</h1>
 
 <div class="mt-6 space-y-6">
+	<Button href="/me">See my sales page</Button>
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Profile</Card.Title>

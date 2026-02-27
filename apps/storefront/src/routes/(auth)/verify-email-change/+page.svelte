@@ -12,7 +12,7 @@
 			<Card.Description>Your email address has been changed successfully.</Card.Description>
 		</Card.Header>
 		<Card.Footer>
-			<Button href="/account" class="w-full">Go to account</Button>
+			<Button href="/me/account" class="w-full">Go to account</Button>
 		</Card.Footer>
 	</Card.Root>
 {:else}
@@ -22,7 +22,7 @@
 			<Card.Description>{data.error}</Card.Description>
 		</Card.Header>
 		<Card.Footer>
-			<Button href="/account" variant="outline" class="w-full">Go to account</Button>
+			<Button href="/me/account" variant="outline" class="w-full">Go to account</Button>
 		</Card.Footer>
 	</Card.Root>
 {/if}
