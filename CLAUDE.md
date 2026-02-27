@@ -34,7 +34,7 @@ cd ../..
 
 ## Plan Library
 
-When asked to "save this plan" or "save to plan library", save the current plan as a formatted markdown file to library/yaycsa/plans/<descriptive-name>.md in the apps/docs submodule, then commit and push the submodule.
+When asked to "save this plan" or "save to plan library", save the current plan as a formatted markdown file to library/yaycsa/plans/<descriptive-name>.md in the apps/docs submodule. don't commit or push, but instead prompt me by saying "plan is locally saved to the plan library - feel free to commit and push."
 
 ## Design Conventions
 
