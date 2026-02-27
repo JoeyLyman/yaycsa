@@ -32,6 +32,10 @@ git add -A && git commit -m "Update: [description]" && git push
 cd ../..
 ```
 
+## Plan Library
+
+When asked to "save this plan" or "save to plan library", save the current plan as a formatted markdown file to library/yaycsa/plans/<descriptive-name>.md in the apps/docs submodule, then commit and push the submodule.
+
 ## Design Conventions
 
 - **Mobile-first design.** No native apps planned — the webapp must be fully functional on mobile. Design for small screens first, enhance for desktop.

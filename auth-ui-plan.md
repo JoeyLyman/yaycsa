@@ -8,22 +8,7 @@ Vendure handles all these flows natively — no custom auth strategies needed. P
 Key Insight: Remote Functions + Multi-Page Apps
 Remote functions are NOT an SPA pattern. They're server functions callable from components. SvelteKit's file-based routing gives each page its own URL with proper browser navigation. Remote functions (form(), query(), command()) handle data within those pages. +layout.server.ts and +page.server.ts still work for auth guards and redirects. They coexist — proven by the DJL project.
 
-Step 0: Package Updates
-Run from apps/storefront/:
-
-npm install bits-ui@latest tailwind-variants@latest
-npm install svelte@latest @sveltejs/kit@latest
-npm install tailwindcss@latest @tailwindcss/vite@latest @tailwindcss/forms@latest @tailwindcss/typography@latest
-npm install tailwind-merge@latest lucide-svelte@latest valibot@latest
-Run from apps/server/:
-
-npm install @vendure/core@latest @vendure/asset-server-plugin@latest @vendure/dashboard@latest @vendure/email-plugin@latest @vendure/graphiql-plugin@latest @vendure/cli@latest
-After updating:
-
-Fix the existing button component (src/lib/components/bits/button/button.svelte) if bits-ui v2 changed the API
-Check components.json registry URL — currently https://tw3.shadcn-svelte.com/registry/default, may need updating for Tailwind v4 / bits-ui v2
-Keep stone color scheme as-is (already configured correctly in layout.css and components.json)
-Verify npm run dev still works
+Step 0: Package Updates DONE (already completed manually)
 Step 1: Scaffold shadcn-svelte Components
 Run from apps/storefront/:
 
@@ -50,7 +35,7 @@ requestPasswordReset form Forgot password — takes email, sends reset email req
 resetPassword form Reset password — takes token + new password resetPassword(token, password)
 requestUpdateEmail form Change email — takes current password + new email requestUpdateCustomerEmailAddress(password, newEmailAddress)
 updatePassword form Change password — takes current + new password updateCustomerPassword(currentPassword, newPassword)
-resendVerification command Resend verification email — takes email refreshCustomerVerification(emailAddress)
+resendVerification command Resend verification email — takes email. Always returns success (no email enumeration) refreshCustomerVerification(emailAddress)
 Token-based verification (NOT remote functions — use +page.server.ts load functions):
 
 verifyCustomerAccount(token) — in /verify/+page.server.ts
@@ -101,7 +86,7 @@ Uses existing login form remote function (spread pattern: <form {...login}>)
 Validation errors via login.fields.email.issues()
 On success: handler calls redirect(303, '/') (works with progressive enhancement)
 Error states: "Invalid email or password", "Please verify your email address first"
-On NOT_VERIFIED_ERROR: show "Resend verification email" button that calls resendVerification(email) command. Show success feedback ("Verification email sent") after click.
+On NOT_VERIFIED_ERROR: show "Resend verification email" button. The email is available from login.fields.email.value() (the form retains field values after failed submission). Button calls await resendVerification(login.fields.email.value()). Show success feedback ("Verification email sent") after click. The resendVerification command should always return success regardless of whether the email exists (no enumeration).
 Links: "Forgot password?" → /forgot-password, "Register" → /register
 +page.server.ts: redirect to / if authenticated
 Register (/register)
@@ -147,9 +132,12 @@ Logout: await logout() then goto('/login') (command can't redirect server-side)
 Security additions (from ChatGPT review):
 
 Add Referrer-Policy: strict-origin header globally in hooks.server.ts (prevents token leakage via referer headers on verify/reset pages)
-Login handler should read returnTo param and redirect there on success (validate it's a relative path starting with / — no open redirects)
+Login handler should read returnTo param and redirect there on success. Validate: path.startsWith('/') && !path.startsWith('//') && !path.includes('\\') — blocks open redirects including //evil.com
 All password inputs should use autocomplete="current-password" or autocomplete="new-password" for password manager support
-Session expiration: if a remote function call fails with auth error while on an (app) page, redirect to /login (handle in .enhance() callbacks)
+Session expiration pattern: When a session expires mid-use, Vendure returns null for activeCustomer and errors for authenticated mutations. Concrete handling:
+For form() calls: in .enhance() callbacks, if submit() throws and the error indicates FORBIDDEN/auth failure, call goto('/login').
+For query() calls: if activeCustomer() returns null on a page that expects auth, the (app) layout guard already catches this on the next navigation. For in-page staleness, the user just sees null state until they navigate.
+The vendure.ts wrapper throws Error('GraphQL error: ...') on failures — check the error message for auth-related strings or add structured error codes to the wrapper.
 Dashboard (/)
 "Welcome, {firstName}" from data.customer
 Placeholder content
@@ -173,35 +161,32 @@ File Inventory
 
 # Action Path
 
-0 UPDATE apps/storefront/package.json (npm install updates)
-0 UPDATE apps/server/package.json (npm install updates)
-0 FIX apps/storefront/src/lib/components/bits/button/button.svelte (if bits-ui v2 breaks it)
-0 FIX apps/storefront/components.json (registry URL if needed for bits-ui v2)
-1 SCAFFOLD src/lib/components/bits/{input,label,card}/
-2 MODIFY apps/server/src/vendure-config.ts
-3 MODIFY apps/storefront/src/lib/api/shop/auth.remote.ts
-4 REMOVE apps/storefront/src/routes/+page.svelte
-5 NEW apps/storefront/src/routes/(auth)/+layout.svelte
-6 NEW apps/storefront/src/routes/(auth)/login/+page.server.ts
-7 NEW apps/storefront/src/routes/(auth)/login/+page.svelte
-8 NEW apps/storefront/src/routes/(auth)/register/+page.server.ts
-9 NEW apps/storefront/src/routes/(auth)/register/+page.svelte
-10 NEW apps/storefront/src/routes/(auth)/verify/+page.server.ts
-11 NEW apps/storefront/src/routes/(auth)/verify/+page.svelte
-12 NEW apps/storefront/src/routes/(auth)/forgot-password/+page.server.ts
-13 NEW apps/storefront/src/routes/(auth)/forgot-password/+page.svelte
-14 NEW apps/storefront/src/routes/(auth)/reset-password/+page.server.ts
-14b NEW apps/storefront/src/routes/(auth)/reset-password/+page.svelte
-15 NEW apps/storefront/src/routes/(auth)/verify-email-change/+page.server.ts
-16 NEW apps/storefront/src/routes/(auth)/verify-email-change/+page.svelte
-17 NEW apps/storefront/src/routes/(app)/+layout.server.ts
-18 NEW apps/storefront/src/routes/(app)/+layout.svelte
-19 NEW apps/storefront/src/routes/(app)/+page.svelte
-20 NEW apps/storefront/src/routes/(app)/offers/+page.svelte
-21 NEW apps/storefront/src/routes/(app)/orders/+page.svelte
-22 NEW apps/storefront/src/routes/(app)/account/+page.svelte
-23 NEW apps/storefront/src/routes/(app)/+error.svelte
-24 NEW apps/storefront/src/routes/+error.svelte
+1 SCAFFOLD src/lib/components/bits/{input,label,card}/ (via shadcn CLI)
+2 MODIFY apps/server/src/vendure-config.ts (email URLs)
+3 MODIFY apps/storefront/src/lib/api/shop/auth.remote.ts (login redirect + new functions)
+4 MODIFY apps/storefront/src/hooks.server.ts (add Referrer-Policy header)
+5 REMOVE apps/storefront/src/routes/+page.svelte (smoke test)
+6 NEW apps/storefront/src/routes/+error.svelte
+7 NEW apps/storefront/src/routes/(auth)/+layout.svelte
+8 NEW apps/storefront/src/routes/(auth)/login/+page.server.ts
+9 NEW apps/storefront/src/routes/(auth)/login/+page.svelte
+10 NEW apps/storefront/src/routes/(auth)/register/+page.server.ts
+11 NEW apps/storefront/src/routes/(auth)/register/+page.svelte
+12 NEW apps/storefront/src/routes/(auth)/verify/+page.server.ts
+13 NEW apps/storefront/src/routes/(auth)/verify/+page.svelte
+14 NEW apps/storefront/src/routes/(auth)/forgot-password/+page.server.ts
+15 NEW apps/storefront/src/routes/(auth)/forgot-password/+page.svelte
+16 NEW apps/storefront/src/routes/(auth)/reset-password/+page.server.ts
+17 NEW apps/storefront/src/routes/(auth)/reset-password/+page.svelte
+18 NEW apps/storefront/src/routes/(auth)/verify-email-change/+page.server.ts
+19 NEW apps/storefront/src/routes/(auth)/verify-email-change/+page.svelte
+20 NEW apps/storefront/src/routes/(app)/+layout.server.ts
+21 NEW apps/storefront/src/routes/(app)/+layout.svelte
+22 NEW apps/storefront/src/routes/(app)/+page.svelte
+23 NEW apps/storefront/src/routes/(app)/offers/+page.svelte
+24 NEW apps/storefront/src/routes/(app)/orders/+page.svelte
+25 NEW apps/storefront/src/routes/(app)/account/+page.svelte
+26 NEW apps/storefront/src/routes/(app)/+error.svelte
 Reused Patterns & Utilities
 Form spread pattern (from SvelteKit remote functions docs + DJL): <form {...login}> + login.fields.email.as('email') + login.fields.email.issues()
 .enhance() pattern (from DJL): intercept submission for post-submit behavior (redirect, invalidate, etc.)
@@ -245,3 +230,4 @@ Visit /login while authenticated → redirects to /
 Deferred
 Magic link login (not Vendure native — needs custom auth strategy)
 Multiple emails per account (not Vendure native)
+Stayed in plan mode
