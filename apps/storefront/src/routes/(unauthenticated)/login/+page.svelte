@@ -6,6 +6,7 @@
 
 	let resendState = $state<'idle' | 'sending' | 'sent'>('idle');
 	let errorMessage = $state<string | null>(null);
+	let redirecting = $state(false);
 
 	async function handleResend() {
 		const email = login.fields.email.value();
@@ -31,6 +32,7 @@
 				try {
 					await submit();
 					if (login.result?.success) {
+						redirecting = true;
 						await invalidateAll();
 						goto(login.result.returnTo);
 					}
@@ -82,8 +84,8 @@
 					<p class="text-destructive text-sm">{issue.message}</p>
 				{/each}
 			</div>
-			<Button type="submit" class="w-full" disabled={!!login.pending}>
-				{login.pending ? 'Logging in...' : 'Log in'}
+			<Button type="submit" class="w-full" disabled={!!login.pending || redirecting}>
+				{login.pending || redirecting ? 'Logging in...' : 'Log in'}
 			</Button>
 		</form>
 	</Card.Content>

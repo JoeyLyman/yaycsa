@@ -13,6 +13,7 @@ runMigrations(config)
       ["GraphiQL Shop", "http://localhost:3000/graphiql/shop"],
       ["Dev Mailbox", "http://localhost:3000/mailbox"],
       ["Assets", "http://localhost:3000/assets"],
+      ["Supabase", "https://supabase.com/dashboard/project/nygmkufogodcsmfftueq"],
     ];
     const maxLabel = Math.max(...links.map(([l]) => l.length));
     const lines = links.map(([label, url]) => `  ${label.padEnd(maxLabel)}  ${url}`);
