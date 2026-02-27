@@ -231,3 +231,8 @@ Deferred
 Magic link login (not Vendure native — needs custom auth strategy)
 Multiple emails per account (not Vendure native)
 Stayed in plan mode
+
+Testing
+
+- lets add the supabase url to the server startup output
+- why was this so painful? why did it take you to learn about vendures cookie practice? can we fix anything so we know the documentation better in the future? what were we missing here? lets take learnings from this if we can to get smarter moving forward.

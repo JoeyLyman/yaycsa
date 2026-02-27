@@ -20,7 +20,7 @@ export function createVendureClient(cookies: Cookies) {
 		};
 
 		if (token) {
-			headers['vendure-auth-token'] = token;
+			headers['Authorization'] = `Bearer ${token}`;
 		}
 
 		if (options?.channelToken) {
