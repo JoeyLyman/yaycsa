@@ -32,6 +32,12 @@ git add -A && git commit -m "Update: [description]" && git push
 cd ../..
 ```
 
+## Design Conventions
+
+- **Mobile-first design.** No native apps planned — the webapp must be fully functional on mobile. Design for small screens first, enhance for desktop.
+- **Table-based UI everywhere.** Wholesale is NOT image-grid e-commerce. Buyers buy from tables, sellers manage from tables. Inline editing, bulk edits, no navigating to detail pages for common ops. Think spreadsheet, not Shopify. Tables must be responsive (horizontal scroll or stacked cards on mobile).
+- **No unnecessary UI chrome.** Minimize clicks. Common operations should be inline, not behind modals or detail pages.
+
 ## Available MCP Tools:
 
 ### 1. list-sections

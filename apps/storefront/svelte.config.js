@@ -7,8 +7,12 @@ const config = {
 
 	kit: {
 		adapter: adapter(),
+		experimental: {
+			remoteFunctions: true
+		},
 		alias: {
 			'@/*': './src/lib/*',
+			'@api/*': './src/lib/api',
 			'@bits/*': './src/lib/components/bits',
 			'@blocks/*': './src/lib/components/blocks',
 			'@bundles/*': './src/lib/components/bundles',
@@ -20,7 +24,10 @@ const config = {
 	},
 
 	compilerOptions: {
-		runes: true
+		runes: true,
+		experimental: {
+			async: true
+		}
 	}
 };
 
