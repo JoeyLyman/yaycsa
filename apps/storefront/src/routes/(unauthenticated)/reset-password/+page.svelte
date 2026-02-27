@@ -2,6 +2,7 @@
 	import { resetPassword } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 
 	let { data } = $props();
 
@@ -57,6 +58,7 @@
 					{/each}
 				</div>
 				<Button type="submit" class="w-full" disabled={!!resetPassword.pending}>
+					{#if resetPassword.pending}<SpinnerSun class="mr-2" />{/if}
 					{resetPassword.pending ? 'Resetting...' : 'Reset password'}
 				</Button>
 			</form>

@@ -3,6 +3,7 @@
 	import { requestUpdateEmail, updatePassword, logout } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 
 	let { data } = $props();
 
@@ -71,6 +72,7 @@
 						{/each}
 					</div>
 					<Button type="submit" disabled={!!requestUpdateEmail.pending}>
+						{#if requestUpdateEmail.pending}<SpinnerSun class="mr-2" />{/if}
 						{requestUpdateEmail.pending ? 'Sending...' : 'Change email'}
 					</Button>
 				</form>
@@ -124,6 +126,7 @@
 						{/each}
 					</div>
 					<Button type="submit" disabled={!!updatePassword.pending}>
+						{#if updatePassword.pending}<SpinnerSun class="mr-2" />{/if}
 						{updatePassword.pending ? 'Changing...' : 'Change password'}
 					</Button>
 				</form>
@@ -133,6 +136,7 @@
 
 	<div class="pt-6 border-t">
 		<Button variant="destructive" disabled={loggingOut} onclick={handleLogout}>
+			{#if loggingOut}<SpinnerSun class="mr-2" />{/if}
 			{loggingOut ? 'Logging out...' : 'Log out'}
 		</Button>
 	</div>

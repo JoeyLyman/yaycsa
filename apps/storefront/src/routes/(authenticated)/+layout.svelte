@@ -20,7 +20,12 @@
 
 <div class="mx-auto max-w-5xl px-4">
 	<header class="flex items-center justify-between border-b py-4">
-		<a href="/" class="text-lg font-bold">yaycsa</a>
+		<a
+			href="/"
+			class="text-lg font-bold transition-colors {page.url.pathname === '/'
+				? 'text-foreground'
+				: 'text-muted-foreground/60 hover:text-muted-foreground'}"
+		>yaycsa</a>
 		<div class="flex items-center gap-4">
 			<nav class="flex gap-4">
 				{#each navLinks as { href, label }}

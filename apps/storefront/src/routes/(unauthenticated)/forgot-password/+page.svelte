@@ -2,6 +2,7 @@
 	import { requestPasswordReset } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 </script>
 
 {#if requestPasswordReset.result?.success}
@@ -36,6 +37,7 @@
 					{/each}
 				</div>
 				<Button type="submit" class="w-full" disabled={!!requestPasswordReset.pending}>
+					{#if requestPasswordReset.pending}<SpinnerSun class="mr-2" />{/if}
 					{requestPasswordReset.pending ? 'Sending...' : 'Send reset link'}
 				</Button>
 			</form>

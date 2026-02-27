@@ -3,6 +3,7 @@
 	import { login, resendVerification } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 
 	let resendState = $state<'idle' | 'sending' | 'sent'>('idle');
 	let errorMessage = $state<string | null>(null);
@@ -65,7 +66,7 @@
 						{#if resendState === 'sent'}
 							Verification email sent
 						{:else if resendState === 'sending'}
-							Sending...
+							<SpinnerSun class="mr-2" /> Sending...
 						{:else}
 							Resend verification email
 						{/if}
@@ -85,6 +86,7 @@
 				{/each}
 			</div>
 			<Button type="submit" class="w-full" disabled={!!login.pending || redirecting}>
+				{#if login.pending || redirecting}<SpinnerSun class="mr-2" />{/if}
 				{login.pending || redirecting ? 'Logging in...' : 'Log in'}
 			</Button>
 		</form>
