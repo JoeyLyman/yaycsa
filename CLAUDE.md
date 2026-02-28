@@ -36,6 +36,19 @@ cd ../..
 
 When asked to "save this plan" or "save to plan library", save the current plan as a formatted markdown file to library/yaycsa/plans/<descriptive-name>.md in the apps/docs submodule. don't commit or push, but instead prompt me by saying "plan is locally saved to the plan library - feel free to commit and push."
 
+## Storefront Component Conventions
+
+Components live in `apps/storefront/src/lib/components/` and follow a consistent naming pattern:
+
+- **`bits/`** — atomic UI primitives (button, card, input, avatar). These are shadcn-svelte components.
+- **`bundles/`** — composed components that combine bits or contain app-level logic (navbar, footer).
+
+Both use the same directory structure: `<category>/<component-name>/<component-name>.svelte` with an `index.ts` barrel export. For example:
+- `bits/button/button.svelte` + `bits/button/index.ts`
+- `bundles/navbar/navbar.svelte` + `bundles/navbar/index.ts`
+
+Import via the directory (barrel): `import { Navbar } from '$lib/components/bundles/navbar'`
+
 ## Design Conventions
 
 - **Mobile-first design.** No native apps planned — the webapp must be fully functional on mobile. Design for small screens first, enhance for desktop.
