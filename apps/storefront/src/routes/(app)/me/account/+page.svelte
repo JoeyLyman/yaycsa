@@ -4,6 +4,9 @@
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	import Sun from '@lucide/svelte/icons/sun';
+	import Moon from '@lucide/svelte/icons/moon';
+	import { toggleMode, mode } from 'mode-watcher';
 
 	let { data } = $props();
 
@@ -35,6 +38,23 @@
 					<dd>{data.customer.emailAddress}</dd>
 				</div>
 			</dl>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Settings</Card.Title>
+		</Card.Header>
+		<Card.Content>
+			<Button variant="outline" onclick={toggleMode}>
+				{#if mode.current === 'dark'}
+					<Sun class="h-[1.2rem] w-[1.2rem]" />
+					Light Mode
+				{:else}
+					<Moon class="h-[1.2rem] w-[1.2rem]" />
+					Dark Mode
+				{/if}
+			</Button>
 		</Card.Content>
 	</Card.Root>
 
