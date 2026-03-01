@@ -77,6 +77,8 @@ type Query {
 
   """Get active shipping methods"""
   activeShippingMethods: [PublicShippingMethod]!
+  sellers(activeOffersOnly: Boolean): [ShopSeller!]!
+  sellerBySlug(slug: String!): ShopSeller
   activeOffers(sellerId: ID): [Offer!]!
   offerLineItem(id: ID!): OfferLineItem
 }
@@ -3653,6 +3655,12 @@ input AddItemInput {
   customFields: OrderLineCustomFieldsInput
 }
 
+type ShopSeller {
+  id: ID!
+  name: String!
+  slug: String
+}
+
 enum FulfillmentOptionType {
   pickup
   delivery
@@ -3815,6 +3823,7 @@ input CustomerSortParameter {
   lastName: SortOrder
   phoneNumber: SortOrder
   emailAddress: SortOrder
+  seller: SortOrder
   notes: SortOrder
 }
 
@@ -3960,14 +3969,17 @@ input ProductSortParameter {
 }
 
 type CustomerCustomFields {
+  seller: Seller
   notes: String
 }
 
 input CreateCustomerCustomFieldsInput {
+  sellerId: ID
   notes: String
 }
 
 input UpdateCustomerCustomFieldsInput {
+  sellerId: ID
   notes: String
 }
 
@@ -3985,6 +3997,7 @@ type ProductVariantCustomFields {
 }
 
 type SellerCustomFields {
+  slug: String
   timezone: String
 }
 
@@ -3999,5 +4012,6 @@ input NativeAuthInput {
 }
 
 input RegisterCustomerCustomFieldsInput {
+  sellerId: ID
   notes: String
 }

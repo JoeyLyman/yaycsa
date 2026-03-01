@@ -6,6 +6,15 @@ export const ActiveCustomerFields = graphql(`
 		firstName
 		lastName
 		emailAddress
+		customFields {
+			seller {
+				id
+				name
+				customFields {
+					slug
+				}
+			}
+		}
 	}
 `);
 

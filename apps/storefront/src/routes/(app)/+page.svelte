@@ -1,13 +1,7 @@
 <script lang="ts">
-	let { data } = $props();
+	import { sellers } from '$lib/api/shop/sellers.remote';
 
-	const farms = [
-		{ slug: 'gathering-together-farm', name: 'Gathering Together Farm', location: 'Philomath, OR' },
-		{ slug: 'winter-green-farm', name: 'Winter Green Farm', location: 'Noti, OR' },
-		{ slug: 'deep-roots-farm', name: 'Deep Roots Farm', location: 'Corvallis, OR' },
-		{ slug: 'oak-prairie-farm', name: 'Oak Prairie Farm', location: 'Junction City, OR' },
-		{ slug: 'creek-bottom-produce', name: 'Creek Bottom Produce', location: 'Salem, OR' }
-	];
+	let { data } = $props();
 </script>
 
 {#if data.customer}
@@ -17,14 +11,28 @@
 {/if}
 <p class="text-muted-foreground mt-2">Browse offers from local farms and producers.</p>
 
-<div class="mt-6 space-y-2">
-	{#each farms as farm (farm.slug)}
-		<a
-			href="/{farm.slug}"
-			class="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
-		>
-			<span class="font-medium">{farm.name}</span>
-			<span class="text-muted-foreground text-sm">{farm.location}</span>
-		</a>
-	{/each}
-</div>
+<svelte:boundary>
+	{#await sellers()}
+		<div class="text-muted-foreground mt-6 py-12 text-center">Loading sellers...</div>
+	{:then sellerList}
+		{#if sellerList.length === 0}
+			<p class="text-muted-foreground mt-6">No sellers with active offers right now.</p>
+		{:else}
+			<div class="mt-6 space-y-2">
+				{#each sellerList as seller (seller.id)}
+					{#if seller.slug}
+						<a
+							href="/{seller.slug}"
+							class="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
+						>
+							<span class="font-medium">{seller.name}</span>
+						</a>
+					{/if}
+				{/each}
+			</div>
+		{/if}
+	{/await}
+	{#snippet failed(error)}
+		<p class="text-destructive mt-4">Error loading sellers.</p>
+	{/snippet}
+</svelte:boundary>

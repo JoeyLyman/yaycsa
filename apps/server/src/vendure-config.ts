@@ -11,6 +11,7 @@ import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import { GraphiqlPlugin } from '@vendure/graphiql-plugin';
 import 'dotenv/config';
 import path from 'path';
+import { MarketplacePlugin } from './plugins/marketplace-plugin/marketplace.plugin';
 import { OfferPlugin } from './plugins/offer-plugin/offer.plugin';
 
 const IS_DEV = process.env.APP_ENV === 'dev';
@@ -93,6 +94,9 @@ export const config: VendureConfig = {
                 ? path.join(__dirname, '../dist/dashboard')
                 : path.join(__dirname, 'dashboard'),
         }),
+        // MarketplacePlugin must be listed BEFORE OfferPlugin — it registers
+        // Seller.slug which OfferPlugin's entities/queries may reference.
+        MarketplacePlugin,
         OfferPlugin,
     ],
 };

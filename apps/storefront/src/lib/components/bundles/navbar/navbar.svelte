@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page, navigating } from '$app/state';
 	import * as Avatar from '$lib/components/bits/avatar';
+	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 
 	type Props = {
 		customer?: { firstName: string; lastName: string } | null;
@@ -81,7 +82,18 @@
 		</div>
 		<div class="flex items-center gap-4">
 			{#if customer}
-				<nav class="flex gap-4">
+				<nav class="flex items-center gap-4">
+					<a
+						href="/me/cart"
+						class="transition-colors {currentPathname.startsWith('/me/cart')
+							? 'text-foreground cursor-default'
+							: isBrandActive
+								? 'text-muted-foreground/60 hover:text-muted-foreground'
+								: 'text-muted-foreground hover:text-foreground'}"
+					>
+						<ShoppingCart class="h-4 w-4" />
+					</a>
+					<span class="text-border">|</span>
 					{#each navLinks as { href, label } (href)}
 						<a
 							{href}

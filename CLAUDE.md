@@ -22,6 +22,7 @@ Before implementing any feature, scan `apps/docs/library/yaycsa/features/` and `
 - **All DB dates/times use `timestamptz`** (Postgres timestamp with time zone), stored in UTC, always full date+time. No bare `date` or `time` types.
 - **Money stored as integers in cents** (Vendure convention). `400` = $4.00.
 - **Channel assignment:** Custom entities that are `ChannelAware` must be assigned to both the seller's channel AND the default (marketplace) channel. For new unsaved entities, set `entity.channels = [sellerChannel, defaultChannel]` directly — do not use `channelService.assignToCurrentChannel()` on unsaved entities.
+- **Always use Vendure Admin API (not raw SQL)** for data operations — creating/updating entities, linking relations, seeding data. Vendure fires events, updates search indexes, syncs channels, and runs hooks on entity mutations. Raw SQL bypasses all of that and can leave the system in an inconsistent state.
 - See `apps/docs/library/yaycsa/data-conventions.md` for full details.
 
 **If you update docs or the todo:** Commit and push the submodule:

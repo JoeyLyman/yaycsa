@@ -67,15 +67,7 @@ import './types';
             description: [{ languageCode: LanguageCode.en, value: 'IANA timezone (e.g. America/Los_Angeles). Optional — UTC assumed if not set.' }],
         });
 
-        // --- Seller: slug ---
-        config.customFields.Seller.push({
-            name: 'slug',
-            type: 'string',
-            unique: true,
-            nullable: true,
-            label: [{ languageCode: LanguageCode.en, value: 'URL Slug' }],
-            description: [{ languageCode: LanguageCode.en, value: 'URL-friendly identifier for the seller (e.g. gathering-together-farm)' }],
-        });
+        // NOTE: Seller.slug is registered in MarketplacePlugin (seller identity lives there)
 
         // --- CustomerGroup: sellerId ---
         config.customFields.CustomerGroup.push({

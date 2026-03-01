@@ -23,10 +23,11 @@ declare module '@vendure/core/dist/entity/custom-entity-fields' {
     }
     interface CustomCustomerFields {
         notes: string | null;
+        seller: import('@vendure/core').Seller | null; // Registered in MarketplacePlugin
     }
     interface CustomSellerFields {
         timezone: string | null;
-        slug: string | null;
+        slug: string | null; // Registered in MarketplacePlugin
     }
     interface CustomCustomerGroupFields {
         sellerId: string | null;
