@@ -4,9 +4,24 @@
 	import { Button } from '$lib/components/bits/button';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 
+	/**
+	 * True after successful registration. Swaps the form for a
+	 * "check your email" confirmation card.
+	 */
 	let registered = $state(false);
+
+	/** The email address submitted during registration. Shown in the confirmation card. */
 	let registeredEmail = $state('');
+
+	/**
+	 * Tracks the state of the "resend verification email" button on the confirmation card.
+	 * - "idle": button ready to click
+	 * - "sending": request in flight, button disabled
+	 * - "sent": confirmation shown
+	 */
 	let resendState = $state<'idle' | 'sending' | 'sent'>('idle');
+
+	/** Server-side or network error message from a failed registration attempt. null when no error. */
 	let errorMessage = $state<string | null>(null);
 
 	async function handleResend() {

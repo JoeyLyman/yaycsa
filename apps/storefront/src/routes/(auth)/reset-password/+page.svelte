@@ -6,7 +6,10 @@
 
 	let { data } = $props();
 
-	// Set the token from page data into the form field
+	/**
+	 * Syncs the password-reset token from the URL (passed via page data) into the
+	 * hidden form field. The token comes from the email link's query parameter.
+	 */
 	$effect(() => {
 		if (data.token) resetPassword.fields.token.set(data.token);
 	});

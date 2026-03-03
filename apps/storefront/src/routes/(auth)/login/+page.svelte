@@ -5,8 +5,22 @@
 	import { Button } from '$lib/components/bits/button';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 
+	/**
+	 * Tracks the state of the "resend verification email" button.
+	 * Shown when login fails because the account isn't verified yet.
+	 * - "idle": button ready to click
+	 * - "sending": request in flight, button disabled
+	 * - "sent": confirmation shown, no further action needed
+	 */
 	let resendState = $state<'idle' | 'sending' | 'sent'>('idle');
+
+	/** Server-side or network error message from a failed login attempt. null when no error. */
 	let errorMessage = $state<string | null>(null);
+
+	/**
+	 * True after a successful login, while we invalidate layout data and redirect.
+	 * Keeps the button disabled and shows a spinner during the redirect.
+	 */
 	let redirecting = $state(false);
 
 	async function handleResend() {

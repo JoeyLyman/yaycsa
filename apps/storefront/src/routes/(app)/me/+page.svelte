@@ -4,12 +4,18 @@
 
 	let { data } = $props();
 
+	/**
+	 * The Seller entity linked to the logged-in customer, if they are a seller.
+	 * null if the customer is a buyer-only account.
+	 * Note: this page now redirects to /{seller.slug} via +page.server.ts,
+	 * so this component rarely renders.
+	 */
 	const seller = $derived(data.customer.customFields?.seller);
 </script>
 
 {#if seller}
 	<h1 class="text-2xl font-bold">{seller.name}</h1>
-	<p class="text-muted-foreground mt-2">This is how buyers see your farm.</p>
+	<p class="text-muted-foreground mt-2">This is how buyers see your sales page.</p>
 
 	<svelte:boundary>
 		{#await activeOffers({ sellerId: seller.id })}

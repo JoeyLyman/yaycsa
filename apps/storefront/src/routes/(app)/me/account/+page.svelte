@@ -10,6 +10,16 @@
 
 	let { data } = $props();
 
+	/**
+	 * The URL slug for the logged-in user's linked seller (e.g. "gathering-together-farm").
+	 * null if the user is not a seller. Used for the "See my sales page" link.
+	 */
+	const mySellerSlug = $derived(
+		(data.customer.customFields as { seller?: { customFields?: { slug?: string | null } } | null })
+			?.seller?.customFields?.slug ?? null
+	);
+
+	/** True while the logout request is in flight. Disables the logout button and shows a spinner. */
 	let loggingOut = $state(false);
 
 	async function handleLogout() {
@@ -22,7 +32,9 @@
 <h1 class="text-2xl font-bold">Account</h1>
 
 <div class="mt-6 space-y-6">
-	<Button href="/me">See my sales page</Button>
+	{#if mySellerSlug}
+		<Button href="/{mySellerSlug}">See my sales page</Button>
+	{/if}
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Profile</Card.Title>

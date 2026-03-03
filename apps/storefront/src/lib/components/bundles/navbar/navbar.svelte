@@ -4,15 +4,33 @@
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 
 	type Props = {
-		customer?: { firstName: string; lastName: string } | null;
+		customer?: {
+			firstName: string;
+			lastName: string;
+			customFields?: { seller?: { customFields?: { slug?: string | null } } | null } | null;
+		} | null;
 	};
 
 	let { customer = null }: Props = $props();
 
-	// Use navigating target for instant feedback, fall back to current page
+	/**
+	 * The URL slug of the seller linked to the logged-in customer.
+	 * null if not logged in or not a seller (e.g. a buyer-only account).
+	 * Used to detect when the user is viewing their own sales page.
+	 */
+	const mySellerSlug = $derived(customer?.customFields?.seller?.customFields?.slug ?? null);
+
+	/**
+	 * The pathname we're navigating TO (if mid-navigation) or currently on.
+	 * Uses the navigating target for instant visual feedback — the navbar
+	 * updates as soon as a link is clicked, not after the page loads.
+	 */
 	const currentPathname = $derived(navigating.to?.url.pathname ?? page.url.pathname);
 
-	// --- Brand derivation from URL ---
+	/**
+	 * Paths that are NOT seller slugs. Any first URL segment not in this set
+	 * is treated as a seller slug (e.g. /gathering-together-farm).
+	 */
 	const reservedPaths = new Set([
 		'me',
 		'login',
@@ -22,35 +40,76 @@
 		'verify',
 		'verify-email-change'
 	]);
+
+	/** The current URL split into path segments, e.g. "/me/offers" → ["me", "offers"]. */
 	const pathSegments = $derived(currentPathname.split('/').filter(Boolean));
+
+	/** True when the URL starts with /me (dashboard pages like /me/offers, /me/account). */
 	const isMe = $derived(pathSegments[0] === 'me');
+
+	/**
+	 * True when the first URL segment is a seller slug (not a reserved path).
+	 * e.g. /gathering-together-farm → true, /login → false, /me/offers → false.
+	 */
 	const isSellerPage = $derived(
 		pathSegments.length >= 1 && !reservedPaths.has(pathSegments[0])
 	);
+
+	/** True when on the marketplace home page (/). */
 	const isHome = $derived(currentPathname === '/');
 
-	const brandSuffix = $derived(isMe ? 'me' : isSellerPage ? pathSegments[0] : 'csa');
-	const suffixHref = $derived(isMe ? '/me' : isSellerPage ? `/${pathSegments[0]}` : '/');
+	/**
+	 * True when the logged-in user is viewing their own seller's sales page.
+	 * e.g. Joe (linked to gathering-together-farm) is on /gathering-together-farm.
+	 * When true, the navbar shows "yay·me" instead of the seller slug.
+	 */
+	const isMySellerPage = $derived(isSellerPage && mySellerSlug != null && pathSegments[0] === mySellerSlug);
 
-	const isBrandActive = $derived(
+	/**
+	 * The text shown after "yay·" in the navbar brand.
+	 * - "me" when on /me/* dashboard pages OR viewing your own sales page
+	 * - the seller slug when viewing another seller's page (e.g. "gathering-together-farm")
+	 * - "csa" when on the home page or other non-seller pages
+	 */
+	const navSuffix = $derived(isMe || isMySellerPage ? 'me' : isSellerPage ? pathSegments[0] : 'csa');
+
+	/**
+	 * Where the suffix links to when clicked (only used when the suffix is NOT active).
+	 * - /me when on a /me/* subpage (e.g. clicking ·me on /me/offers → /me → redirects to sales page)
+	 * - /seller-slug when on a seller subpage
+	 * - / when on other pages
+	 */
+	const navSuffixHref = $derived(isMe ? '/me' : isSellerPage ? `/${pathSegments[0]}` : '/');
+
+	/**
+	 * True when the brand (yay·suffix) represents the current page — meaning
+	 * the suffix should be bold and inert (not a link). This is the case on:
+	 * - the home page (/) where "yay·csa" IS the current page
+	 * - a seller's root page (/gathering-together-farm) where the suffix IS the page
+	 * - /me (which redirects, so this is briefly true during the redirect)
+	 *
+	 * When true, right-side nav links (Offers, Orders, cart) are dimmed so the
+	 * brand is the visual focus.
+	 */
+	const isNavSuffixActive = $derived(
 		isHome || (isSellerPage && pathSegments.length === 1) || currentPathname === '/me'
 	);
 
-	// --- Nav links (authenticated) ---
+	/** Dashboard nav links shown when authenticated. */
 	const navLinks = [
 		{ href: '/me/offers', label: 'Offers' },
 		{ href: '/me/orders', label: 'Orders' }
 	];
 
+	/** Returns true if the current page is within the given nav link's path. */
 	function isNavActive(href: string) {
 		return currentPathname.startsWith(href);
 	}
 
-	// --- Auth link active state ---
 	const isLoginActive = $derived(currentPathname === '/login');
 	const isRegisterActive = $derived(currentPathname === '/register');
 
-	// --- User initials ---
+	/** Two-letter initials for the user avatar (e.g. "JL" for Joe Lyman). */
 	const initials = $derived(
 		customer ? (customer.firstName?.[0] ?? '') + (customer.lastName?.[0] ?? '') : ''
 	);
@@ -59,10 +118,10 @@
 <header class="border-b">
 	<div class="mx-auto max-w-5xl px-4 flex items-center justify-between py-4">
 		<div class="flex items-center">
-			{#if brandSuffix === 'csa'}
+			{#if navSuffix === 'csa'}
 				<a
 					href="/"
-					class="text-lg font-bold transition-colors {isBrandActive
+					class="text-lg font-bold transition-colors {isNavSuffixActive
 						? 'text-foreground cursor-default'
 						: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 				>yay<span class="mx-0.5">&middot;</span>csa</a>
@@ -72,12 +131,12 @@
 					class="text-lg font-bold transition-colors {isHome
 						? 'text-foreground cursor-default'
 						: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-				>yay</a><a
-					href={suffixHref}
-					class="text-lg font-bold transition-colors truncate max-w-48 sm:max-w-72 {isBrandActive
-						? 'text-foreground cursor-default'
-						: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-				><span class="mx-0.5">&middot;</span>{brandSuffix}</a>
+				>yay</a>{#if isNavSuffixActive}<span
+					class="text-lg font-bold text-foreground truncate max-w-48 sm:max-w-72"
+				><span class="mx-0.5">&middot;</span>{navSuffix}</span>{:else}<a
+					href={navSuffixHref}
+					class="text-lg font-bold transition-colors truncate max-w-48 sm:max-w-72 text-muted-foreground/60 hover:text-muted-foreground"
+				><span class="mx-0.5">&middot;</span>{navSuffix}</a>{/if}
 			{/if}
 		</div>
 		<div class="flex items-center gap-4">
@@ -87,7 +146,7 @@
 						href="/me/cart"
 						class="transition-colors {currentPathname.startsWith('/me/cart')
 							? 'text-foreground cursor-default'
-							: isBrandActive
+							: isNavSuffixActive
 								? 'text-muted-foreground/60 hover:text-muted-foreground'
 								: 'text-muted-foreground hover:text-foreground'}"
 					>
@@ -97,9 +156,9 @@
 					{#each navLinks as { href, label } (href)}
 						<a
 							{href}
-							class="text-sm transition-colors {isNavActive(href) && !isBrandActive
+							class="text-sm transition-colors {isNavActive(href) && !isNavSuffixActive
 								? 'text-foreground font-medium cursor-default'
-								: isBrandActive
+								: isNavSuffixActive
 									? 'text-muted-foreground/60 hover:text-muted-foreground'
 									: 'text-muted-foreground hover:text-foreground'}"
 						>
@@ -122,7 +181,7 @@
 						href="/login"
 						class="text-sm transition-colors {isLoginActive
 							? 'text-foreground font-medium cursor-default'
-							: isBrandActive
+							: isNavSuffixActive
 								? 'text-muted-foreground/60 hover:text-muted-foreground'
 								: 'text-muted-foreground hover:text-foreground'}"
 					>Log in</a>
@@ -130,7 +189,7 @@
 						href="/register"
 						class="text-sm transition-colors {isRegisterActive
 							? 'text-foreground font-medium cursor-default'
-							: isBrandActive
+							: isNavSuffixActive
 								? 'text-muted-foreground/60 hover:text-muted-foreground'
 								: 'text-muted-foreground hover:text-foreground'}"
 					>Register</a>

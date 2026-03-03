@@ -50,6 +50,11 @@ Both use the same directory structure: `<category>/<component-name>/<component-n
 
 Import via the directory (barrel): `import { Navbar } from '$lib/components/bundles/navbar'`
 
+## Code Style
+
+- **Verbose comments on state and derived values.** Every reactive variable (`$state`, `$derived`, computed values) should have a JSDoc-style comment above it explaining what it represents, when it's true/false (for booleans), and why it exists. Don't assume variable names are self-documenting — spell it out.
+- **Use domain-neutral variable names.** Sellers can be farms, restaurants, grocery stores, distributors, etc. Don't use "farm" in variable names — use "business", "seller", or "sales page" instead.
+
 ## Design Conventions
 
 - **Mobile-first design.** No native apps planned — the webapp must be fully functional on mobile. Design for small screens first, enhance for desktop.
