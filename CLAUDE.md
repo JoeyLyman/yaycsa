@@ -12,7 +12,8 @@ cd apps/docs && git pull origin main && cd ../..
 **Key locations:**
 
 - `apps/docs/library/yaycsa/vision.md` — project vision + feature index
-- `apps/docs/library/yaycsa/features/` — feature specs (order ingest, unified accounts, pricing, etc.)
+- `apps/docs/library/yaycsa/features/` — feature specs (unified accounts, pricing, etc.)
+- `apps/docs/library/yaycsa/plugins/` — plugin specs (offer-plugin, marketplace-plugin, inbox-manager)
 - `apps/docs/todos/yaycsa.md` — project todo / phase tracker
 
 Before implementing any feature, scan `apps/docs/library/yaycsa/features/` and `apps/docs/library/yaycsa/plugins/` for relevant docs and read them.
