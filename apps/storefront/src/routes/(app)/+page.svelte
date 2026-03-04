@@ -2,6 +2,9 @@
 	import { sellers } from '$lib/api/shop/sellers.remote';
 
 	let { data } = $props();
+
+	/** Whether to show all sellers, including those without active offers. */
+	let showAll = $state(false);
 </script>
 
 {#if data.customer}
@@ -11,12 +14,33 @@
 {/if}
 <p class="text-muted-foreground mt-2">Browse offers from local farms and producers.</p>
 
+<div class="mt-4 flex gap-1 text-sm">
+	<button
+		class="rounded-md px-3 py-1.5 font-medium transition-colors {!showAll
+			? 'bg-accent text-accent-foreground'
+			: 'text-muted-foreground hover:text-foreground'}"
+		onclick={() => (showAll = false)}
+	>
+		Active offers
+	</button>
+	<button
+		class="rounded-md px-3 py-1.5 font-medium transition-colors {showAll
+			? 'bg-accent text-accent-foreground'
+			: 'text-muted-foreground hover:text-foreground'}"
+		onclick={() => (showAll = true)}
+	>
+		All sellers
+	</button>
+</div>
+
 <svelte:boundary>
-	{#await sellers()}
+	{#await sellers({ activeOffersOnly: !showAll })}
 		<div class="text-muted-foreground mt-6 py-12 text-center">Loading sellers...</div>
 	{:then sellerList}
 		{#if sellerList.length === 0}
-			<p class="text-muted-foreground mt-6">No sellers with active offers right now.</p>
+			<p class="text-muted-foreground mt-6">
+				{showAll ? 'No sellers found.' : 'No sellers with active offers right now.'}
+			</p>
 		{:else}
 			<div class="mt-6 space-y-2">
 				{#each sellerList as seller (seller.id)}
