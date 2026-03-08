@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page, navigating } from '$app/state';
 	import * as Avatar from '$lib/components/bits/avatar';
+	import * as Tooltip from '$lib/components/bits/tooltip';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 
 	type Props = {
@@ -155,40 +156,6 @@
 	const initials = $derived(
 		customer ? (customer.firstName?.[0] ?? '') + (customer.lastName?.[0] ?? '') : ''
 	);
-
-	/**
-	 * Element ref for the suffix text container. Used to measure whether the
-	 * suffix text overflows its max-width, triggering the scroll animation.
-	 */
-	let suffixEl: HTMLElement | undefined = $state();
-
-	/**
-	 * The pixel distance the suffix text overflows its container.
-	 * 0 when the text fits (e.g. "csa", "me"). Positive when it overflows
-	 * (e.g. "gathering-together-farm"). Used as the CSS translate distance.
-	 */
-	let overflowDistance = $state(0);
-
-	/**
-	 * Measures whether the suffix text overflows and updates overflowDistance.
-	 * Re-runs whenever the suffix text or element ref changes.
-	 * NOTE: If the scrolling animation doesn't feel good, try truncation +
-	 * tap/tooltip to reveal the full name instead.
-	 */
-	$effect(() => {
-		// Subscribe to navSuffix so this re-runs on route changes
-		void navSuffix;
-		if (!suffixEl) {
-			overflowDistance = 0;
-			return;
-		}
-		// Wait a tick for the DOM to update with the new text
-		requestAnimationFrame(() => {
-			if (suffixEl) {
-				overflowDistance = Math.max(0, suffixEl.scrollWidth - suffixEl.clientWidth);
-			}
-		});
-	});
 </script>
 
 <header class="border-b">
@@ -199,18 +166,7 @@
 				class="shrink-0 text-lg font-bold transition-colors {isHome
 					? 'text-foreground cursor-default'
 					: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-			>yay</a><span class="shrink-0 mx-1 text-lg font-bold {isNavSuffixActive ? 'text-foreground' : 'text-muted-foreground/60'}">&middot;</span>{#if isNavSuffixActive}<span
-				bind:this={suffixEl}
-				class="suffix-scroll text-lg font-bold text-foreground max-w-48 sm:max-w-72"
-				style:--overflow-distance="{overflowDistance}px"
-				title={navSuffix}
-			>{navSuffix}</span>{:else}<a
-				bind:this={suffixEl}
-				href={navSuffixHref}
-				class="suffix-scroll text-lg font-bold transition-colors max-w-48 sm:max-w-72 text-muted-foreground/60 hover:text-muted-foreground"
-				style:--overflow-distance="{overflowDistance}px"
-				title={navSuffix}
-			>{navSuffix}</a>{/if}
+			>yay</a><span class="shrink-0 mx-1 text-lg font-bold {isNavSuffixActive ? 'text-foreground' : 'text-muted-foreground/60'}">&middot;</span><Tooltip.Provider><Tooltip.Root delayDuration={0}>{#if isNavSuffixActive}<Tooltip.Trigger class="text-lg font-bold text-foreground truncate max-w-64 sm:max-w-96 cursor-default">{navSuffix}</Tooltip.Trigger>{:else}<Tooltip.Trigger>{#snippet child({ props })}<a {...props} href={navSuffixHref} class="text-lg font-bold transition-colors truncate max-w-64 sm:max-w-96 text-muted-foreground/60 hover:text-muted-foreground">{navSuffix}</a>{/snippet}</Tooltip.Trigger>{/if}<Tooltip.Content>{navSuffix}</Tooltip.Content></Tooltip.Root></Tooltip.Provider>
 		</div>
 		<div class="flex items-center gap-4">
 			{#if customer}
@@ -277,48 +233,3 @@
 		</div>
 	</div>
 </header>
-
-<style>
-	/*
-	 * Scrolling animation for long suffix text (e.g. seller slugs).
-	 * When the text overflows, it pauses, scrolls one-way to reveal the end,
-	 * pauses again, then snaps back. Uses a CSS variable set from JS for the
-	 * exact overflow distance.
-	 *
-	 * NOTE: If this doesn't feel good in practice, replace with truncation +
-	 * tap/tooltip to reveal the full name instead.
-	 */
-	.suffix-scroll {
-		display: inline-block;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
-
-	/* Only animate when there's actual overflow and user hasn't requested reduced motion */
-	@media (prefers-reduced-motion: no-preference) {
-		.suffix-scroll[style*='--overflow-distance']:not([style*='--overflow-distance: 0px']) {
-			text-overflow: clip;
-			animation: suffix-scroll-reveal 7s ease-in-out 1s infinite;
-		}
-	}
-
-	@keyframes suffix-scroll-reveal {
-		/* Pause at start (0% – 28%) */
-		0%, 28% {
-			transform: translateX(0);
-		}
-		/* Scroll to reveal end (28% – 57%) */
-		57% {
-			transform: translateX(calc(var(--overflow-distance, 0px) * -1));
-		}
-		/* Pause at end (57% – 85%) */
-		85% {
-			transform: translateX(calc(var(--overflow-distance, 0px) * -1));
-		}
-		/* Snap back (85% – 100%) */
-		100% {
-			transform: translateX(0);
-		}
-	}
-</style>
