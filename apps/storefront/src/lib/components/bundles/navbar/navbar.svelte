@@ -66,39 +66,58 @@
 	const isMySellerPage = $derived(isSellerPage && mySellerSlug != null && pathSegments[0] === mySellerSlug);
 
 	/**
-	 * The text shown after "yay·" in the navbar brand.
-	 * - "me" when on /me/* dashboard pages OR viewing your own sales page
-	 * - the seller slug when viewing another seller's page (e.g. "gathering-together-farm")
-	 * - "csa" when on the home page or other non-seller pages
+	 * Maps /me subpage segments to their display text in the navbar suffix.
+	 * e.g. /me/offers → "my offers", /me/cart → "my cart".
+	 * Pages not in this map (or /me itself) show "me".
 	 */
-	const navSuffix = $derived(isMe || isMySellerPage ? 'me' : isSellerPage ? pathSegments[0] : 'csa');
+	const meSubpageSuffixes: Record<string, string> = {
+		offers: 'my offers',
+		orders: 'my orders',
+		sales: 'my sales',
+		cart: 'my cart',
+		account: 'my account'
+	};
+
+	/**
+	 * The text shown after "yay·" in the navbar brand.
+	 * - "me" when on /me root or viewing your own seller page
+	 * - "my offers", "my cart", etc. when on /me subpages
+	 * - the seller slug when viewing another seller's page
+	 * - "csa" on the home page or other non-seller pages
+	 */
+	const navSuffix = $derived(
+		isMySellerPage ? 'me'
+		: isMe ? (meSubpageSuffixes[pathSegments[1]] ?? 'me')
+		: isSellerPage ? pathSegments[0]
+		: 'csa'
+	);
 
 	/**
 	 * Where the suffix links to when clicked (only used when the suffix is NOT active).
-	 * - /me when on a /me/* subpage (e.g. clicking ·me on /me/offers → /me → redirects to sales page)
 	 * - /seller-slug when on a seller subpage
-	 * - / when on other pages
+	 * - /me on the home page or other non-seller pages (go to become-a-seller or own sales page)
 	 */
-	const navSuffixHref = $derived(isMe ? '/me' : isSellerPage ? `/${pathSegments[0]}` : '/');
+	const navSuffixHref = $derived(isSellerPage ? `/${pathSegments[0]}` : '/me');
 
 	/**
-	 * True when the brand (yay·suffix) represents the current page — meaning
-	 * the suffix should be bold and inert (not a link). This is the case on:
-	 * - the home page (/) where "yay·csa" IS the current page
-	 * - a seller's root page (/gathering-together-farm) where the suffix IS the page
-	 * - /me (which redirects, so this is briefly true during the redirect)
-	 *
-	 * When true, right-side nav links (Offers, Orders, cart) are dimmed so the
-	 * brand is the visual focus.
+	 * True when the suffix represents the current page context — meaning it should be
+	 * bold and inert (not a link). True on:
+	 * - all /me/* pages (each has its own suffix like "my offers")
+	 * - a seller's root page (/gathering-together-farm)
 	 */
 	const isNavSuffixActive = $derived(
-		isHome || (isSellerPage && pathSegments.length === 1) || currentPathname === '/me'
+		isMe || (isSellerPage && pathSegments.length === 1)
 	);
 
-	/** Dashboard nav links shown when authenticated. */
-	const navLinks = [
-		{ href: '/me/offers', label: 'Offers' },
+	/** Nav links for the buyer side (visible to all authenticated users). */
+	const buyerLinks = [
 		{ href: '/me/orders', label: 'Orders' }
+	];
+
+	/** Nav links for the seller side (only visible when the user is a seller). */
+	const sellerLinks = [
+		{ href: '/me/offers', label: 'Offers' },
+		{ href: '/me/sales', label: 'Sales' }
 	];
 
 	/** Returns true if the current page is within the given nav link's path. */
@@ -118,53 +137,52 @@
 <header class="border-b">
 	<div class="mx-auto max-w-5xl px-4 flex items-center justify-between py-4">
 		<div class="flex items-center">
-			{#if navSuffix === 'csa'}
-				<a
-					href="/"
-					class="text-lg font-bold transition-colors {isNavSuffixActive
-						? 'text-foreground cursor-default'
-						: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-				>yay<span class="mx-0.5">&middot;</span>csa</a>
-			{:else}
-				<a
-					href="/"
-					class="text-lg font-bold transition-colors {isHome
-						? 'text-foreground cursor-default'
-						: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-				>yay</a>{#if isNavSuffixActive}<span
-					class="text-lg font-bold text-foreground truncate max-w-48 sm:max-w-72"
-				><span class="mx-0.5">&middot;</span>{navSuffix}</span>{:else}<a
-					href={navSuffixHref}
-					class="text-lg font-bold transition-colors truncate max-w-48 sm:max-w-72 text-muted-foreground/60 hover:text-muted-foreground"
-				><span class="mx-0.5">&middot;</span>{navSuffix}</a>{/if}
-			{/if}
+			<a
+				href="/"
+				class="text-lg font-bold transition-colors {isHome
+					? 'text-foreground cursor-default'
+					: 'text-muted-foreground/60 hover:text-muted-foreground'}"
+			>yay</a>{#if isNavSuffixActive}<span
+				class="text-lg font-bold text-foreground truncate max-w-48 sm:max-w-72"
+			><span class="mx-1">&middot;</span>{navSuffix}</span>{:else}<a
+				href={navSuffixHref}
+				class="text-lg font-bold transition-colors truncate max-w-48 sm:max-w-72 text-muted-foreground/60 hover:text-muted-foreground"
+			><span class="mx-1">&middot;</span>{navSuffix}</a>{/if}
 		</div>
 		<div class="flex items-center gap-4">
 			{#if customer}
 				<nav class="flex items-center gap-4">
 					<a
 						href="/me/cart"
-						class="transition-colors {currentPathname.startsWith('/me/cart')
+						class="mr-1 transition-colors {currentPathname.startsWith('/me/cart')
 							? 'text-foreground cursor-default'
-							: isNavSuffixActive
-								? 'text-muted-foreground/60 hover:text-muted-foreground'
-								: 'text-muted-foreground hover:text-foreground'}"
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>
 						<ShoppingCart class="h-4 w-4" />
 					</a>
-					<span class="text-border">|</span>
-					{#each navLinks as { href, label } (href)}
+					{#each buyerLinks as { href, label } (href)}
 						<a
 							{href}
-							class="text-sm transition-colors {isNavActive(href) && !isNavSuffixActive
+							class="text-sm transition-colors {isNavActive(href)
 								? 'text-foreground font-medium cursor-default'
-								: isNavSuffixActive
-									? 'text-muted-foreground/60 hover:text-muted-foreground'
-									: 'text-muted-foreground hover:text-foreground'}"
+								: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 						>
 							{label}
 						</a>
 					{/each}
+					{#if mySellerSlug}
+						<span class="text-border">|</span>
+						{#each sellerLinks as { href, label } (href)}
+							<a
+								{href}
+								class="text-sm transition-colors {isNavActive(href)
+									? 'text-foreground font-medium cursor-default'
+									: 'text-muted-foreground/60 hover:text-muted-foreground'}"
+							>
+								{label}
+							</a>
+						{/each}
+					{/if}
 				</nav>
 				<a href="/me/account" class="ml-2 flex items-center {currentPathname.startsWith('/me/account') ? 'cursor-default' : ''}">
 					<Avatar.Root
@@ -181,17 +199,13 @@
 						href="/login"
 						class="text-sm transition-colors {isLoginActive
 							? 'text-foreground font-medium cursor-default'
-							: isNavSuffixActive
-								? 'text-muted-foreground/60 hover:text-muted-foreground'
-								: 'text-muted-foreground hover:text-foreground'}"
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>Log in</a>
 					<a
 						href="/register"
 						class="text-sm transition-colors {isRegisterActive
 							? 'text-foreground font-medium cursor-default'
-							: isNavSuffixActive
-								? 'text-muted-foreground/60 hover:text-muted-foreground'
-								: 'text-muted-foreground hover:text-foreground'}"
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>Register</a>
 				</nav>
 			{/if}
