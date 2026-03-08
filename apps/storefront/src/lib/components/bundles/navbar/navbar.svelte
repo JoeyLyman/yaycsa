@@ -33,6 +33,20 @@
 	 */
 	const reservedPaths = new Set([
 		'me',
+		'cart',
+		'login',
+		'register',
+		'forgot-password',
+		'reset-password',
+		'verify',
+		'verify-email-change'
+	]);
+
+	/**
+	 * Auth page paths that show "welcome" as the suffix.
+	 * These are the (auth) layout pages where users log in, register, etc.
+	 */
+	const authPaths = new Set([
 		'login',
 		'register',
 		'forgot-password',
@@ -46,6 +60,9 @@
 
 	/** True when the URL starts with /me (dashboard pages like /me/offers, /me/account). */
 	const isMe = $derived(pathSegments[0] === 'me');
+
+	/** True when on an auth page (login, register, forgot-password, etc.). */
+	const isAuthPage = $derived(pathSegments.length >= 1 && authPaths.has(pathSegments[0]));
 
 	/**
 	 * True when the first URL segment is a seller slug (not a reserved path).
@@ -67,26 +84,31 @@
 
 	/**
 	 * Maps /me subpage segments to their display text in the navbar suffix.
-	 * e.g. /me/offers → "my offers", /me/cart → "my cart".
+	 * e.g. /me/offers → "my offers", /cart → "my cart".
 	 * Pages not in this map (or /me itself) show "me".
 	 */
 	const meSubpageSuffixes: Record<string, string> = {
 		offers: 'my offers',
 		orders: 'my orders',
 		sales: 'my sales',
-		cart: 'my cart',
 		account: 'my account'
 	};
 
+	/** True when on the /cart page (top-level, accessible without auth). */
+	const isCartPage = $derived(pathSegments[0] === 'cart');
+
 	/**
 	 * The text shown after "yay·" in the navbar brand.
+	 * - "welcome" when on auth pages (login, register, etc.)
 	 * - "me" when on /me root or viewing your own seller page
 	 * - "my offers", "my cart", etc. when on /me subpages
 	 * - the seller slug when viewing another seller's page
 	 * - "csa" on the home page or other non-seller pages
 	 */
 	const navSuffix = $derived(
-		isMySellerPage ? 'me'
+		isAuthPage ? 'welcome'
+		: isCartPage ? 'my cart'
+		: isMySellerPage ? 'me'
 		: isMe ? (meSubpageSuffixes[pathSegments[1]] ?? 'me')
 		: isSellerPage ? pathSegments[0]
 		: 'csa'
@@ -102,11 +124,12 @@
 	/**
 	 * True when the suffix represents the current page context — meaning it should be
 	 * bold and inert (not a link). True on:
+	 * - auth pages (login, register, etc.) — shows "welcome"
 	 * - all /me/* pages (each has its own suffix like "my offers")
 	 * - a seller's root page (/gathering-together-farm)
 	 */
 	const isNavSuffixActive = $derived(
-		isMe || (isSellerPage && pathSegments.length === 1)
+		isAuthPage || isCartPage || isMe || (isSellerPage && pathSegments.length === 1)
 	);
 
 	/** Nav links for the buyer side (visible to all authenticated users). */
@@ -132,29 +155,70 @@
 	const initials = $derived(
 		customer ? (customer.firstName?.[0] ?? '') + (customer.lastName?.[0] ?? '') : ''
 	);
+
+	/**
+	 * Element ref for the suffix text container. Used to measure whether the
+	 * suffix text overflows its max-width, triggering the scroll animation.
+	 */
+	let suffixEl: HTMLElement | undefined = $state();
+
+	/**
+	 * The pixel distance the suffix text overflows its container.
+	 * 0 when the text fits (e.g. "csa", "me"). Positive when it overflows
+	 * (e.g. "gathering-together-farm"). Used as the CSS translate distance.
+	 */
+	let overflowDistance = $state(0);
+
+	/**
+	 * Measures whether the suffix text overflows and updates overflowDistance.
+	 * Re-runs whenever the suffix text or element ref changes.
+	 * NOTE: If the scrolling animation doesn't feel good, try truncation +
+	 * tap/tooltip to reveal the full name instead.
+	 */
+	$effect(() => {
+		// Subscribe to navSuffix so this re-runs on route changes
+		void navSuffix;
+		if (!suffixEl) {
+			overflowDistance = 0;
+			return;
+		}
+		// Wait a tick for the DOM to update with the new text
+		requestAnimationFrame(() => {
+			if (suffixEl) {
+				overflowDistance = Math.max(0, suffixEl.scrollWidth - suffixEl.clientWidth);
+			}
+		});
+	});
 </script>
 
 <header class="border-b">
 	<div class="mx-auto max-w-5xl px-4 flex items-center justify-between py-4">
-		<div class="flex items-center">
+		<div class="flex items-center min-w-0">
 			<a
 				href="/"
-				class="text-lg font-bold transition-colors {isHome
+				class="shrink-0 text-lg font-bold transition-colors {isHome
 					? 'text-foreground cursor-default'
 					: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-			>yay</a>{#if isNavSuffixActive}<span
-				class="text-lg font-bold text-foreground truncate max-w-48 sm:max-w-72"
-			><span class="mx-1">&middot;</span>{navSuffix}</span>{:else}<a
+			>yay</a><span class="shrink-0 mx-1 text-lg font-bold {isNavSuffixActive ? 'text-foreground' : 'text-muted-foreground/60'}">&middot;</span>{#if isNavSuffixActive}<span
+				bind:this={suffixEl}
+				class="suffix-scroll text-lg font-bold text-foreground max-w-48 sm:max-w-72"
+				style:--overflow-distance="{overflowDistance}px"
+				title={navSuffix}
+			>{navSuffix}</span>{:else}<a
+				bind:this={suffixEl}
 				href={navSuffixHref}
-				class="text-lg font-bold transition-colors truncate max-w-48 sm:max-w-72 text-muted-foreground/60 hover:text-muted-foreground"
-			><span class="mx-1">&middot;</span>{navSuffix}</a>{/if}
+				class="suffix-scroll text-lg font-bold transition-colors max-w-48 sm:max-w-72 text-muted-foreground/60 hover:text-muted-foreground"
+				style:--overflow-distance="{overflowDistance}px"
+				title={navSuffix}
+			>{navSuffix}</a>{/if}
 		</div>
 		<div class="flex items-center gap-4">
 			{#if customer}
-				<nav class="flex items-center gap-4">
+				<!-- Desktop-only nav links (hidden on mobile where bottom nav handles navigation) -->
+				<nav class="hidden items-center gap-4 md:flex">
 					<a
-						href="/me/cart"
-						class="mr-1 transition-colors {currentPathname.startsWith('/me/cart')
+						href="/cart"
+						class="mr-1 transition-colors {currentPathname.startsWith('/cart')
 							? 'text-foreground cursor-default'
 							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>
@@ -184,9 +248,9 @@
 						{/each}
 					{/if}
 				</nav>
-				<a href="/me/account" class="ml-2 flex items-center {currentPathname.startsWith('/me/account') ? 'cursor-default' : ''}">
+				<a href="/me/account" class="ml-2 flex items-center {currentPathname.startsWith('/me/account') || currentPathname === '/me' ? 'cursor-default' : ''}">
 					<Avatar.Root
-						class={currentPathname.startsWith('/me/account')
+						class={currentPathname.startsWith('/me/account') || currentPathname === '/me'
 							? 'ring-foreground ring-2 ring-offset-2 ring-offset-background'
 							: 'hover:ring-muted-foreground hover:ring-2 hover:ring-offset-2 hover:ring-offset-background transition-shadow'}
 					>
@@ -194,7 +258,8 @@
 					</Avatar.Root>
 				</a>
 			{:else}
-				<nav class="flex gap-4">
+				<!-- Desktop-only auth links (hidden on mobile where bottom nav has Login) -->
+				<nav class="hidden gap-4 md:flex">
 					<a
 						href="/login"
 						class="text-sm transition-colors {isLoginActive
@@ -212,3 +277,48 @@
 		</div>
 	</div>
 </header>
+
+<style>
+	/*
+	 * Scrolling animation for long suffix text (e.g. seller slugs).
+	 * When the text overflows, it pauses, scrolls one-way to reveal the end,
+	 * pauses again, then snaps back. Uses a CSS variable set from JS for the
+	 * exact overflow distance.
+	 *
+	 * NOTE: If this doesn't feel good in practice, replace with truncation +
+	 * tap/tooltip to reveal the full name instead.
+	 */
+	.suffix-scroll {
+		display: inline-block;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	/* Only animate when there's actual overflow and user hasn't requested reduced motion */
+	@media (prefers-reduced-motion: no-preference) {
+		.suffix-scroll[style*='--overflow-distance']:not([style*='--overflow-distance: 0px']) {
+			text-overflow: clip;
+			animation: suffix-scroll-reveal 7s ease-in-out 1s infinite;
+		}
+	}
+
+	@keyframes suffix-scroll-reveal {
+		/* Pause at start (0% – 28%) */
+		0%, 28% {
+			transform: translateX(0);
+		}
+		/* Scroll to reveal end (28% – 57%) */
+		57% {
+			transform: translateX(calc(var(--overflow-distance, 0px) * -1));
+		}
+		/* Pause at end (57% – 85%) */
+		85% {
+			transform: translateX(calc(var(--overflow-distance, 0px) * -1));
+		}
+		/* Snap back (85% – 100%) */
+		100% {
+			transform: translateX(0);
+		}
+	}
+</style>
