@@ -28,3 +28,9 @@ vite.config.ts.timestamp-*
 
 # Claude Code
 .claude/settings.local.json
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Test emails
+apps/server/static/email/test-emails/

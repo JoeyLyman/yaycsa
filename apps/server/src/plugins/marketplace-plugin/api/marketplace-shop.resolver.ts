@@ -1,5 +1,5 @@
-import { Args, Query, Resolver } from '@nestjs/graphql';
-import { Allow, Ctx, Permission, RequestContext } from '@vendure/core';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Allow, Ctx, Permission, RequestContext, Transaction } from '@vendure/core';
 
 import { MarketplaceService } from '../services/marketplace.service';
 
@@ -23,5 +23,15 @@ export class MarketplaceShopResolver {
         @Args() args: { slug: string },
     ) {
         return this.marketplaceService.findSellerBySlug(ctx, args.slug);
+    }
+
+    @Mutation()
+    @Transaction()
+    @Allow(Permission.Authenticated)
+    async becomeSeller(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { input: { shopName: string; slug: string } },
+    ) {
+        return this.marketplaceService.becomeSeller(ctx, args.input);
     }
 }

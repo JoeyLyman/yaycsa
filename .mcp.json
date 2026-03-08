@@ -7,6 +7,22 @@
     "playwright": {
       "command": "npx",
       "args": ["@playwright/mcp@latest", "--browser", "firefox", "--headless"]
+    },
+    "grepai": {
+      "command": "grepai",
+      "args": ["mcp-serve"]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=nygmkufogodcsmfftueq"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_b50a1a08ee1e91ce1082754e91c6b4f09402be5c"
+      }
     }
   }
 }

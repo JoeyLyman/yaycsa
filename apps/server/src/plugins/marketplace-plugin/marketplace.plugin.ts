@@ -4,6 +4,11 @@ import { shopApiExtensions } from './api/api-extensions';
 import { MarketplaceShopResolver } from './api/marketplace-shop.resolver';
 import { MarketplaceService } from './services/marketplace.service';
 
+export interface MarketplacePluginOptions {
+    /** Whether any authenticated customer can self-service become a seller. Default: true. */
+    allowOpenSellerRegistration: boolean;
+}
+
 @VendurePlugin({
     imports: [PluginCommonModule],
     providers: [MarketplaceService],
@@ -36,4 +41,11 @@ import { MarketplaceService } from './services/marketplace.service';
         return config;
     },
 })
-export class MarketplacePlugin {}
+export class MarketplacePlugin {
+    static options: MarketplacePluginOptions = { allowOpenSellerRegistration: true };
+
+    static init(options?: Partial<MarketplacePluginOptions>) {
+        if (options) Object.assign(this.options, options);
+        return this;
+    }
+}

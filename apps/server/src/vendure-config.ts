@@ -96,7 +96,7 @@ export const config: VendureConfig = {
         }),
         // MarketplacePlugin must be listed BEFORE OfferPlugin — it registers
         // Seller.slug which OfferPlugin's entities/queries may reference.
-        MarketplacePlugin,
+        MarketplacePlugin.init(),
         OfferPlugin,
     ],
 };

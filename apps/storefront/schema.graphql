@@ -230,6 +230,7 @@ type Mutation {
 
   """Resets a Customer's password based on the provided token"""
   resetPassword(token: String!, password: String!): ResetPasswordResult!
+  becomeSeller(input: BecomeSellerInput!): BecomeSellerResult!
   addOfferItemToOrder(offerLineItemId: ID!, quantity: Int!, selectedCaseQuantity: Int, buyerNotes: String): Order!
   adjustOfferItemQuantity(orderLineId: ID!, quantity: Int!): Order!
 }
@@ -3660,6 +3661,37 @@ type ShopSeller {
   name: String!
   slug: String
 }
+
+input BecomeSellerInput {
+  shopName: String!
+  slug: String!
+}
+
+type BecomeSellerSuccess {
+  seller: ShopSeller!
+}
+
+type SlugAlreadyTakenError {
+  errorCode: String!
+  message: String!
+}
+
+type AlreadyASellerError {
+  errorCode: String!
+  message: String!
+}
+
+type InvalidSlugError {
+  errorCode: String!
+  message: String!
+}
+
+type SellerRegistrationClosedError {
+  errorCode: String!
+  message: String!
+}
+
+union BecomeSellerResult = BecomeSellerSuccess | SlugAlreadyTakenError | InvalidSlugError | AlreadyASellerError | SellerRegistrationClosedError
 
 enum FulfillmentOptionType {
   pickup

@@ -34,6 +34,8 @@
 <div class="mt-6 space-y-6">
 	{#if mySellerSlug}
 		<Button href="/{mySellerSlug}">See my sales page</Button>
+	{:else}
+		<Button href="/me" data-sveltekit-reload>Become a seller</Button>
 	{/if}
 	<Card.Root>
 		<Card.Header>

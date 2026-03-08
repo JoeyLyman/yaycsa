@@ -62,7 +62,19 @@ Import via the directory (barrel): `import { Navbar } from '$lib/components/bund
 - **Table-based UI everywhere.** Wholesale is NOT image-grid e-commerce. Buyers buy from tables, sellers manage from tables. Inline editing, bulk edits, no navigating to detail pages for common ops. Think spreadsheet, not Shopify. Tables must be responsive (horizontal scroll or stacked cards on mobile).
 - **No unnecessary UI chrome.** Minimize clicks. Common operations should be inline, not behind modals or detail pages.
 
-## Available MCP Tools:
+## Vendure Tooling
+
+**Use the Vendure CLI directly** for all project interactions — migrations, codegen, plugin scaffolding, etc. Run from `apps/server/`:
+
+```bash
+cd apps/server && npx vendure <command>
+```
+
+The `@vendure/mcp-server` (local project MCP) is **deprecated and abandoned**. Do NOT use it. The Vendure team explicitly says: "Let your agents interact with the Vendure CLI directly."
+
+**For Vendure documentation lookup**, the `vendure-docs` MCP (`docs.vendure.io/mcp`) is still active and useful — use `search_docs` and `get_doc_page` tools for API reference and guides. This is separate from the deprecated project MCP.
+
+## Svelte MCP Tools
 
 ### 1. list-sections
 
@@ -83,6 +95,18 @@ You MUST use this tool whenever writing Svelte code before sending it to the use
 
 Generates a Svelte Playground link with the provided code.
 After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+
+## Playwright Testing
+
+**After every plan implementation**, run a Playwright smoke test before handing off to Joe. This catches bugs faster than manual clicking.
+
+- Navigate to the affected pages, interact with forms/buttons, verify the expected outcomes
+- Test the happy path end-to-end (e.g., fill form → submit → verify redirect/result)
+- Test at least one error case if applicable (e.g., duplicate slug, missing required field)
+- Check console for errors (`browser_console_messages`)
+- Fix any bugs found during testing before declaring the implementation complete
+
+The storefront runs at `http://localhost:5180` and the Vendure server at `http://localhost:3000`. Both must be running for Playwright tests (Joe starts them with `npm run dev`).
 
 ## Agent Teams
 
@@ -116,13 +140,13 @@ Scripts live in `apps/docs/scripts/`. Run them from the YAYCSA project root.
 
 Requires `OPENAI_API_KEY` set in your shell environment.
 
-### Plan/architecture review (GPT-5.2):
+### Plan/architecture review (GPT-5.4):
 
 ```bash
 apps/docs/scripts/ask-chatgpt-plan.sh "your question" < path/to/plan.md
 ```
 
-### Code review (GPT-5.3-Codex):
+### Code review (GPT-5.4):
 
 ```bash
 apps/docs/scripts/ask-chatgpt-code.sh "review this" < path/to/file.ts
