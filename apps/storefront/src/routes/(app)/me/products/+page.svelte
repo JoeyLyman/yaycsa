@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { myProducts, createProduct, updateProduct, deleteProduct, type SellerProduct } from '$lib/api/admin/products.remote';
+	import {
+		myProducts,
+		createProduct,
+		updateProduct,
+		deleteProduct,
+		type SellerProduct
+	} from '$lib/api/admin/products.remote';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { Button } from '$lib/components/bits/button';
 	import { Input } from '$lib/components/bits/input';
@@ -17,7 +23,7 @@
 		{ value: 'qt', label: 'Quart (qt)' },
 		{ value: 'gal', label: 'Gallon (gal)' },
 		{ value: 'cs', label: 'Case (cs)' },
-		{ value: 'bu', label: 'Bushel (bu)' },
+		{ value: 'bu', label: 'Bushel (bu)' }
 	] as const;
 
 	/**
@@ -92,7 +98,8 @@
 		try {
 			products = await myProducts();
 		} catch (err) {
-			loadError = err instanceof Error ? err.message : typeof err === 'string' ? err : JSON.stringify(err);
+			loadError =
+				err instanceof Error ? err.message : typeof err === 'string' ? err : JSON.stringify(err);
 			console.error('Failed to load products:', err);
 		}
 		loading = false;
@@ -117,7 +124,7 @@
 			name,
 			variantId: '',
 			sku: sku ?? name.toUpperCase().replace(/\s+/g, '-'),
-			unitType: unitType ?? null,
+			unitType: unitType ?? null
 		};
 
 		products = [...products, optimisticProduct];
@@ -157,7 +164,7 @@
 			const created = await createProduct({
 				name: product.name,
 				sku: product.sku || undefined,
-				unitType: product.unitType || undefined,
+				unitType: product.unitType || undefined
 			});
 			products = products.map((p) => (p.id === tempId ? created : p));
 			pendingIds = new Set([...pendingIds].filter((id) => id !== tempId));
@@ -199,7 +206,7 @@
 			await updateProduct({
 				id: product.id,
 				variantId: product.variantId,
-				[field]: editValue,
+				[field]: editValue
 			});
 
 			// Optimistic update
@@ -248,20 +255,23 @@
 
 {#if loading}
 	<div class="flex items-center justify-center py-32">
-		<SpinnerSun class="text-muted-foreground size-8" />
+		<SpinnerSun class="size-8 text-muted-foreground" />
 	</div>
 {:else if loadError}
-	<p class="text-destructive mt-4">Error loading products: {loadError}</p>
+	<p class="mt-4 text-destructive">Error loading products: {loadError}</p>
 {:else}
-	<div class="space-y-4">
-		<h2 class="text-xl font-bold">Add Product</h2>
+	<div class="space-y-2">
+		<h2 class="pt-2 text-xl font-bold">Add Product</h2>
 
 		<!-- Add product row -->
 		<form
 			class="flex flex-wrap items-end gap-2 rounded-md border p-3"
-			onsubmit={(e) => { e.preventDefault(); handleCreate(); }}
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleCreate();
+			}}
 		>
-			<div class="flex-1 min-w-[180px]">
+			<div class="min-w-[180px] flex-1">
 				<label for="new-name" class="text-xs font-medium text-muted-foreground">Product Name</label>
 				<Input
 					id="new-name"
@@ -271,31 +281,26 @@
 				/>
 			</div>
 			<div class="w-32">
-				<label for="new-sku" class="text-xs font-medium text-muted-foreground">SKU (optional)</label>
-				<Input
-					id="new-sku"
-					bind:value={newSku}
-					placeholder="Auto"
-				/>
+				<label for="new-sku" class="text-xs font-medium text-muted-foreground">SKU (optional)</label
+				>
+				<Input id="new-sku" bind:value={newSku} placeholder="Auto" />
 			</div>
 			<div class="w-40">
 				<label for="new-unit" class="text-xs font-medium text-muted-foreground">Unit Type</label>
 				<select
 					id="new-unit"
 					bind:value={newUnitType}
-					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
 				>
 					{#each UNIT_TYPES as unit}
 						<option value={unit.value}>{unit.label}</option>
 					{/each}
 				</select>
 			</div>
-			<Button type="submit" disabled={!newName.trim()} size="sm">
-				Add
-			</Button>
+			<Button type="submit" disabled={!newName.trim()} size="sm">Add</Button>
 		</form>
 
-		<h2 class="text-xl font-bold">Products</h2>
+		<h2 class="mt-8 text-xl font-bold">Products</h2>
 
 		{#if products.length === 0}
 			<div class="flex items-center justify-center rounded-md border py-16">
@@ -321,7 +326,7 @@
 								<Table.TableCell>
 									{#if isPending}
 										<span class="flex items-center gap-2">
-											<SpinnerSun class="size-3.5 text-muted-foreground shrink-0" />
+											<SpinnerSun class="size-3.5 shrink-0 text-muted-foreground" />
 											{product.name}
 										</span>
 									{:else if isFailed}
@@ -340,7 +345,7 @@
 										/>
 									{:else}
 										<button
-											class="w-full text-left hover:underline cursor-text"
+											class="w-full cursor-text text-left hover:underline"
 											onclick={() => startEdit(product, 'name')}
 										>
 											{product.name}
@@ -366,7 +371,7 @@
 										/>
 									{:else}
 										<button
-											class="w-full text-left hover:underline cursor-text text-muted-foreground"
+											class="w-full cursor-text text-left text-muted-foreground hover:underline"
 											onclick={() => startEdit(product, 'sku')}
 										>
 											{product.sku || '—'}
@@ -384,7 +389,7 @@
 											onblur={saveEdit}
 											onchange={saveEdit}
 											disabled={updating}
-											class="flex h-7 w-full rounded-md border border-input bg-transparent px-2 py-0 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+											class="flex h-7 w-full rounded-md border border-input bg-transparent px-2 py-0 text-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
 											autofocus
 										>
 											{#each UNIT_TYPES as unit}
@@ -393,7 +398,7 @@
 										</select>
 									{:else}
 										<button
-											class="w-full text-left hover:underline cursor-text text-muted-foreground"
+											class="w-full cursor-text text-left text-muted-foreground hover:underline"
 											onclick={() => startEdit(product, 'unitType')}
 										>
 											{unitTypeLabel(product.unitType)}
@@ -419,7 +424,7 @@
 												size="sm"
 												variant="ghost"
 												onclick={() => dismissFailed(product.id)}
-												class="text-destructive hover:text-destructive text-xs"
+												class="text-xs text-destructive hover:text-destructive"
 											>
 												Dismiss
 											</Button>
@@ -434,11 +439,7 @@
 											>
 												{deleting ? '...' : 'Yes'}
 											</Button>
-											<Button
-												size="sm"
-												variant="ghost"
-												onclick={() => (confirmDeleteId = null)}
-											>
+											<Button size="sm" variant="ghost" onclick={() => (confirmDeleteId = null)}>
 												No
 											</Button>
 										</div>
