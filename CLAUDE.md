@@ -24,6 +24,7 @@ Before implementing any feature, scan `apps/docs/library/yaycsa/features/` and `
 - **Money stored as integers in cents** (Vendure convention). `400` = $4.00.
 - **Channel assignment:** Custom entities that are `ChannelAware` must be assigned to both the seller's channel AND the default (marketplace) channel. For new unsaved entities, set `entity.channels = [sellerChannel, defaultChannel]` directly — do not use `channelService.assignToCurrentChannel()` on unsaved entities.
 - **Always use Vendure Admin API (not raw SQL)** for data operations — creating/updating entities, linking relations, seeding data. Vendure fires events, updates search indexes, syncs channels, and runs hooks on entity mutations. Raw SQL bypasses all of that and can leave the system in an inconsistent state.
+- **Seller Admin Proxy constraint:** Vendure's SuperAdmin is only authorized in the **default channel**. Using `vendure-token` to scope Admin API requests to a seller's channel causes FORBIDDEN. All proxy queries run in the default channel and filter by `sellerId` custom field instead. Channel assignment via `assignProductsToChannel` also fails for seller channels. See `apps/docs/library/yaycsa/features/seller-admin-proxy.md` for full details.
 - See `apps/docs/library/yaycsa/data-conventions.md` for full details.
 
 **If you update docs or the todo:** Commit and push the submodule:
