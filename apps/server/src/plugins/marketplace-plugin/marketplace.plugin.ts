@@ -28,6 +28,18 @@ export interface MarketplacePluginOptions {
             description: [{ languageCode: LanguageCode.en, value: 'URL-friendly identifier for the seller (e.g. gathering-together-farm)' }],
         });
 
+        // --- Product: sellerId (explicit ownership for proxy authorization checks) ---
+        // Products are assigned to both seller channel AND default channel (for marketplace visibility),
+        // so channel membership alone doesn't identify the owner. This field is the source of truth.
+        config.customFields.Product.push({
+            name: 'sellerId',
+            type: 'int',
+            nullable: true,
+            public: false, // Admin API only — not exposed on Shop API
+            label: [{ languageCode: LanguageCode.en, value: 'Seller ID' }],
+            description: [{ languageCode: LanguageCode.en, value: 'Owner seller ID for proxy authorization checks' }],
+        });
+
         // --- Customer: seller (1:1 link to Seller for unified accounts) ---
         config.customFields.Customer.push({
             name: 'seller',

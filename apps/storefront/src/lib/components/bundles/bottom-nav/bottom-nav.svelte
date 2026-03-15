@@ -4,6 +4,7 @@
 	import ClipboardList from '@lucide/svelte/icons/clipboard-list';
 	import Search from '@lucide/svelte/icons/search';
 	import Package from '@lucide/svelte/icons/package';
+	import BoxesStacked from '@lucide/svelte/icons/boxes';
 	import HandCoins from '@lucide/svelte/icons/hand-coins';
 	import Store from '@lucide/svelte/icons/store';
 	import LogIn from '@lucide/svelte/icons/log-in';
@@ -74,7 +75,16 @@
 <nav class="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
 	<div class="flex items-stretch justify-around">
 		{#if customer}
-			<!-- Buyer links (left side) -->
+			<!-- Buyer links: Browse, Cart, Orders -->
+			<a
+				href="/"
+				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isBrowseActive
+					? 'text-foreground'
+					: 'text-muted-foreground/60'}"
+			>
+				<Search class="h-5 w-5" />
+				<span class="text-[10px]">Browse</span>
+			</a>
 			<a
 				href="/cart"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/cart')
@@ -94,19 +104,19 @@
 				<span class="text-[10px]">Orders</span>
 			</a>
 
-			<!-- Center: Browse -->
-			<a
-				href="/"
-				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isBrowseActive
-					? 'text-foreground'
-					: 'text-muted-foreground/60'}"
-			>
-				<Search class="h-5 w-5" />
-				<span class="text-[10px]">Browse</span>
-			</a>
-
 			<!-- Seller links (right side) — or "Sell" CTA for non-sellers -->
 			{#if mySellerSlug}
+				<!-- Vertical separator between buyer and seller sections -->
+				<div class="my-2 w-px bg-border"></div>
+				<a
+					href="/me/products"
+					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me/products')
+						? 'text-foreground'
+						: 'text-muted-foreground/60'}"
+				>
+					<BoxesStacked class="h-5 w-5" />
+					<span class="text-[10px]">Products</span>
+				</a>
 				<a
 					href="/me/offers"
 					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me/offers')
@@ -137,16 +147,7 @@
 				</a>
 			{/if}
 		{:else}
-			<!-- Logged out: Cart, Browse, Login -->
-			<a
-				href="/cart"
-				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/cart')
-					? 'text-foreground'
-					: 'text-muted-foreground/60'}"
-			>
-				<ShoppingCart class="h-5 w-5" />
-				<span class="text-[10px]">Cart</span>
-			</a>
+			<!-- Logged out: Browse, Cart, Login -->
 			<a
 				href="/"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isBrowseActive
@@ -155,6 +156,15 @@
 			>
 				<Search class="h-5 w-5" />
 				<span class="text-[10px]">Browse</span>
+			</a>
+			<a
+				href="/cart"
+				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/cart')
+					? 'text-foreground'
+					: 'text-muted-foreground/60'}"
+			>
+				<ShoppingCart class="h-5 w-5" />
+				<span class="text-[10px]">Cart</span>
 			</a>
 			<a
 				href="/login"

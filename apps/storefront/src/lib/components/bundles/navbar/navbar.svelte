@@ -89,6 +89,7 @@
 	 * Pages not in this map (or /me itself) show "me".
 	 */
 	const meSubpageSuffixes: Record<string, string> = {
+		products: 'my products',
 		offers: 'my offers',
 		orders: 'my orders',
 		sales: 'my sales',
@@ -140,6 +141,7 @@
 
 	/** Nav links for the seller side (only visible when the user is a seller). */
 	const sellerLinks = [
+		{ href: '/me/products', label: 'Products' },
 		{ href: '/me/offers', label: 'Offers' },
 		{ href: '/me/sales', label: 'Sales' }
 	];
