@@ -98,14 +98,6 @@ const DELETE_PRODUCT_MUTATION = `
 	}
 `;
 
-const ASSIGN_PRODUCT_TO_CHANNEL_MUTATION = `
-	mutation AssignProductsToChannel($input: AssignProductsToChannelInput!) {
-		assignProductsToChannel(input: $input) {
-			id
-		}
-	}
-`;
-
 // ─── Type definitions for Admin API responses ───
 
 interface AdminProduct {
@@ -210,7 +202,7 @@ export const createProduct = command(
 		unitType: v.optional(v.string()),
 	}),
 	async ({ name, sku, unitType }) => {
-		const { sellerId, channelToken } = await requireSellerContext();
+		const { sellerId } = await requireSellerContext();
 
 		const slug = slugify(name);
 		const finalSku = sku?.trim() || generateSku(name);
@@ -263,28 +255,9 @@ export const createProduct = command(
 			throw err;
 		}
 
-		// Step 3: Assign to seller's channel for channel-based visibility
-		// Product is already in the default channel (where it was created)
-		try {
-			// Look up the seller's channel ID from the channel token
-			const channelData = await adminQuery<{
-				channels: { items: Array<{ id: string }> };
-			}>(`query { channels { items { id token } } }`);
-			const sellerChannel = channelData.channels.items.find(
-				(c: any) => c.token === channelToken
-			);
-			if (sellerChannel) {
-				await adminMutate(ASSIGN_PRODUCT_TO_CHANNEL_MUTATION, {
-					input: {
-						channelId: sellerChannel.id,
-						productIds: [productId],
-					},
-				});
-			}
-		} catch (err) {
-			// Non-fatal — product is still usable via sellerId filtering
-			console.error(`Failed to assign product ${productId} to seller channel:`, err);
-		}
+		// NOTE: Channel assignment skipped. SuperAdmin is only authorized in the
+		// default channel — assignProductsToChannel to a seller channel triggers
+		// FORBIDDEN. Products are discoverable via sellerId filtering instead.
 
 		// Fetch the created product to return full data (including server-generated variant ID)
 		const productData = await adminQuery<{
