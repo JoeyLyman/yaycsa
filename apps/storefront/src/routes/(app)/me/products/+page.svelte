@@ -14,7 +14,7 @@
 	/** All available unit type options. */
 	const UNIT_TYPES = [
 		{ value: '', label: 'None' },
-		{ value: 'ct', label: 'Count (each)' },
+		{ value: 'ct', label: 'Count (ct)' },
 		{ value: 'lb', label: 'Pound (lb)' },
 		{ value: 'oz', label: 'Ounce (oz)' },
 		{ value: 'kg', label: 'Kilogram (kg)' },
