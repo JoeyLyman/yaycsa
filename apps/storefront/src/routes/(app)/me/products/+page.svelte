@@ -60,9 +60,6 @@
 	/** Name input for the add-product row. */
 	let newName = $state('');
 
-	/** SKU input for the add-product row (optional — auto-generated if blank). */
-	let newSku = $state('');
-
 	/** Unit type selection for the add-product row. */
 	let newUnitType = $state('');
 
@@ -142,7 +139,7 @@
 	 */
 	let activeEditor: {
 		id: string;
-		field: 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens';
+		field: 'name' | 'unitType' | 'bits' | 'processes' | 'allergens';
 	} | null = $state(null);
 
 	/** Search filter for the bits typeahead when editing an existing product's bits. */
@@ -357,7 +354,7 @@
 		const name = newName.trim();
 		if (!name) return;
 
-		const sku = newSku.trim() || undefined;
+		const sku = name.toUpperCase().replace(/\s+/g, '-');
 		const unitType = newUnitType || undefined;
 		const facetValueIds = [...newBitIds, ...newProcessIds, ...newAllergenIds];
 
@@ -367,7 +364,7 @@
 			id: tempId,
 			name,
 			variantId: '',
-			sku: sku ?? name.toUpperCase().replace(/\s+/g, '-'),
+			sku,
 			unitType: unitType ?? null,
 			bits: allBits.filter((b) => newBitIds.includes(b.id)),
 			processes: allProcesses.filter((p) => newProcessIds.includes(p.id)),
@@ -379,7 +376,6 @@
 
 		// Clear form immediately so the user can keep adding
 		newName = '';
-		newSku = '';
 		newUnitType = '';
 		newBitIds = [];
 		// Re-default to "Raw / Fresh"
@@ -448,7 +444,7 @@
 		failedIds = new Map([...failedIds].filter(([id]) => id !== tempId));
 	}
 
-	type EditField = 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens';
+	type EditField = 'name' | 'unitType' | 'bits' | 'processes' | 'allergens';
 
 	/**
 	 * Open an editor for a specific field on a product.
@@ -641,7 +637,7 @@
 				handleCreate();
 			}}
 		>
-			<!-- Row 1: Name, SKU, Unit Type -->
+			<!-- Row 1: Name, Unit Type -->
 			<div class="flex flex-wrap items-end gap-2">
 				<div class="min-w-[180px] flex-1">
 					<label for="new-name" class="text-xs font-medium text-muted-foreground"
@@ -653,12 +649,6 @@
 						bind:ref={nameInput}
 						placeholder="e.g. Mixed Salad Greens"
 					/>
-				</div>
-				<div class="w-32">
-					<label for="new-sku" class="text-xs font-medium text-muted-foreground"
-						>SKU (optional)</label
-					>
-					<Input id="new-sku" bind:value={newSku} placeholder="Auto" />
 				</div>
 				<div class="relative w-40" bind:this={unitTypeContainerEl}>
 					<label class="text-xs font-medium text-muted-foreground">Unit Type</label>
