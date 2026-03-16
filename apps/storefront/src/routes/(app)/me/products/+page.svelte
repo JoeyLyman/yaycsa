@@ -87,6 +87,12 @@
 	/** Whether a new bit is currently being created via the Admin API. */
 	let creatingBit = $state(false);
 
+	/** Whether the unit type dropdown is open in the create form. */
+	let unitTypeDropdownOpen = $state(false);
+
+	/** Reference to the unit type dropdown container for click-outside detection. */
+	let unitTypeContainerEl: HTMLDivElement | null = $state(null);
+
 	/**
 	 * Reference to the bits dropdown container for click-outside detection.
 	 * When a click occurs outside this element, the dropdown closes.
@@ -234,10 +240,19 @@
 		}
 	}
 
-	/** Close the active facet dropdown when clicking outside it, but keep the edit state. */
+	/** Close the active facet dropdown when clicking outside it; discard edits if unchanged. */
 	function handleEditFacetClickOutside(event: MouseEvent) {
 		if (editFacetContainerEl && !editFacetContainerEl.contains(event.target as Node)) {
+			const id = activeEditor?.id;
 			activeEditor = null;
+			if (id) clearIfUnchanged(id);
+		}
+	}
+
+	/** Close the unit type dropdown in the create form when clicking outside it. */
+	function handleUnitTypeClickOutside(event: MouseEvent) {
+		if (unitTypeContainerEl && !unitTypeContainerEl.contains(event.target as Node)) {
+			unitTypeDropdownOpen = false;
 		}
 	}
 
@@ -249,7 +264,14 @@
 	});
 
 	$effect(() => {
-		if (activeEditor && ['bits', 'processes', 'allergens'].includes(activeEditor.field)) {
+		if (unitTypeDropdownOpen) {
+			document.addEventListener('mousedown', handleUnitTypeClickOutside);
+			return () => document.removeEventListener('mousedown', handleUnitTypeClickOutside);
+		}
+	});
+
+	$effect(() => {
+		if (activeEditor && ['bits', 'processes', 'allergens', 'unitType'].includes(activeEditor.field)) {
 			document.addEventListener('mousedown', handleEditFacetClickOutside);
 			return () => document.removeEventListener('mousedown', handleEditFacetClickOutside);
 		}
@@ -503,6 +525,38 @@
 		delete edits[productId];
 	}
 
+	/**
+	 * Check whether a row's edit state has any actual changes vs. the product data.
+	 * Returns true if the edits are identical to the current product (i.e. no real changes).
+	 */
+	function isRowUnchanged(productId: string): boolean {
+		const state = edits[productId];
+		if (!state) return true;
+		const product = products.find((p) => p.id === productId);
+		if (!product) return true;
+
+		const nameChanged = state.name !== undefined && state.name !== product.name;
+		const unitTypeChanged = state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
+		const bitsChanged = state.bitIds !== undefined &&
+			JSON.stringify([...state.bitIds].sort()) !== JSON.stringify(product.bits.map((b) => b.id).sort());
+		const processChanged = state.processIds !== undefined &&
+			JSON.stringify([...state.processIds].sort()) !== JSON.stringify(product.processes.map((p) => p.id).sort());
+		const allergensChanged = state.allergenIds !== undefined &&
+			JSON.stringify([...state.allergenIds].sort()) !== JSON.stringify(product.allergenWarnings.map((a) => a.id).sort());
+
+		return !nameChanged && !unitTypeChanged && !bitsChanged && !processChanged && !allergensChanged;
+	}
+
+	/**
+	 * Clear edit state for a row if no fields were actually changed.
+	 * Called when the active editor is dismissed (blur, click-outside).
+	 */
+	function clearIfUnchanged(productId: string) {
+		if (isRowUnchanged(productId)) {
+			delete edits[productId];
+		}
+	}
+
 	/** Discard all pending edits for a specific product row. */
 	function cancelRow(productId: string) {
 		delete edits[productId];
@@ -575,17 +629,35 @@
 					<label for="new-sku" class="text-xs font-medium text-muted-foreground">SKU (optional)</label>
 					<Input id="new-sku" bind:value={newSku} placeholder="Auto" />
 				</div>
-				<div class="w-40">
-					<label for="new-unit" class="text-xs font-medium text-muted-foreground">Unit Type</label>
-					<select
-						id="new-unit"
-						bind:value={newUnitType}
-						class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+				<div class="relative w-40" bind:this={unitTypeContainerEl}>
+					<label class="text-xs font-medium text-muted-foreground">Unit Type</label>
+					<button
+						type="button"
+						class="flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+						onclick={() => (unitTypeDropdownOpen = !unitTypeDropdownOpen)}
 					>
-						{#each UNIT_TYPES as unit (unit.value)}
-							<option value={unit.value}>{unit.label}</option>
-						{/each}
-					</select>
+						{unitTypeLabel(newUnitType)}
+					</button>
+					{#if unitTypeDropdownOpen}
+						<div class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-background shadow-lg">
+							{#each UNIT_TYPES as unit (unit.value)}
+								{@const isSelected = newUnitType === unit.value}
+								<button
+									type="button"
+									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected ? 'font-medium' : ''}"
+									onmousedown={(e) => e.preventDefault()}
+									onclick={() => { newUnitType = unit.value; unitTypeDropdownOpen = false; }}
+								>
+									{#if isSelected}
+										<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
+									{:else}
+										<span class="size-3.5 shrink-0"></span>
+									{/if}
+									<span>{unit.label}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -726,13 +798,13 @@
 			</div>
 		{:else}
 			<div class="overflow-visible rounded-md border">
-				<Table.Table>
+				<Table.Table class="table-fixed">
 					<Table.TableHeader>
 						<Table.TableRow>
-							<Table.TableHead class="min-w-[200px]">Product Name</Table.TableHead>
-							<Table.TableHead class="min-w-[180px]">Bits</Table.TableHead>
-							<Table.TableHead class="min-w-[120px]">Processing</Table.TableHead>
-							<Table.TableHead class="min-w-[140px]">Allergens</Table.TableHead>
+							<Table.TableHead>Product Name</Table.TableHead>
+							<Table.TableHead class="w-[180px]">Bits</Table.TableHead>
+							<Table.TableHead class="w-[120px]">Processing</Table.TableHead>
+							<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
 							<Table.TableHead class="w-36">Unit Type</Table.TableHead>
 							<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
 						</Table.TableRow>
@@ -749,7 +821,10 @@
 							{@const displayProcesses = rowEdits?.processIds ? allProcesses.filter((p) => rowEdits.processIds!.includes(p.id)) : product.processes}
 							{@const displayAllergens = rowEdits?.allergenIds ? allAllergenWarnings.filter((a) => rowEdits.allergenIds!.includes(a.id)) : product.allergenWarnings}
 							{@const displayUnitType = rowEdits?.unitType ?? product.unitType}
-							<Table.TableRow class={isPending ? 'opacity-50' : isFailed ? 'bg-destructive/5' : isRowEditing ? 'bg-primary/5' : ''}>
+							<Table.TableRow
+										class={isPending ? 'opacity-50' : isFailed ? 'bg-destructive/5' : isRowEditing ? '' : 'hover:bg-accent'}
+										style={isRowEditing ? 'background-color: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.15))' : ''}
+									>
 								<!-- Product Name -->
 								<Table.TableCell>
 									{#if isPending}
@@ -763,9 +838,9 @@
 										<Input
 											value={rowEdits?.name ?? product.name}
 											oninput={(e) => updateEditState(product.id, { name: e.currentTarget.value })}
-											onblur={() => (activeEditor = null)}
+											onblur={() => { activeEditor = null; clearIfUnchanged(product.id); }}
 											onkeydown={(e) => {
-												if (e.key === 'Enter') activeEditor = null;
+												if (e.key === 'Enter') { activeEditor = null; clearIfUnchanged(product.id); }
 												if (e.key === 'Escape') cancelRow(product.id);
 											}}
 											disabled={saving[product.id]}
@@ -783,7 +858,7 @@
 								</Table.TableCell>
 
 								<!-- Bits (ingredients) -->
-								<Table.TableCell>
+								<Table.TableCell class="overflow-visible">
 									{#if isPending || isFailed}
 										{#if product.bits.length > 0}
 											<div class="flex flex-wrap gap-0.5">
@@ -795,15 +870,15 @@
 											<span class="text-xs text-muted-foreground">—</span>
 										{/if}
 									{:else if isActiveRow && activeEditor.field === 'bits'}
-										<div class="relative" bind:this={editFacetContainerEl}>
+										<div class="relative w-full max-w-full" bind:this={editFacetContainerEl}>
 											<Input
 												bind:value={editBitsSearch}
 												bind:ref={editBitsInput}
 												placeholder="Search bits..."
-												class="h-7 text-sm"
+												class="h-7 w-full text-sm"
 												autofocus
 											/>
-											<div class="absolute z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-background shadow-lg">
+											<div class="absolute top-full z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-background shadow-lg">
 												{#each filteredEditBits as bit (bit.id)}
 													<button
 														type="button"
@@ -856,37 +931,38 @@
 										{:else}
 											<span class="text-xs text-muted-foreground">—</span>
 										{/if}
-									{:else if isActiveRow && activeEditor.field === 'processes'}
-										<div class="relative" bind:this={editFacetContainerEl}>
-											<div class="absolute z-10 w-48 rounded-md border bg-background shadow-lg">
-												{#each allProcesses as proc (proc.id)}
-													<button
-														type="button"
-														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-														onmousedown={(e) => e.preventDefault()}
-														onclick={() => { const cur = edits[product.id]?.processIds ?? []; updateEditState(product.id, { processIds: toggleId(cur, proc.id) }); }}
-													>
-														<span class="size-3.5 shrink-0 rounded border {rowEdits?.processIds?.includes(proc.id) ? 'bg-blue-500 border-blue-500' : 'border-input'}"></span>
-														<span>{proc.name}</span>
-													</button>
-												{/each}
-											</div>
-										</div>
 									{:else}
-										<button
-											class="w-full cursor-pointer text-left"
-											onclick={() => openEditor(product, 'processes')}
-										>
-											{#if displayProcesses.length > 0}
-												<div class="flex flex-wrap gap-0.5">
-													{#each displayProcesses as proc (proc.id)}
-														<Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300">{proc.name}</Badge>
+										<div class="relative">
+											<button
+												class="w-full cursor-pointer text-left"
+												onclick={() => openEditor(product, 'processes')}
+											>
+												{#if displayProcesses.length > 0}
+													<div class="flex flex-wrap gap-0.5">
+														{#each displayProcesses as proc (proc.id)}
+															<Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300">{proc.name}</Badge>
+														{/each}
+													</div>
+												{:else}
+													<span class="text-xs text-muted-foreground">—</span>
+												{/if}
+											</button>
+											{#if isActiveRow && activeEditor.field === 'processes'}
+												<div class="absolute top-full z-10 mt-1 w-48 rounded-md border bg-background shadow-lg" bind:this={editFacetContainerEl}>
+													{#each allProcesses as proc (proc.id)}
+														<button
+															type="button"
+															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
+															onmousedown={(e) => e.preventDefault()}
+															onclick={() => { const cur = edits[product.id]?.processIds ?? []; updateEditState(product.id, { processIds: toggleId(cur, proc.id) }); }}
+														>
+															<span class="size-3.5 shrink-0 rounded border {rowEdits?.processIds?.includes(proc.id) ? 'bg-blue-500 border-blue-500' : 'border-input'}"></span>
+															<span>{proc.name}</span>
+														</button>
 													{/each}
 												</div>
-											{:else}
-												<span class="text-xs text-muted-foreground hover:underline">—</span>
 											{/if}
-										</button>
+										</div>
 									{/if}
 								</Table.TableCell>
 
@@ -902,37 +978,38 @@
 										{:else}
 											<span class="text-xs text-muted-foreground">—</span>
 										{/if}
-									{:else if isActiveRow && activeEditor.field === 'allergens'}
-										<div class="relative" bind:this={editFacetContainerEl}>
-											<div class="absolute z-10 w-52 rounded-md border bg-background shadow-lg">
-												{#each allAllergenWarnings as warning (warning.id)}
-													<button
-														type="button"
-														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-														onmousedown={(e) => e.preventDefault()}
-														onclick={() => { const cur = edits[product.id]?.allergenIds ?? []; updateEditState(product.id, { allergenIds: toggleId(cur, warning.id) }); }}
-													>
-														<span class="size-3.5 shrink-0 rounded border {rowEdits?.allergenIds?.includes(warning.id) ? 'bg-orange-500 border-orange-500' : 'border-input'}"></span>
-														<span>{warning.name.replace(/^May contain /i, '')}</span>
-													</button>
-												{/each}
-											</div>
-										</div>
 									{:else}
-										<button
-											class="w-full cursor-pointer text-left"
-											onclick={() => openEditor(product, 'allergens')}
-										>
-											{#if displayAllergens.length > 0}
-												<div class="flex flex-wrap gap-0.5">
-													{#each displayAllergens as warning (warning.id)}
-														<Badge variant="outline" class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300">{warning.name.replace(/^May contain /i, '')}</Badge>
+										<div class="relative">
+											<button
+												class="w-full cursor-pointer text-left"
+												onclick={() => openEditor(product, 'allergens')}
+											>
+												{#if displayAllergens.length > 0}
+													<div class="flex flex-wrap gap-0.5">
+														{#each displayAllergens as warning (warning.id)}
+															<Badge variant="outline" class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300">{warning.name.replace(/^May contain /i, '')}</Badge>
+														{/each}
+													</div>
+												{:else}
+													<span class="text-xs text-muted-foreground">—</span>
+												{/if}
+											</button>
+											{#if isActiveRow && activeEditor.field === 'allergens'}
+												<div class="absolute top-full z-10 mt-1 w-52 rounded-md border bg-background shadow-lg" bind:this={editFacetContainerEl}>
+													{#each allAllergenWarnings as warning (warning.id)}
+														<button
+															type="button"
+															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
+															onmousedown={(e) => e.preventDefault()}
+															onclick={() => { const cur = edits[product.id]?.allergenIds ?? []; updateEditState(product.id, { allergenIds: toggleId(cur, warning.id) }); }}
+														>
+															<span class="size-3.5 shrink-0 rounded border {rowEdits?.allergenIds?.includes(warning.id) ? 'bg-orange-500 border-orange-500' : 'border-input'}"></span>
+															<span>{warning.name.replace(/^May contain /i, '')}</span>
+														</button>
 													{/each}
 												</div>
-											{:else}
-												<span class="text-xs text-muted-foreground hover:underline">—</span>
 											{/if}
-										</button>
+										</div>
 									{/if}
 								</Table.TableCell>
 
@@ -940,29 +1017,35 @@
 								<Table.TableCell>
 									{#if isPending || isFailed}
 										<span class="text-muted-foreground">{unitTypeLabel(product.unitType)}</span>
-									{:else if isActiveRow && activeEditor.field === 'unitType'}
-										<select
-											value={rowEdits?.unitType ?? product.unitType ?? ''}
-											onchange={(e) => updateEditState(product.id, { unitType: e.currentTarget.value })}
-											onblur={() => (activeEditor = null)}
-											onkeydown={(e) => {
-												if (e.key === 'Escape') cancelRow(product.id);
-											}}
-											disabled={saving[product.id]}
-											class="flex h-7 w-full rounded-md border border-input bg-transparent px-2 py-0 text-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-											autofocus
-										>
-											{#each UNIT_TYPES as unit (unit.value)}
-												<option value={unit.value}>{unit.label}</option>
-											{/each}
-										</select>
 									{:else}
-										<button
-											class="w-full cursor-text text-left text-muted-foreground hover:underline"
-											onclick={() => openEditor(product, 'unitType')}
-										>
-											{unitTypeLabel(displayUnitType)}
-										</button>
+										<div class="relative">
+											<button
+												class="w-full cursor-pointer text-left text-muted-foreground"
+												onclick={() => openEditor(product, 'unitType')}
+											>
+												{unitTypeLabel(displayUnitType)}
+											</button>
+											{#if isActiveRow && activeEditor.field === 'unitType'}
+												<div class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-background shadow-lg" bind:this={editFacetContainerEl}>
+													{#each UNIT_TYPES as unit (unit.value)}
+														{@const isSelected = (rowEdits?.unitType ?? product.unitType ?? '') === unit.value}
+														<button
+															type="button"
+															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected ? 'font-medium' : ''}"
+															onmousedown={(e) => e.preventDefault()}
+															onclick={() => updateEditState(product.id, { unitType: unit.value })}
+														>
+															{#if isSelected}
+																<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
+															{:else}
+																<span class="size-3.5 shrink-0"></span>
+															{/if}
+															<span>{unit.label}</span>
+														</button>
+													{/each}
+												</div>
+											{/if}
+										</div>
 									{/if}
 								</Table.TableCell>
 
