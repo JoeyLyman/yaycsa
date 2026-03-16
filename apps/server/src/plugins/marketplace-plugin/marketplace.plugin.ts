@@ -40,6 +40,18 @@ export interface MarketplacePluginOptions {
             description: [{ languageCode: LanguageCode.en, value: 'Owner seller ID for proxy authorization checks' }],
         });
 
+        // --- FacetValue: group (food group metadata for bits taxonomy) ---
+        // Each bit (ingredient) FacetValue has a group like "Vegetables", "Dairy", etc.
+        // Used for browse grouping only, not nutritional truth.
+        config.customFields.FacetValue.push({
+            name: 'group',
+            type: 'string',
+            nullable: true,
+            public: true,
+            label: [{ languageCode: LanguageCode.en, value: 'Food Group' }],
+            description: [{ languageCode: LanguageCode.en, value: 'Browse group for ingredient taxonomy (e.g. Vegetables, Dairy, Meat)' }],
+        });
+
         // --- Customer: seller (1:1 link to Seller for unified accounts) ---
         config.customFields.Customer.push({
             name: 'seller',
