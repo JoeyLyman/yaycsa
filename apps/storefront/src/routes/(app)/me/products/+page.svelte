@@ -16,7 +16,6 @@
 	import { Badge } from '$lib/components/bits/badge';
 	import { Input } from '$lib/components/bits/input';
 	import * as Table from '$lib/components/bits/table';
-	import { tick } from 'svelte';
 
 	/** All available unit type options. */
 	const UNIT_TYPES = [
@@ -113,18 +112,29 @@
 	let failedIds: Map<string, string> = $state(new Map());
 
 	// ─── Inline editing state ───
+	// Multiple rows can have pending edits simultaneously.
+	// Only one field editor (input/dropdown) is open at a time.
+
+	/** Accumulated changes per product. Key = product ID. */
+	interface EditState {
+		name?: string;
+		unitType?: string;
+		bitIds?: string[];
+		processIds?: string[];
+		allergenIds?: string[];
+	}
 
 	/**
-	 * Which cell is currently being edited.
-	 * null when no cell is in edit mode.
+	 * Map of product ID → pending edits for that row.
+	 * Rows in this map show Save/Cancel and a highlight background.
 	 */
-	let editing: { id: string; field: 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens' } | null = $state(null);
+	let edits: Record<string, EditState> = $state({});
 
-	/** Temporary value while editing a text/select cell. */
-	let editValue = $state('');
-
-	/** Temporary facet value IDs while editing a facet column (bits/processes/allergens). */
-	let editFacetIds: string[] = $state([]);
+	/**
+	 * Which field editor is currently open (only one at a time).
+	 * null when no input/dropdown is visible.
+	 */
+	let activeEditor: { id: string; field: 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens' } | null = $state(null);
 
 	/** Search filter for the bits typeahead when editing an existing product's bits. */
 	let editBitsSearch = $state('');
@@ -133,19 +143,23 @@
 	let editBitsInput: HTMLInputElement | null = $state(null);
 
 	/**
-	 * Whether the facet edit dropdown is currently visible.
-	 * Separate from `editing` so the dropdown can close while the edit (Save/Cancel) stays active.
+	 * Map of product ID → true for rows currently being saved.
+	 * Uses a $state record instead of SvelteSet because SvelteSet.has()
+	 * doesn't reliably trigger re-renders inside {#each} blocks.
 	 */
-	let editDropdownOpen = $state(false);
-
-	/** Whether an update is in flight. */
-	let updating = $state(false);
+	let saving: Record<string, boolean> = $state({});
 
 	/**
 	 * Reference to the edit facet dropdown container for click-outside detection.
 	 * Bound to whichever facet dropdown is currently open.
 	 */
 	let editFacetContainerEl: HTMLDivElement | null = $state(null);
+
+	/** Update the edit state for a product (immutable — triggers reactivity). */
+	function updateEditState(productId: string, patch: Partial<EditState>) {
+		const current = edits[productId] ?? {};
+		edits[productId] = { ...current, ...patch };
+	}
 
 	// ─── Delete state ───
 
@@ -220,10 +234,10 @@
 		}
 	}
 
-	/** Close an edit facet dropdown when clicking outside it. */
+	/** Close the active facet dropdown when clicking outside it, but keep the edit state. */
 	function handleEditFacetClickOutside(event: MouseEvent) {
 		if (editFacetContainerEl && !editFacetContainerEl.contains(event.target as Node)) {
-			cancelEdit();
+			activeEditor = null;
 		}
 	}
 
@@ -235,7 +249,7 @@
 	});
 
 	$effect(() => {
-		if (editing && ['bits', 'processes', 'allergens'].includes(editing.field)) {
+		if (activeEditor && ['bits', 'processes', 'allergens'].includes(activeEditor.field)) {
 			document.addEventListener('mousedown', handleEditFacetClickOutside);
 			return () => document.removeEventListener('mousedown', handleEditFacetClickOutside);
 		}
@@ -400,93 +414,100 @@
 		failedIds = new Map([...failedIds].filter(([id]) => id !== tempId));
 	}
 
-	function startEdit(product: SellerProduct, field: 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens') {
-		editing = { id: product.id, field };
-		editDropdownOpen = false;
-		if (field === 'name' || field === 'sku') {
-			editValue = product[field];
-		} else if (field === 'unitType') {
-			editValue = product.unitType ?? '';
+	type EditField = 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens';
+
+	/**
+	 * Open an editor for a specific field on a product.
+	 * Initializes the field's value from product data if not already set.
+	 * Multiple rows can have pending edits simultaneously.
+	 */
+	function openEditor(product: SellerProduct, field: EditField) {
+		const state = edits[product.id] ?? {};
+		activeEditor = { id: product.id, field };
+
+		// Initialize the field's edit value from product data if not already set
+		if (field === 'name' && state.name === undefined) {
+			updateEditState(product.id, { name: product.name });
+		} else if (field === 'unitType' && state.unitType === undefined) {
+			updateEditState(product.id, { unitType: product.unitType ?? '' });
 		} else if (field === 'bits') {
-			editFacetIds = product.bits.map((b) => b.id);
+			if (state.bitIds === undefined) updateEditState(product.id, { bitIds: product.bits.map((b) => b.id) });
 			editBitsSearch = '';
-			editDropdownOpen = true;
 		} else if (field === 'processes') {
-			editFacetIds = product.processes.map((p) => p.id);
-			editDropdownOpen = true;
+			if (state.processIds === undefined) updateEditState(product.id, { processIds: product.processes.map((p) => p.id) });
 		} else if (field === 'allergens') {
-			editFacetIds = product.allergenWarnings.map((a) => a.id);
-			editDropdownOpen = true;
+			if (state.allergenIds === undefined) updateEditState(product.id, { allergenIds: product.allergenWarnings.map((a) => a.id) });
 		}
 	}
 
-	async function saveEdit() {
-		if (!editing) return;
-		const { id, field } = editing;
-		const product = products.find((p) => p.id === id);
-		if (!product) return;
+	/**
+	 * Save ALL accumulated edits for a specific product row.
+	 * Sends a single updateProduct call with every changed field.
+	 */
+	async function saveRow(productId: string) {
+		// Snapshot the edit state before any async work (avoid proxy staleness)
+		const rawEdits = edits[productId];
+		const state = rawEdits ? { ...rawEdits } : undefined;
+		const product = products.find((p) => p.id === productId);
+		if (!state || !product) return;
 
-		// Check if anything actually changed
-		if (field === 'name' || field === 'sku') {
-			if (editValue === product[field]) { editing = null; return; }
-		} else if (field === 'unitType') {
-			if (editValue === (product.unitType ?? '')) { editing = null; return; }
-		} else {
-			const currentIds = (
-				field === 'bits' ? product.bits :
-				field === 'processes' ? product.processes :
-				product.allergenWarnings
-			).map((f) => f.id).sort().join(',');
-			if ([...editFacetIds].sort().join(',') === currentIds) { editing = null; return; }
+		const bitsChanged = state.bitIds !== undefined;
+		const processChanged = state.processIds !== undefined;
+		const allergensChanged = state.allergenIds !== undefined;
+
+		// Build the facetValueIds (full replacement set) if any facet was edited
+		let facetValueIds: string[] | undefined;
+		if (bitsChanged || processChanged || allergensChanged) {
+			const bitIds = state.bitIds ?? product.bits.map((b) => b.id);
+			const processIds = state.processIds ?? product.processes.map((p) => p.id);
+			const allergenIds = state.allergenIds ?? product.allergenWarnings.map((a) => a.id);
+			facetValueIds = [...bitIds, ...processIds, ...allergenIds];
 		}
 
-		updating = true;
+		const nameChanged = state.name !== undefined && state.name !== product.name;
+		const unitTypeChanged = state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
+
+		// Nothing actually changed — just close
+		if (!nameChanged && !unitTypeChanged && !facetValueIds) {
+			cancelRow(productId);
+			return;
+		}
+
+		saving[productId] = true;
+		if (activeEditor?.id === productId) activeEditor = null;
 
 		try {
-			if (field === 'bits' || field === 'processes' || field === 'allergens') {
-				// Merge: keep other facet categories unchanged, replace this one
-				const bitIds = field === 'bits' ? editFacetIds : product.bits.map((b) => b.id);
-				const processIds = field === 'processes' ? editFacetIds : product.processes.map((p) => p.id);
-				const allergenIds = field === 'allergens' ? editFacetIds : product.allergenWarnings.map((a) => a.id);
+			await updateProduct({
+				id: product.id,
+				variantId: product.variantId,
+				...(nameChanged ? { name: state.name } : {}),
+				...(unitTypeChanged ? { unitType: state.unitType } : {}),
+				...(facetValueIds ? { facetValueIds } : {}),
+			});
 
-				await updateProduct({
-					id: product.id,
-					variantId: product.variantId,
-					facetValueIds: [...bitIds, ...processIds, ...allergenIds],
-				});
-
-				// Optimistic update
-				if (field === 'bits') product.bits = allBits.filter((b) => editFacetIds.includes(b.id));
-				else if (field === 'processes') product.processes = allProcesses.filter((p) => editFacetIds.includes(p.id));
-				else product.allergenWarnings = allAllergenWarnings.filter((a) => editFacetIds.includes(a.id));
-				products = [...products];
-			} else {
-				await updateProduct({
-					id: product.id,
-					variantId: product.variantId,
-					[field]: editValue,
-				});
-
-				// Optimistic update
-				if (field === 'name') product.name = editValue;
-				else if (field === 'sku') product.sku = editValue;
-				else if (field === 'unitType') product.unitType = editValue || null;
-			}
+			// Optimistic updates
+			if (nameChanged) product.name = state.name!;
+			if (unitTypeChanged) product.unitType = state.unitType || null;
+			if (bitsChanged) product.bits = allBits.filter((b) => state.bitIds!.includes(b.id));
+			if (processChanged) product.processes = allProcesses.filter((p) => state.processIds!.includes(p.id));
+			if (allergensChanged) product.allergenWarnings = allAllergenWarnings.filter((a) => state.allergenIds!.includes(a.id));
+			products = [...products];
 		} catch (err) {
 			console.error('Failed to update product:', err);
+			// Keep edits on error so the user can retry
+			delete saving[productId];
+			return;
 		}
 
-		updating = false;
-		editing = null;
-		editDropdownOpen = false;
+		delete saving[productId];
+		delete edits[productId];
 	}
 
-	function cancelEdit() {
-		editing = null;
-		editValue = '';
-		editFacetIds = [];
+	/** Discard all pending edits for a specific product row. */
+	function cancelRow(productId: string) {
+		delete edits[productId];
+		if (activeEditor?.id === productId) activeEditor = null;
 		editBitsSearch = '';
-		editDropdownOpen = false;
 	}
 
 	async function handleDelete(id: string) {
@@ -704,7 +725,7 @@
 				<p class="text-muted-foreground">No products yet. Add your first product above.</p>
 			</div>
 		{:else}
-			<div class="overflow-x-auto rounded-md border">
+			<div class="overflow-visible rounded-md border">
 				<Table.Table>
 					<Table.TableHeader>
 						<Table.TableRow>
@@ -713,16 +734,23 @@
 							<Table.TableHead class="min-w-[120px]">Processing</Table.TableHead>
 							<Table.TableHead class="min-w-[140px]">Allergens</Table.TableHead>
 							<Table.TableHead class="w-36">Unit Type</Table.TableHead>
-							<Table.TableHead class="w-32 text-right">Actions</Table.TableHead>
+							<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
 						</Table.TableRow>
 					</Table.TableHeader>
 					<Table.TableBody>
 						{#each products as product (product.id)}
 							{@const isPending = pendingIds.has(product.id)}
 							{@const isFailed = failedIds.has(product.id)}
-							{@const isEditing = editing?.id === product.id}
-							<Table.TableRow class={isPending ? 'opacity-50' : isFailed ? 'bg-destructive/5' : ''}>
-								<!-- Product Name (inline editable) -->
+								{@const rowEdits = edits[product.id]}
+							{@const isRowEditing = !!rowEdits}
+							{@const isActiveRow = activeEditor?.id === product.id}
+							{@const displayName = rowEdits?.name ?? product.name}
+							{@const displayBits = rowEdits?.bitIds ? allBits.filter((b) => rowEdits.bitIds!.includes(b.id)) : product.bits}
+							{@const displayProcesses = rowEdits?.processIds ? allProcesses.filter((p) => rowEdits.processIds!.includes(p.id)) : product.processes}
+							{@const displayAllergens = rowEdits?.allergenIds ? allAllergenWarnings.filter((a) => rowEdits.allergenIds!.includes(a.id)) : product.allergenWarnings}
+							{@const displayUnitType = rowEdits?.unitType ?? product.unitType}
+							<Table.TableRow class={isPending ? 'opacity-50' : isFailed ? 'bg-destructive/5' : isRowEditing ? 'bg-primary/5' : ''}>
+								<!-- Product Name -->
 								<Table.TableCell>
 									{#if isPending}
 										<span class="flex items-center gap-2">
@@ -731,29 +759,30 @@
 										</span>
 									{:else if isFailed}
 										<span class="text-destructive">{product.name}</span>
-									{:else if isEditing && editing?.field === 'name'}
-										<!-- svelte-ignore a11y_autofocus -->
+									{:else if isActiveRow && activeEditor.field === 'name'}
 										<Input
-											bind:value={editValue}
+											value={rowEdits?.name ?? product.name}
+											oninput={(e) => updateEditState(product.id, { name: e.currentTarget.value })}
+											onblur={() => (activeEditor = null)}
 											onkeydown={(e) => {
-												if (e.key === 'Enter') saveEdit();
-												if (e.key === 'Escape') cancelEdit();
+												if (e.key === 'Enter') activeEditor = null;
+												if (e.key === 'Escape') cancelRow(product.id);
 											}}
-											disabled={updating}
+											disabled={saving[product.id]}
 											class="h-7 text-sm"
 											autofocus
 										/>
 									{:else}
 										<button
 											class="w-full cursor-text text-left hover:underline"
-											onclick={() => startEdit(product, 'name')}
+											onclick={() => openEditor(product, 'name')}
 										>
-											{product.name}
+											{displayName}
 										</button>
 									{/if}
 								</Table.TableCell>
 
-								<!-- Bits (ingredients) — clickable to edit -->
+								<!-- Bits (ingredients) -->
 								<Table.TableCell>
 									{#if isPending || isFailed}
 										{#if product.bits.length > 0}
@@ -765,7 +794,7 @@
 										{:else}
 											<span class="text-xs text-muted-foreground">—</span>
 										{/if}
-									{:else if isEditing && editing?.field === 'bits'}
+									{:else if isActiveRow && activeEditor.field === 'bits'}
 										<div class="relative" bind:this={editFacetContainerEl}>
 											<Input
 												bind:value={editBitsSearch}
@@ -779,9 +808,10 @@
 													<button
 														type="button"
 														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-														onclick={async () => { editFacetIds = toggleId(editFacetIds, bit.id); await tick(); editBitsInput?.focus(); }}
+														onmousedown={(e) => e.preventDefault()}
+														onclick={() => { const cur = edits[product.id]?.bitIds ?? []; updateEditState(product.id, { bitIds: toggleId(cur, bit.id) }); }}
 													>
-														<span class="size-3.5 shrink-0 rounded border {editFacetIds.includes(bit.id) ? 'bg-green-600 border-green-600' : 'border-input'}"></span>
+														<span class="size-3.5 shrink-0 rounded border {rowEdits?.bitIds?.includes(bit.id) ? 'bg-green-600 border-green-600' : 'border-input'}"></span>
 														<span>{bit.name}</span>
 														{#if bit.group}
 															<span class="ml-auto text-xs text-muted-foreground">{bit.group}</span>
@@ -796,15 +826,15 @@
 									{:else}
 										<button
 											class="w-full cursor-pointer text-left"
-											onclick={() => startEdit(product, 'bits')}
+											onclick={() => openEditor(product, 'bits')}
 										>
-											{#if product.bits.length > 0}
+											{#if displayBits.length > 0}
 												<div class="flex flex-wrap gap-0.5">
-													{#each product.bits.slice(0, 4) as bit (bit.id)}
+													{#each displayBits.slice(0, 4) as bit (bit.id)}
 														<Badge variant="outline" class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300">{bit.name}</Badge>
 													{/each}
-													{#if product.bits.length > 4}
-														<Badge variant="outline" class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground">+{product.bits.length - 4}</Badge>
+													{#if displayBits.length > 4}
+														<Badge variant="outline" class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground">+{displayBits.length - 4}</Badge>
 													{/if}
 												</div>
 											{:else}
@@ -814,7 +844,7 @@
 									{/if}
 								</Table.TableCell>
 
-								<!-- Processing — clickable to edit -->
+								<!-- Processing -->
 								<Table.TableCell>
 									{#if isPending || isFailed}
 										{#if product.processes.length > 0}
@@ -826,16 +856,17 @@
 										{:else}
 											<span class="text-xs text-muted-foreground">—</span>
 										{/if}
-									{:else if isEditing && editing?.field === 'processes'}
+									{:else if isActiveRow && activeEditor.field === 'processes'}
 										<div class="relative" bind:this={editFacetContainerEl}>
 											<div class="absolute z-10 w-48 rounded-md border bg-background shadow-lg">
 												{#each allProcesses as proc (proc.id)}
 													<button
 														type="button"
 														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-														onclick={() => (editFacetIds = toggleId(editFacetIds, proc.id))}
+														onmousedown={(e) => e.preventDefault()}
+														onclick={() => { const cur = edits[product.id]?.processIds ?? []; updateEditState(product.id, { processIds: toggleId(cur, proc.id) }); }}
 													>
-														<span class="size-3.5 shrink-0 rounded border {editFacetIds.includes(proc.id) ? 'bg-blue-500 border-blue-500' : 'border-input'}"></span>
+														<span class="size-3.5 shrink-0 rounded border {rowEdits?.processIds?.includes(proc.id) ? 'bg-blue-500 border-blue-500' : 'border-input'}"></span>
 														<span>{proc.name}</span>
 													</button>
 												{/each}
@@ -844,11 +875,11 @@
 									{:else}
 										<button
 											class="w-full cursor-pointer text-left"
-											onclick={() => startEdit(product, 'processes')}
+											onclick={() => openEditor(product, 'processes')}
 										>
-											{#if product.processes.length > 0}
+											{#if displayProcesses.length > 0}
 												<div class="flex flex-wrap gap-0.5">
-													{#each product.processes as proc (proc.id)}
+													{#each displayProcesses as proc (proc.id)}
 														<Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300">{proc.name}</Badge>
 													{/each}
 												</div>
@@ -859,7 +890,7 @@
 									{/if}
 								</Table.TableCell>
 
-								<!-- Allergen Warnings — clickable to edit -->
+								<!-- Allergen Warnings -->
 								<Table.TableCell>
 									{#if isPending || isFailed}
 										{#if product.allergenWarnings.length > 0}
@@ -871,16 +902,17 @@
 										{:else}
 											<span class="text-xs text-muted-foreground">—</span>
 										{/if}
-									{:else if isEditing && editing?.field === 'allergens'}
+									{:else if isActiveRow && activeEditor.field === 'allergens'}
 										<div class="relative" bind:this={editFacetContainerEl}>
 											<div class="absolute z-10 w-52 rounded-md border bg-background shadow-lg">
 												{#each allAllergenWarnings as warning (warning.id)}
 													<button
 														type="button"
 														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-														onclick={() => (editFacetIds = toggleId(editFacetIds, warning.id))}
+														onmousedown={(e) => e.preventDefault()}
+														onclick={() => { const cur = edits[product.id]?.allergenIds ?? []; updateEditState(product.id, { allergenIds: toggleId(cur, warning.id) }); }}
 													>
-														<span class="size-3.5 shrink-0 rounded border {editFacetIds.includes(warning.id) ? 'bg-orange-500 border-orange-500' : 'border-input'}"></span>
+														<span class="size-3.5 shrink-0 rounded border {rowEdits?.allergenIds?.includes(warning.id) ? 'bg-orange-500 border-orange-500' : 'border-input'}"></span>
 														<span>{warning.name.replace(/^May contain /i, '')}</span>
 													</button>
 												{/each}
@@ -889,11 +921,11 @@
 									{:else}
 										<button
 											class="w-full cursor-pointer text-left"
-											onclick={() => startEdit(product, 'allergens')}
+											onclick={() => openEditor(product, 'allergens')}
 										>
-											{#if product.allergenWarnings.length > 0}
+											{#if displayAllergens.length > 0}
 												<div class="flex flex-wrap gap-0.5">
-													{#each product.allergenWarnings as warning (warning.id)}
+													{#each displayAllergens as warning (warning.id)}
 														<Badge variant="outline" class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300">{warning.name.replace(/^May contain /i, '')}</Badge>
 													{/each}
 												</div>
@@ -904,18 +936,19 @@
 									{/if}
 								</Table.TableCell>
 
-								<!-- Unit Type (inline editable via dropdown) -->
+								<!-- Unit Type -->
 								<Table.TableCell>
 									{#if isPending || isFailed}
 										<span class="text-muted-foreground">{unitTypeLabel(product.unitType)}</span>
-									{:else if isEditing && editing?.field === 'unitType'}
-										<!-- svelte-ignore a11y_autofocus -->
+									{:else if isActiveRow && activeEditor.field === 'unitType'}
 										<select
-											bind:value={editValue}
+											value={rowEdits?.unitType ?? product.unitType ?? ''}
+											onchange={(e) => updateEditState(product.id, { unitType: e.currentTarget.value })}
+											onblur={() => (activeEditor = null)}
 											onkeydown={(e) => {
-												if (e.key === 'Escape') cancelEdit();
+												if (e.key === 'Escape') cancelRow(product.id);
 											}}
-											disabled={updating}
+											disabled={saving[product.id]}
 											class="flex h-7 w-full rounded-md border border-input bg-transparent px-2 py-0 text-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
 											autofocus
 										>
@@ -926,15 +959,15 @@
 									{:else}
 										<button
 											class="w-full cursor-text text-left text-muted-foreground hover:underline"
-											onclick={() => startEdit(product, 'unitType')}
+											onclick={() => openEditor(product, 'unitType')}
 										>
-											{unitTypeLabel(product.unitType)}
+											{unitTypeLabel(displayUnitType)}
 										</button>
 									{/if}
 								</Table.TableCell>
 
-								<!-- Actions: Save/Cancel when editing, Delete otherwise -->
-								<Table.TableCell class="text-right">
+								<!-- Actions -->
+								<Table.TableCell class="w-40 text-right">
 									{#if isPending}
 										<span class="text-xs text-muted-foreground">Saving...</span>
 									{:else if isFailed}
@@ -956,20 +989,21 @@
 												Dismiss
 											</Button>
 										</div>
-									{:else if isEditing}
+									{:else if isRowEditing}
 										<div class="flex items-center justify-end gap-1">
 											<Button
 												size="sm"
-												disabled={updating}
-												onclick={saveEdit}
+												disabled={saving[product.id]}
+												onmousedown={(e: MouseEvent) => e.stopPropagation()}
+												onclick={() => saveRow(product.id)}
 											>
-												{#if updating}
+												{#if saving[product.id]}
 													<SpinnerSun class="size-3.5" />
 												{:else}
 													Save
 												{/if}
 											</Button>
-											<Button size="sm" variant="ghost" disabled={updating} onclick={cancelEdit}>
+											<Button size="sm" variant="ghost" disabled={saving[product.id]} onmousedown={(e: MouseEvent) => e.stopPropagation()} onclick={() => cancelRow(product.id)}>
 												Cancel
 											</Button>
 										</div>
@@ -981,7 +1015,7 @@
 												disabled={deleting}
 												onclick={() => handleDelete(product.id)}
 											>
-												{deleting ? '...' : 'Yes'}
+												{#if deleting}<SpinnerSun class="size-3.5" />{:else}Yes{/if}
 											</Button>
 											<Button size="sm" variant="ghost" onclick={() => (confirmDeleteId = null)}>
 												No

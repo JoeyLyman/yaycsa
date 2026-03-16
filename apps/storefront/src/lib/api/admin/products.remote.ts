@@ -340,18 +340,29 @@ export const updateProduct = command(
 		// Ownership check — throws 403 if not owned
 		await assertProductOwnedBySeller(id, sellerId);
 
-		// Update product-level fields (name, facet values)
-		if (name !== undefined || facetValueIds !== undefined) {
-			const productInput: Record<string, unknown> = { id };
-			if (name !== undefined) {
-				productInput.translations = [{ languageCode: 'en', name, slug: slugify(name), description: '' }];
-			}
-			if (facetValueIds !== undefined) {
-				productInput.facetValueIds = facetValueIds;
-			}
+		// Update product-level fields (name)
+		if (name !== undefined) {
 			await adminMutate(
 				UPDATE_PRODUCT_MUTATION,
-				{ input: productInput },
+				{
+					input: {
+						id,
+						translations: [{ languageCode: 'en', name, slug: slugify(name), description: '' }],
+					},
+				},
+			);
+		}
+
+		// Sync facet values via custom mutation that bypasses TypeORM's buggy save().
+		// Vendure's built-in updateProduct with facetValueIds triggers a duplicate-key
+		// error because findByIds() returns new entity instances and TypeORM compares
+		// by reference, not PK. Our custom mutation uses relation query builder instead.
+		if (facetValueIds !== undefined) {
+			await adminMutate(
+				`mutation SyncProductFacetValues($productId: ID!, $facetValueIds: [ID!]!) {
+					syncProductFacetValues(productId: $productId, facetValueIds: $facetValueIds)
+				}`,
+				{ productId: id, facetValueIds },
 			);
 		}
 

@@ -8,6 +8,7 @@ import {
     ID,
     InternalServerError,
     LanguageCode,
+    Product,
     RequestContext,
     RequestContextService,
     Seller,
@@ -225,6 +226,44 @@ export class MarketplaceService {
             }
             throw err;
         }
+    }
+
+    /**
+     * Replace a product's facet values using TypeORM's relation query builder.
+     *
+     * Vendure's built-in ProductService.update() with facetValueIds triggers a
+     * TypeORM bug: findByIds() returns new entity instances, and save() compares
+     * by reference instead of PK, causing duplicate-key INSERT attempts on the
+     * many-to-many join table. This method bypasses save() entirely by using
+     * addAndRemove() on the relation query builder, which directly manipulates
+     * the join table with INSERT/DELETE statements.
+     */
+    async syncProductFacetValues(
+        ctx: RequestContext,
+        productId: ID,
+        facetValueIds: ID[],
+    ): Promise<void> {
+        // Load current facet value IDs for diff computation
+        const product = await this.connection
+            .getRepository(ctx, Product)
+            .findOne({ where: { id: productId }, relations: ['facetValues'] });
+        if (!product) {
+            throw new InternalServerError(`Product ${productId} not found`);
+        }
+
+        const currentIds = product.facetValues.map(fv => String(fv.id));
+        const newIds = facetValueIds.map(id => String(id));
+
+        const toAdd = newIds.filter(id => !currentIds.includes(id));
+        const toRemove = currentIds.filter(id => !newIds.includes(id));
+
+        if (toAdd.length === 0 && toRemove.length === 0) return;
+
+        await this.connection.rawConnection
+            .createQueryBuilder()
+            .relation(Product, 'facetValues')
+            .of(productId)
+            .addAndRemove(toAdd, toRemove);
     }
 
     private async findSellersWithActiveOffers(ctx: RequestContext): Promise<ShopSeller[]> {

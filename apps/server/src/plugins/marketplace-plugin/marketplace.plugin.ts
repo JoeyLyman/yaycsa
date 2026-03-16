@@ -1,6 +1,8 @@
 import { LanguageCode, PluginCommonModule, Seller, VendurePlugin } from '@vendure/core';
 
+import { adminApiExtensions } from './api/admin-api-extensions';
 import { shopApiExtensions } from './api/api-extensions';
+import { MarketplaceAdminResolver } from './api/marketplace-admin.resolver';
 import { MarketplaceShopResolver } from './api/marketplace-shop.resolver';
 import { MarketplaceService } from './services/marketplace.service';
 
@@ -16,6 +18,10 @@ export interface MarketplacePluginOptions {
     shopApiExtensions: {
         schema: shopApiExtensions,
         resolvers: [MarketplaceShopResolver],
+    },
+    adminApiExtensions: {
+        schema: adminApiExtensions,
+        resolvers: [MarketplaceAdminResolver],
     },
     configuration: config => {
         // --- Seller: slug (moved from offer-plugin — seller identity belongs here) ---
