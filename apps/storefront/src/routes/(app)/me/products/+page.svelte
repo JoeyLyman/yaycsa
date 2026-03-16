@@ -140,7 +140,10 @@
 	 * Which field editor is currently open (only one at a time).
 	 * null when no input/dropdown is visible.
 	 */
-	let activeEditor: { id: string; field: 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens' } | null = $state(null);
+	let activeEditor: {
+		id: string;
+		field: 'name' | 'sku' | 'unitType' | 'bits' | 'processes' | 'allergens';
+	} | null = $state(null);
 
 	/** Search filter for the bits typeahead when editing an existing product's bits. */
 	let editBitsSearch = $state('');
@@ -184,7 +187,9 @@
 	let filteredBits = $derived.by(() => {
 		const q = bitsSearch.toLowerCase().trim();
 		const filtered = q
-			? allBits.filter((b) => b.name.toLowerCase().includes(q) || (b.group ?? '').toLowerCase().includes(q))
+			? allBits.filter(
+					(b) => b.name.toLowerCase().includes(q) || (b.group ?? '').toLowerCase().includes(q)
+				)
 			: allBits;
 		return filtered.slice(0, 50); // cap at 50 results for performance
 	});
@@ -207,7 +212,9 @@
 	 * The normalized version of the current search term, ready for display in
 	 * the "Create" button. Empty string when the search is too short.
 	 */
-	let normalizedBitName = $derived(bitsSearch.trim().length >= 2 ? normalizeBitName(bitsSearch) : '');
+	let normalizedBitName = $derived(
+		bitsSearch.trim().length >= 2 ? normalizeBitName(bitsSearch) : ''
+	);
 
 	/**
 	 * Whether the current search term can be created as a new bit.
@@ -227,7 +234,9 @@
 	let filteredEditBits = $derived.by(() => {
 		const q = editBitsSearch.toLowerCase().trim();
 		const filtered = q
-			? allBits.filter((b) => b.name.toLowerCase().includes(q) || (b.group ?? '').toLowerCase().includes(q))
+			? allBits.filter(
+					(b) => b.name.toLowerCase().includes(q) || (b.group ?? '').toLowerCase().includes(q)
+				)
 			: allBits;
 		return filtered.slice(0, 50);
 	});
@@ -271,7 +280,10 @@
 	});
 
 	$effect(() => {
-		if (activeEditor && ['bits', 'processes', 'allergens', 'unitType'].includes(activeEditor.field)) {
+		if (
+			activeEditor &&
+			['bits', 'processes', 'allergens', 'unitType'].includes(activeEditor.field)
+		) {
 			document.addEventListener('mousedown', handleEditFacetClickOutside);
 			return () => document.removeEventListener('mousedown', handleEditFacetClickOutside);
 		}
@@ -316,7 +328,7 @@
 				myProducts(),
 				fetchBits(),
 				fetchProcessTypes(),
-				fetchAllergenWarnings(),
+				fetchAllergenWarnings()
 			]);
 			products = prods;
 			allBits = bits;
@@ -359,7 +371,7 @@
 			unitType: unitType ?? null,
 			bits: allBits.filter((b) => newBitIds.includes(b.id)),
 			processes: allProcesses.filter((p) => newProcessIds.includes(p.id)),
-			allergenWarnings: allAllergenWarnings.filter((a) => newAllergenIds.includes(a.id)),
+			allergenWarnings: allAllergenWarnings.filter((a) => newAllergenIds.includes(a.id))
 		};
 
 		products = [...products, optimisticProduct];
@@ -382,7 +394,7 @@
 				name,
 				sku,
 				unitType,
-				facetValueIds: facetValueIds.length ? facetValueIds : undefined,
+				facetValueIds: facetValueIds.length ? facetValueIds : undefined
 			});
 
 			// Replace the optimistic placeholder with the real server data
@@ -409,7 +421,7 @@
 		const facetValueIds = [
 			...product.bits.map((b) => b.id),
 			...product.processes.map((p) => p.id),
-			...product.allergenWarnings.map((a) => a.id),
+			...product.allergenWarnings.map((a) => a.id)
 		];
 
 		try {
@@ -417,7 +429,7 @@
 				name: product.name,
 				sku: product.sku || undefined,
 				unitType: product.unitType || undefined,
-				facetValueIds: facetValueIds.length ? facetValueIds : undefined,
+				facetValueIds: facetValueIds.length ? facetValueIds : undefined
 			});
 			products = products.map((p) => (p.id === tempId ? created : p));
 			pendingIds = new Set([...pendingIds].filter((id) => id !== tempId));
@@ -453,12 +465,15 @@
 		} else if (field === 'unitType' && state.unitType === undefined) {
 			updateEditState(product.id, { unitType: product.unitType ?? '' });
 		} else if (field === 'bits') {
-			if (state.bitIds === undefined) updateEditState(product.id, { bitIds: product.bits.map((b) => b.id) });
+			if (state.bitIds === undefined)
+				updateEditState(product.id, { bitIds: product.bits.map((b) => b.id) });
 			editBitsSearch = '';
 		} else if (field === 'processes') {
-			if (state.processIds === undefined) updateEditState(product.id, { processIds: product.processes.map((p) => p.id) });
+			if (state.processIds === undefined)
+				updateEditState(product.id, { processIds: product.processes.map((p) => p.id) });
 		} else if (field === 'allergens') {
-			if (state.allergenIds === undefined) updateEditState(product.id, { allergenIds: product.allergenWarnings.map((a) => a.id) });
+			if (state.allergenIds === undefined)
+				updateEditState(product.id, { allergenIds: product.allergenWarnings.map((a) => a.id) });
 		}
 	}
 
@@ -487,7 +502,8 @@
 		}
 
 		const nameChanged = state.name !== undefined && state.name !== product.name;
-		const unitTypeChanged = state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
+		const unitTypeChanged =
+			state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
 
 		// Nothing actually changed — just close
 		if (!nameChanged && !unitTypeChanged && !facetValueIds) {
@@ -504,15 +520,19 @@
 				variantId: product.variantId,
 				...(nameChanged ? { name: state.name } : {}),
 				...(unitTypeChanged ? { unitType: state.unitType } : {}),
-				...(facetValueIds ? { facetValueIds } : {}),
+				...(facetValueIds ? { facetValueIds } : {})
 			});
 
 			// Optimistic updates
 			if (nameChanged) product.name = state.name!;
 			if (unitTypeChanged) product.unitType = state.unitType || null;
 			if (bitsChanged) product.bits = allBits.filter((b) => state.bitIds!.includes(b.id));
-			if (processChanged) product.processes = allProcesses.filter((p) => state.processIds!.includes(p.id));
-			if (allergensChanged) product.allergenWarnings = allAllergenWarnings.filter((a) => state.allergenIds!.includes(a.id));
+			if (processChanged)
+				product.processes = allProcesses.filter((p) => state.processIds!.includes(p.id));
+			if (allergensChanged)
+				product.allergenWarnings = allAllergenWarnings.filter((a) =>
+					state.allergenIds!.includes(a.id)
+				);
 			products = [...products];
 		} catch (err) {
 			console.error('Failed to update product:', err);
@@ -536,13 +556,20 @@
 		if (!product) return true;
 
 		const nameChanged = state.name !== undefined && state.name !== product.name;
-		const unitTypeChanged = state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
-		const bitsChanged = state.bitIds !== undefined &&
-			JSON.stringify([...state.bitIds].sort()) !== JSON.stringify(product.bits.map((b) => b.id).sort());
-		const processChanged = state.processIds !== undefined &&
-			JSON.stringify([...state.processIds].sort()) !== JSON.stringify(product.processes.map((p) => p.id).sort());
-		const allergensChanged = state.allergenIds !== undefined &&
-			JSON.stringify([...state.allergenIds].sort()) !== JSON.stringify(product.allergenWarnings.map((a) => a.id).sort());
+		const unitTypeChanged =
+			state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
+		const bitsChanged =
+			state.bitIds !== undefined &&
+			JSON.stringify([...state.bitIds].sort()) !==
+				JSON.stringify(product.bits.map((b) => b.id).sort());
+		const processChanged =
+			state.processIds !== undefined &&
+			JSON.stringify([...state.processIds].sort()) !==
+				JSON.stringify(product.processes.map((p) => p.id).sort());
+		const allergensChanged =
+			state.allergenIds !== undefined &&
+			JSON.stringify([...state.allergenIds].sort()) !==
+				JSON.stringify(product.allergenWarnings.map((a) => a.id).sort());
 
 		return !nameChanged && !unitTypeChanged && !bitsChanged && !processChanged && !allergensChanged;
 	}
@@ -608,7 +635,7 @@
 
 		<!-- Add product form -->
 		<form
-			class="space-y-5 rounded-md border px-3 pb-3 pt-1"
+			class="space-y-5 rounded-md border px-3 pt-1 pb-3"
 			onsubmit={(e) => {
 				e.preventDefault();
 				handleCreate();
@@ -617,7 +644,9 @@
 			<!-- Row 1: Name, SKU, Unit Type -->
 			<div class="flex flex-wrap items-end gap-2">
 				<div class="min-w-[180px] flex-1">
-					<label for="new-name" class="text-xs font-medium text-muted-foreground">Product Name</label>
+					<label for="new-name" class="text-xs font-medium text-muted-foreground"
+						>Product Name</label
+					>
 					<Input
 						id="new-name"
 						bind:value={newName}
@@ -626,7 +655,9 @@
 					/>
 				</div>
 				<div class="w-32">
-					<label for="new-sku" class="text-xs font-medium text-muted-foreground">SKU (optional)</label>
+					<label for="new-sku" class="text-xs font-medium text-muted-foreground"
+						>SKU (optional)</label
+					>
 					<Input id="new-sku" bind:value={newSku} placeholder="Auto" />
 				</div>
 				<div class="relative w-40" bind:this={unitTypeContainerEl}>
@@ -644,9 +675,14 @@
 								{@const isSelected = newUnitType === unit.value}
 								<button
 									type="button"
-									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected ? 'font-medium' : ''}"
+									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected
+										? 'font-medium'
+										: ''}"
 									onmousedown={(e) => e.preventDefault()}
-									onclick={() => { newUnitType = unit.value; unitTypeDropdownOpen = false; }}
+									onclick={() => {
+										newUnitType = unit.value;
+										unitTypeDropdownOpen = false;
+									}}
 								>
 									{#if isSelected}
 										<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
@@ -664,7 +700,9 @@
 			<!-- Row 2: Bits (ingredients) — searchable multi-select -->
 			<div>
 				<label for="bits-search" class="text-xs font-medium text-muted-foreground">
-					Bits <span class="font-normal text-muted-foreground/70">(Ingredients — What's in it?)</span>
+					Bits <span class="font-normal text-muted-foreground/70"
+						>(Ingredients — What's in it?)</span
+					>
 				</label>
 				<!-- Selected bits pills -->
 				{#if newBitIds.length > 0}
@@ -696,7 +734,9 @@
 					/>
 					{#if bitsDropdownOpen}
 						<!-- Dropdown list -->
-						<div class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
+						<div
+							class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-background shadow-lg"
+						>
 							{#if filteredBits.length === 0 && !canCreateBit}
 								<p class="px-3 py-2 text-xs text-muted-foreground">No matches</p>
 							{:else}
@@ -705,12 +745,16 @@
 										type="button"
 										class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
 										onmousedown={(e) => e.preventDefault()}
-									onclick={() => {
+										onclick={() => {
 											newBitIds = toggleId(newBitIds, bit.id);
 											bitsSearch = '';
 										}}
 									>
-										<span class="size-3.5 shrink-0 rounded border {newBitIds.includes(bit.id) ? 'bg-green-600 border-green-600' : 'border-input'}"></span>
+										<span
+											class="size-3.5 shrink-0 rounded border {newBitIds.includes(bit.id)
+												? 'border-green-600 bg-green-600'
+												: 'border-input'}"
+										></span>
 										<span>{bit.name}</span>
 										{#if bit.group}
 											<span class="ml-auto text-xs text-muted-foreground">{bit.group}</span>
@@ -749,14 +793,17 @@
 			<!-- Row 3: Processing (toggle pills) -->
 			<fieldset>
 				<legend class="text-xs font-medium text-muted-foreground">
-					Processing <span class="font-normal text-muted-foreground/70">(What was done to it?)</span>
+					Processing <span class="font-normal text-muted-foreground/70">(What was done to it?)</span
+					>
 				</legend>
 				<div class="flex flex-wrap gap-1.5 pt-1">
 					{#each allProcesses as proc (proc.id)}
 						<button
 							type="button"
 							class="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors
-								{newProcessIds.includes(proc.id) ? 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300' : 'border-input text-muted-foreground hover:border-blue-500/50'}"
+								{newProcessIds.includes(proc.id)
+								? 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+								: 'border-input text-muted-foreground hover:border-blue-500/50'}"
 							onclick={() => (newProcessIds = toggleId(newProcessIds, proc.id))}
 						>
 							{proc.name}
@@ -768,14 +815,18 @@
 			<!-- Row 4: Allergen Warnings (toggle pills) -->
 			<fieldset>
 				<legend class="text-xs font-medium text-muted-foreground">
-					Allergen Warnings <span class="font-normal text-muted-foreground/70">(May have come in contact with...)</span>
+					Allergen Warnings <span class="font-normal text-muted-foreground/70"
+						>(May have come in contact with...)</span
+					>
 				</legend>
 				<div class="flex flex-wrap gap-1.5 pt-1">
 					{#each allAllergenWarnings as warning (warning.id)}
 						<button
 							type="button"
 							class="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors
-								{newAllergenIds.includes(warning.id) ? 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300' : 'border-input text-muted-foreground hover:border-orange-500/50'}"
+								{newAllergenIds.includes(warning.id)
+								? 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300'
+								: 'border-input text-muted-foreground hover:border-orange-500/50'}"
 							onclick={() => (newAllergenIds = toggleId(newAllergenIds, warning.id))}
 						>
 							{warning.name.replace(/^May contain /i, '')}
@@ -785,8 +836,10 @@
 			</fieldset>
 
 			<!-- Submit -->
-			<div class="flex justify-center pt-1">
-				<Button type="submit" disabled={newName.trim().length < 3} class="w-full max-w-md">Add Product</Button>
+			<div class="flex justify-center pt-1 pb-2">
+				<Button type="submit" disabled={newName.trim().length < 3} class="w-full max-w-md"
+					>Add Product</Button
+				>
 			</div>
 		</form>
 
@@ -813,18 +866,32 @@
 						{#each products as product (product.id)}
 							{@const isPending = pendingIds.has(product.id)}
 							{@const isFailed = failedIds.has(product.id)}
-								{@const rowEdits = edits[product.id]}
+							{@const rowEdits = edits[product.id]}
 							{@const isRowEditing = !!rowEdits}
 							{@const isActiveRow = activeEditor?.id === product.id}
 							{@const displayName = rowEdits?.name ?? product.name}
-							{@const displayBits = rowEdits?.bitIds ? allBits.filter((b) => rowEdits.bitIds!.includes(b.id)) : product.bits}
-							{@const displayProcesses = rowEdits?.processIds ? allProcesses.filter((p) => rowEdits.processIds!.includes(p.id)) : product.processes}
-							{@const displayAllergens = rowEdits?.allergenIds ? allAllergenWarnings.filter((a) => rowEdits.allergenIds!.includes(a.id)) : product.allergenWarnings}
+							{@const displayBits = rowEdits?.bitIds
+								? allBits.filter((b) => rowEdits.bitIds!.includes(b.id))
+								: product.bits}
+							{@const displayProcesses = rowEdits?.processIds
+								? allProcesses.filter((p) => rowEdits.processIds!.includes(p.id))
+								: product.processes}
+							{@const displayAllergens = rowEdits?.allergenIds
+								? allAllergenWarnings.filter((a) => rowEdits.allergenIds!.includes(a.id))
+								: product.allergenWarnings}
 							{@const displayUnitType = rowEdits?.unitType ?? product.unitType}
 							<Table.TableRow
-										class={isPending ? 'opacity-50' : isFailed ? 'bg-destructive/5' : isRowEditing ? '' : 'hover:bg-accent'}
-										style={isRowEditing ? 'background-color: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.15))' : ''}
-									>
+								class={isPending
+									? 'opacity-50'
+									: isFailed
+										? 'bg-destructive/5'
+										: isRowEditing
+											? ''
+											: 'hover:bg-accent'}
+								style={isRowEditing
+									? 'background-color: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.15))'
+									: ''}
+							>
 								<!-- Product Name -->
 								<Table.TableCell>
 									{#if isPending}
@@ -838,9 +905,15 @@
 										<Input
 											value={rowEdits?.name ?? product.name}
 											oninput={(e) => updateEditState(product.id, { name: e.currentTarget.value })}
-											onblur={() => { activeEditor = null; clearIfUnchanged(product.id); }}
+											onblur={() => {
+												activeEditor = null;
+												clearIfUnchanged(product.id);
+											}}
 											onkeydown={(e) => {
-												if (e.key === 'Enter') { activeEditor = null; clearIfUnchanged(product.id); }
+												if (e.key === 'Enter') {
+													activeEditor = null;
+													clearIfUnchanged(product.id);
+												}
 												if (e.key === 'Escape') cancelRow(product.id);
 											}}
 											disabled={saving[product.id]}
@@ -863,7 +936,11 @@
 										{#if product.bits.length > 0}
 											<div class="flex flex-wrap gap-0.5">
 												{#each product.bits as bit (bit.id)}
-													<Badge variant="outline" class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300">{bit.name}</Badge>
+													<Badge
+														variant="outline"
+														class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
+														>{bit.name}</Badge
+													>
 												{/each}
 											</div>
 										{:else}
@@ -878,15 +955,26 @@
 												class="h-7 w-full text-sm"
 												autofocus
 											/>
-											<div class="absolute top-full z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-background shadow-lg">
+											<div
+												class="absolute top-full z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-background shadow-lg"
+											>
 												{#each filteredEditBits as bit (bit.id)}
 													<button
 														type="button"
 														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
 														onmousedown={(e) => e.preventDefault()}
-														onclick={() => { const cur = edits[product.id]?.bitIds ?? []; updateEditState(product.id, { bitIds: toggleId(cur, bit.id) }); }}
+														onclick={() => {
+															const cur = edits[product.id]?.bitIds ?? [];
+															updateEditState(product.id, { bitIds: toggleId(cur, bit.id) });
+														}}
 													>
-														<span class="size-3.5 shrink-0 rounded border {rowEdits?.bitIds?.includes(bit.id) ? 'bg-green-600 border-green-600' : 'border-input'}"></span>
+														<span
+															class="size-3.5 shrink-0 rounded border {rowEdits?.bitIds?.includes(
+																bit.id
+															)
+																? 'border-green-600 bg-green-600'
+																: 'border-input'}"
+														></span>
 														<span>{bit.name}</span>
 														{#if bit.group}
 															<span class="ml-auto text-xs text-muted-foreground">{bit.group}</span>
@@ -906,10 +994,18 @@
 											{#if displayBits.length > 0}
 												<div class="flex flex-wrap gap-0.5">
 													{#each displayBits.slice(0, 4) as bit (bit.id)}
-														<Badge variant="outline" class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300">{bit.name}</Badge>
+														<Badge
+															variant="outline"
+															class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
+															>{bit.name}</Badge
+														>
 													{/each}
 													{#if displayBits.length > 4}
-														<Badge variant="outline" class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground">+{displayBits.length - 4}</Badge>
+														<Badge
+															variant="outline"
+															class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+															>+{displayBits.length - 4}</Badge
+														>
 													{/if}
 												</div>
 											{:else}
@@ -925,7 +1021,11 @@
 										{#if product.processes.length > 0}
 											<div class="flex flex-wrap gap-0.5">
 												{#each product.processes as proc (proc.id)}
-													<Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300">{proc.name}</Badge>
+													<Badge
+														variant="outline"
+														class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
+														>{proc.name}</Badge
+													>
 												{/each}
 											</div>
 										{:else}
@@ -940,7 +1040,11 @@
 												{#if displayProcesses.length > 0}
 													<div class="flex flex-wrap gap-0.5">
 														{#each displayProcesses as proc (proc.id)}
-															<Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300">{proc.name}</Badge>
+															<Badge
+																variant="outline"
+																class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
+																>{proc.name}</Badge
+															>
 														{/each}
 													</div>
 												{:else}
@@ -948,15 +1052,27 @@
 												{/if}
 											</button>
 											{#if isActiveRow && activeEditor.field === 'processes'}
-												<div class="absolute top-full z-10 mt-1 w-48 rounded-md border bg-background shadow-lg" bind:this={editFacetContainerEl}>
+												<div
+													class="absolute top-full z-10 mt-1 w-48 rounded-md border bg-background shadow-lg"
+													bind:this={editFacetContainerEl}
+												>
 													{#each allProcesses as proc (proc.id)}
 														<button
 															type="button"
 															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
 															onmousedown={(e) => e.preventDefault()}
-															onclick={() => { const cur = edits[product.id]?.processIds ?? []; updateEditState(product.id, { processIds: toggleId(cur, proc.id) }); }}
+															onclick={() => {
+																const cur = edits[product.id]?.processIds ?? [];
+																updateEditState(product.id, { processIds: toggleId(cur, proc.id) });
+															}}
 														>
-															<span class="size-3.5 shrink-0 rounded border {rowEdits?.processIds?.includes(proc.id) ? 'bg-blue-500 border-blue-500' : 'border-input'}"></span>
+															<span
+																class="size-3.5 shrink-0 rounded border {rowEdits?.processIds?.includes(
+																	proc.id
+																)
+																	? 'border-blue-500 bg-blue-500'
+																	: 'border-input'}"
+															></span>
 															<span>{proc.name}</span>
 														</button>
 													{/each}
@@ -972,7 +1088,11 @@
 										{#if product.allergenWarnings.length > 0}
 											<div class="flex flex-wrap gap-0.5">
 												{#each product.allergenWarnings as warning (warning.id)}
-													<Badge variant="outline" class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300">{warning.name.replace(/^May contain /i, '')}</Badge>
+													<Badge
+														variant="outline"
+														class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
+														>{warning.name.replace(/^May contain /i, '')}</Badge
+													>
 												{/each}
 											</div>
 										{:else}
@@ -987,7 +1107,11 @@
 												{#if displayAllergens.length > 0}
 													<div class="flex flex-wrap gap-0.5">
 														{#each displayAllergens as warning (warning.id)}
-															<Badge variant="outline" class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300">{warning.name.replace(/^May contain /i, '')}</Badge>
+															<Badge
+																variant="outline"
+																class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
+																>{warning.name.replace(/^May contain /i, '')}</Badge
+															>
 														{/each}
 													</div>
 												{:else}
@@ -995,15 +1119,29 @@
 												{/if}
 											</button>
 											{#if isActiveRow && activeEditor.field === 'allergens'}
-												<div class="absolute top-full z-10 mt-1 w-52 rounded-md border bg-background shadow-lg" bind:this={editFacetContainerEl}>
+												<div
+													class="absolute top-full z-10 mt-1 w-52 rounded-md border bg-background shadow-lg"
+													bind:this={editFacetContainerEl}
+												>
 													{#each allAllergenWarnings as warning (warning.id)}
 														<button
 															type="button"
 															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
 															onmousedown={(e) => e.preventDefault()}
-															onclick={() => { const cur = edits[product.id]?.allergenIds ?? []; updateEditState(product.id, { allergenIds: toggleId(cur, warning.id) }); }}
+															onclick={() => {
+																const cur = edits[product.id]?.allergenIds ?? [];
+																updateEditState(product.id, {
+																	allergenIds: toggleId(cur, warning.id)
+																});
+															}}
 														>
-															<span class="size-3.5 shrink-0 rounded border {rowEdits?.allergenIds?.includes(warning.id) ? 'bg-orange-500 border-orange-500' : 'border-input'}"></span>
+															<span
+																class="size-3.5 shrink-0 rounded border {rowEdits?.allergenIds?.includes(
+																	warning.id
+																)
+																	? 'border-orange-500 bg-orange-500'
+																	: 'border-input'}"
+															></span>
 															<span>{warning.name.replace(/^May contain /i, '')}</span>
 														</button>
 													{/each}
@@ -1026,12 +1164,18 @@
 												{unitTypeLabel(displayUnitType)}
 											</button>
 											{#if isActiveRow && activeEditor.field === 'unitType'}
-												<div class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-background shadow-lg" bind:this={editFacetContainerEl}>
+												<div
+													class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-background shadow-lg"
+													bind:this={editFacetContainerEl}
+												>
 													{#each UNIT_TYPES as unit (unit.value)}
-														{@const isSelected = (rowEdits?.unitType ?? product.unitType ?? '') === unit.value}
+														{@const isSelected =
+															(rowEdits?.unitType ?? product.unitType ?? '') === unit.value}
 														<button
 															type="button"
-															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected ? 'font-medium' : ''}"
+															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected
+																? 'font-medium'
+																: ''}"
 															onmousedown={(e) => e.preventDefault()}
 															onclick={() => updateEditState(product.id, { unitType: unit.value })}
 														>
@@ -1086,7 +1230,13 @@
 													Save
 												{/if}
 											</Button>
-											<Button size="sm" variant="ghost" disabled={saving[product.id]} onmousedown={(e: MouseEvent) => e.stopPropagation()} onclick={() => cancelRow(product.id)}>
+											<Button
+												size="sm"
+												variant="ghost"
+												disabled={saving[product.id]}
+												onmousedown={(e: MouseEvent) => e.stopPropagation()}
+												onclick={() => cancelRow(product.id)}
+											>
 												Cancel
 											</Button>
 										</div>
