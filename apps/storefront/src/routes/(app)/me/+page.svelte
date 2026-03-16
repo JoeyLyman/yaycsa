@@ -3,6 +3,7 @@
 	import { becomeSeller } from '$lib/api/shop/sellers.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { Input } from '$lib/components/bits/input';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 
 	let { data } = $props();
@@ -201,13 +202,12 @@
 					<label for="shopName" class="text-sm font-medium leading-none">
 						Business name
 					</label>
-					<input
+					<Input
 						{...becomeSeller.fields.shopName.as('text')}
 						id="shopName"
 						placeholder="My Farm"
 						autocomplete="organization"
 						oninput={sanitizeNameInput}
-						class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 					/>
 				</div>
 				{#if customizingSlug}
@@ -223,13 +223,12 @@
 								}}
 							>Close</button>
 						</div>
-						<input
+						<Input
 							{...becomeSeller.fields.slug.as('text')}
 							id="slug"
 							placeholder={generatedSlug}
 							autocomplete="off"
 							oninput={sanitizeSlugInput}
-							class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 						/>
 					</div>
 				{:else}

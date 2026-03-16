@@ -17,6 +17,7 @@
 	import { Input } from '$lib/components/bits/input';
 	import * as Table from '$lib/components/bits/table';
 
+
 	/** All available unit type options. */
 	const UNIT_TYPES = [
 		{ value: '', label: 'None' },
@@ -654,13 +655,13 @@
 					<label class="text-xs font-medium text-muted-foreground">Unit Type</label>
 					<button
 						type="button"
-						class="flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+						class="flex h-9 w-full items-center rounded-md border border-input bg-background dark:bg-input/30 px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 						onclick={() => (unitTypeDropdownOpen = !unitTypeDropdownOpen)}
 					>
 						{unitTypeLabel(newUnitType)}
 					</button>
 					{#if unitTypeDropdownOpen}
-						<div class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-background shadow-lg">
+						<div class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-popover shadow-lg">
 							{#each UNIT_TYPES as unit (unit.value)}
 								{@const isSelected = newUnitType === unit.value}
 								<button
@@ -725,7 +726,7 @@
 					{#if bitsDropdownOpen}
 						<!-- Dropdown list -->
 						<div
-							class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-background shadow-lg"
+							class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-popover shadow-lg"
 						>
 							{#if filteredBits.length === 0 && !canCreateBit}
 								<p class="px-3 py-2 text-xs text-muted-foreground">No matches</p>
@@ -870,6 +871,7 @@
 								? allAllergenWarnings.filter((a) => rowEdits.allergenIds!.includes(a.id))
 								: product.allergenWarnings}
 							{@const displayUnitType = rowEdits?.unitType ?? product.unitType}
+
 							<Table.TableRow
 								class={isPending
 									? 'opacity-50'
@@ -946,7 +948,7 @@
 												autofocus
 											/>
 											<div
-												class="absolute top-full z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-background shadow-lg"
+												class="absolute top-full z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-popover shadow-lg"
 											>
 												{#each filteredEditBits as bit (bit.id)}
 													<button
@@ -1043,7 +1045,7 @@
 											</button>
 											{#if isActiveRow && activeEditor.field === 'processes'}
 												<div
-													class="absolute top-full z-10 mt-1 w-48 rounded-md border bg-background shadow-lg"
+													class="absolute top-full z-10 mt-1 w-48 rounded-md border bg-popover shadow-lg"
 													bind:this={editFacetContainerEl}
 												>
 													{#each allProcesses as proc (proc.id)}
@@ -1110,7 +1112,7 @@
 											</button>
 											{#if isActiveRow && activeEditor.field === 'allergens'}
 												<div
-													class="absolute top-full z-10 mt-1 w-52 rounded-md border bg-background shadow-lg"
+													class="absolute top-full z-10 mt-1 w-52 rounded-md border bg-popover shadow-lg"
 													bind:this={editFacetContainerEl}
 												>
 													{#each allAllergenWarnings as warning (warning.id)}
@@ -1155,7 +1157,7 @@
 											</button>
 											{#if isActiveRow && activeEditor.field === 'unitType'}
 												<div
-													class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-background shadow-lg"
+													class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-popover shadow-lg"
 													bind:this={editFacetContainerEl}
 												>
 													{#each UNIT_TYPES as unit (unit.value)}

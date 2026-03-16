@@ -2,6 +2,7 @@
 	import { requestPasswordReset } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { Input } from '$lib/components/bits/input';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 </script>
 
@@ -25,12 +26,11 @@
 			<form {...requestPasswordReset} class="space-y-4">
 				<div class="space-y-2">
 					<label for="email" class="text-sm font-medium leading-none">Email</label>
-					<input
+					<Input
 						{...requestPasswordReset.fields.email.as('email')}
 						id="email"
 						placeholder="you@example.com"
 						autocomplete="email"
-						class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 					/>
 					{#each requestPasswordReset.fields.email.issues() as issue}
 						<p class="text-destructive text-sm">{issue.message}</p>

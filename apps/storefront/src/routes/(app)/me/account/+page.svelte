@@ -3,6 +3,7 @@
 	import { requestUpdateEmail, updatePassword, logout } from '$lib/api/shop/auth.remote';
 	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import { Input } from '$lib/components/bits/input';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import Sun from '@lucide/svelte/icons/sun';
 	import Moon from '@lucide/svelte/icons/moon';
@@ -84,11 +85,10 @@
 				<form {...requestUpdateEmail} class="space-y-4">
 					<div class="space-y-2">
 						<label for="currentPasswordEmail" class="text-sm font-medium leading-none">Current password</label>
-						<input
+						<Input
 							{...requestUpdateEmail.fields._currentPassword.as('password')}
 							id="currentPasswordEmail"
 							autocomplete="current-password"
-							class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 						/>
 						{#each requestUpdateEmail.fields._currentPassword.issues() as issue}
 							<p class="text-destructive text-sm">{issue.message}</p>
@@ -96,11 +96,10 @@
 					</div>
 					<div class="space-y-2">
 						<label for="newEmail" class="text-sm font-medium leading-none">New email</label>
-						<input
+						<Input
 							{...requestUpdateEmail.fields.newEmail.as('email')}
 							id="newEmail"
 							autocomplete="email"
-							class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 						/>
 						{#each requestUpdateEmail.fields.newEmail.issues() as issue}
 							<p class="text-destructive text-sm">{issue.message}</p>
@@ -126,11 +125,10 @@
 				<form {...updatePassword} class="space-y-4">
 					<div class="space-y-2">
 						<label for="currentPassword" class="text-sm font-medium leading-none">Current password</label>
-						<input
+						<Input
 							{...updatePassword.fields._currentPassword.as('password')}
 							id="currentPassword"
 							autocomplete="current-password"
-							class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 						/>
 						{#each updatePassword.fields._currentPassword.issues() as issue}
 							<p class="text-destructive text-sm">{issue.message}</p>
@@ -138,11 +136,10 @@
 					</div>
 					<div class="space-y-2">
 						<label for="newPassword" class="text-sm font-medium leading-none">New password</label>
-						<input
+						<Input
 							{...updatePassword.fields._newPassword.as('password')}
 							id="newPassword"
 							autocomplete="new-password"
-							class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 						/>
 						{#each updatePassword.fields._newPassword.issues() as issue}
 							<p class="text-destructive text-sm">{issue.message}</p>
@@ -150,11 +147,10 @@
 					</div>
 					<div class="space-y-2">
 						<label for="confirmPassword" class="text-sm font-medium leading-none">Confirm new password</label>
-						<input
+						<Input
 							{...updatePassword.fields._confirmPassword.as('password')}
 							id="confirmPassword"
 							autocomplete="new-password"
-							class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
 						/>
 						{#each updatePassword.fields._confirmPassword.issues() as issue}
 							<p class="text-destructive text-sm">{issue.message}</p>
