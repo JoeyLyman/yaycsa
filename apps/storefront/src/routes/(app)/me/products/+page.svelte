@@ -16,7 +16,7 @@
 	import { Badge } from '$lib/components/bits/badge';
 	import { Input } from '$lib/components/bits/input';
 	import * as Table from '$lib/components/bits/table';
-
+	import * as Select from '$lib/components/bits/select';
 
 	/** All available unit type options. */
 	const UNIT_TYPES = [
@@ -31,7 +31,7 @@
 		{ value: 'gal', label: 'Gallon (gal)' },
 		{ value: 'cs', label: 'Case (cs)' },
 		{ value: 'bu', label: 'Bushel (bu)' }
-	] as const;
+	];
 
 	/**
 	 * Local mutable copy of products.
@@ -84,12 +84,6 @@
 
 	/** Whether a new bit is currently being created via the Admin API. */
 	let creatingBit = $state(false);
-
-	/** Whether the unit type dropdown is open in the create form. */
-	let unitTypeDropdownOpen = $state(false);
-
-	/** Reference to the unit type dropdown container for click-outside detection. */
-	let unitTypeContainerEl: HTMLDivElement | null = $state(null);
 
 	/**
 	 * Reference to the bits dropdown container for click-outside detection.
@@ -256,13 +250,6 @@
 		}
 	}
 
-	/** Close the unit type dropdown in the create form when clicking outside it. */
-	function handleUnitTypeClickOutside(event: MouseEvent) {
-		if (unitTypeContainerEl && !unitTypeContainerEl.contains(event.target as Node)) {
-			unitTypeDropdownOpen = false;
-		}
-	}
-
 	$effect(() => {
 		if (bitsDropdownOpen) {
 			document.addEventListener('mousedown', handleClickOutside);
@@ -271,16 +258,9 @@
 	});
 
 	$effect(() => {
-		if (unitTypeDropdownOpen) {
-			document.addEventListener('mousedown', handleUnitTypeClickOutside);
-			return () => document.removeEventListener('mousedown', handleUnitTypeClickOutside);
-		}
-	});
-
-	$effect(() => {
 		if (
 			activeEditor &&
-			['bits', 'processes', 'allergens', 'unitType'].includes(activeEditor.field)
+			['bits', 'processes', 'allergens'].includes(activeEditor.field)
 		) {
 			document.addEventListener('mousedown', handleEditFacetClickOutside);
 			return () => document.removeEventListener('mousedown', handleEditFacetClickOutside);
@@ -651,40 +631,16 @@
 						placeholder="e.g. Mixed Salad Greens"
 					/>
 				</div>
-				<div class="relative w-40" bind:this={unitTypeContainerEl}>
+				<div class="w-40">
 					<label class="text-xs font-medium text-muted-foreground">Unit Type</label>
-					<button
-						type="button"
-						class="flex h-9 w-full items-center rounded-md border border-input bg-background dark:bg-input/30 px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-						onclick={() => (unitTypeDropdownOpen = !unitTypeDropdownOpen)}
-					>
-						{unitTypeLabel(newUnitType)}
-					</button>
-					{#if unitTypeDropdownOpen}
-						<div class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-popover shadow-lg">
+					<Select.Root type="single" items={UNIT_TYPES} bind:value={newUnitType}>
+						<Select.Trigger>{unitTypeLabel(newUnitType)}</Select.Trigger>
+						<Select.Content>
 							{#each UNIT_TYPES as unit (unit.value)}
-								{@const isSelected = newUnitType === unit.value}
-								<button
-									type="button"
-									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected
-										? 'font-medium'
-										: ''}"
-									onmousedown={(e) => e.preventDefault()}
-									onclick={() => {
-										newUnitType = unit.value;
-										unitTypeDropdownOpen = false;
-									}}
-								>
-									{#if isSelected}
-										<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
-									{:else}
-										<span class="size-3.5 shrink-0"></span>
-									{/if}
-									<span>{unit.label}</span>
-								</button>
+								<Select.Item value={unit.value} label={unit.label}>{unit.label}</Select.Item>
 							{/each}
-						</div>
-					{/if}
+						</Select.Content>
+					</Select.Root>
 				</div>
 			</div>
 
@@ -1148,40 +1104,24 @@
 									{#if isPending || isFailed}
 										<span class="text-muted-foreground">{unitTypeLabel(product.unitType)}</span>
 									{:else}
-										<div class="relative">
-											<button
-												class="w-full cursor-pointer text-left text-muted-foreground"
-												onclick={() => openEditor(product, 'unitType')}
-											>
+										<Select.Root
+											type="single"
+											items={UNIT_TYPES}
+											value={displayUnitType ?? ''}
+											onValueChange={(v) => {
+												openEditor(product, 'unitType');
+												updateEditState(product.id, { unitType: v });
+											}}
+										>
+											<Select.Trigger class="border-none bg-transparent shadow-none text-muted-foreground">
 												{unitTypeLabel(displayUnitType)}
-											</button>
-											{#if isActiveRow && activeEditor.field === 'unitType'}
-												<div
-													class="absolute top-full z-10 mt-1 w-44 rounded-md border bg-popover shadow-lg"
-													bind:this={editFacetContainerEl}
-												>
-													{#each UNIT_TYPES as unit (unit.value)}
-														{@const isSelected =
-															(rowEdits?.unitType ?? product.unitType ?? '') === unit.value}
-														<button
-															type="button"
-															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent {isSelected
-																? 'font-medium'
-																: ''}"
-															onmousedown={(e) => e.preventDefault()}
-															onclick={() => updateEditState(product.id, { unitType: unit.value })}
-														>
-															{#if isSelected}
-																<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
-															{:else}
-																<span class="size-3.5 shrink-0"></span>
-															{/if}
-															<span>{unit.label}</span>
-														</button>
-													{/each}
-												</div>
-											{/if}
-										</div>
+											</Select.Trigger>
+											<Select.Content>
+												{#each UNIT_TYPES as unit (unit.value)}
+													<Select.Item value={unit.value} label={unit.label}>{unit.label}</Select.Item>
+												{/each}
+											</Select.Content>
+										</Select.Root>
 									{/if}
 								</Table.TableCell>
 
