@@ -17,7 +17,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
-!.env.test
 
 # Vite
 vite.config.js.timestamp-*
@@ -31,6 +30,11 @@ vite.config.ts.timestamp-*
 
 # Playwright MCP logs
 .playwright-mcp/
+
+# Playwright test suite artifacts (auth state, reports, results)
+apps/storefront/.playwright/
+apps/storefront/playwright-report/
+apps/storefront/test-results/
 
 # Test emails
 apps/server/static/email/test-emails/

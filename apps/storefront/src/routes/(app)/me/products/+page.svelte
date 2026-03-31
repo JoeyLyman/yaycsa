@@ -784,7 +784,7 @@
 
 			<!-- Submit -->
 			<div class="flex justify-center pt-1 pb-2">
-				<Button type="submit" disabled={newName.trim().length < 3} class="w-full max-w-md"
+				<Button type="submit" disabled={newName.trim().length < 3} class="w-full max-w-md" data-testid="add-product-submit"
 					>Add Product</Button
 				>
 			</div>
@@ -797,7 +797,7 @@
 				<p class="text-muted-foreground">No products yet. Add your first product above.</p>
 			</div>
 		{:else}
-			<div class="overflow-visible rounded-md border">
+			<div class="overflow-visible rounded-md border" data-testid="products-table">
 				<Table.Table class="table-fixed">
 					<Table.TableHeader>
 						<Table.TableRow>

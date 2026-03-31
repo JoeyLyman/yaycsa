@@ -40,7 +40,7 @@
 	</Card.Header>
 	<Card.Content>
 		{#if errorMessage}
-			<p class="text-destructive text-sm">{errorMessage}</p>
+			<p class="text-destructive text-sm" data-testid="login-error">{errorMessage}</p>
 		{/if}
 		<form
 			{...login.enhance(async ({ submit }) => {
@@ -98,7 +98,7 @@
 					<p class="text-destructive text-sm">{issue.message}</p>
 				{/each}
 			</div>
-			<Button type="submit" class="w-full" disabled={!!login.pending || redirecting}>
+			<Button type="submit" class="w-full" disabled={!!login.pending || redirecting} data-testid="login-submit">
 				{#if login.pending || redirecting}<SpinnerSun class="mr-2" />{/if}
 				{login.pending || redirecting ? 'Logging in...' : 'Log in'}
 			</Button>

@@ -34,7 +34,7 @@
 </script>
 
 {#if registered}
-	<Card.Root>
+	<Card.Root data-testid="register-success">
 		<Card.Header>
 			<Card.Title class="text-2xl">Check your email</Card.Title>
 			<Card.Description>
@@ -64,7 +64,7 @@
 		</Card.Header>
 		<Card.Content>
 			{#if errorMessage}
-				<p class="text-destructive mb-4 text-sm">{errorMessage}</p>
+				<p class="text-destructive mb-4 text-sm" data-testid="register-error">{errorMessage}</p>
 			{/if}
 			<form
 				{...register.enhance(async ({ submit }) => {
@@ -128,7 +128,7 @@
 						<p class="text-destructive text-sm">{issue.message}</p>
 					{/each}
 				</div>
-				<Button type="submit" class="w-full" disabled={!!register.pending}>
+				<Button type="submit" class="w-full" disabled={!!register.pending} data-testid="register-submit">
 					{#if register.pending}<SpinnerSun class="mr-2" />{/if}
 					{register.pending ? 'Creating account...' : 'Create account'}
 				</Button>

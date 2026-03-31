@@ -97,15 +97,40 @@ You MUST use this tool whenever writing Svelte code before sending it to the use
 Generates a Svelte Playground link with the provided code.
 After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
 
+## Implementation Order of Operations
+
+Follow this sequence for **every feature implementation**, automatically — no prompting needed:
+
+1. **Read the docs** — scan `apps/docs/library/yaycsa/features/` and `/plugins/` for relevant specs before writing any code.
+
+2. **Implement** — write the code.
+
+3. **Self-review pass** — before running tests, review the diff with fresh eyes:
+   - **Security:** no SQL injection, XSS, exposed secrets, or unsanitized user input
+   - **Data conventions:** `timestamptz` for dates, cents for money, no derived/denormalized fields, Admin API not raw SQL, channel assignment rules
+   - **Design:** mobile-first, table-based UI, no unnecessary chrome or extra navigation (see Design Conventions)
+   - **Svelte:** run `svelte-autofixer` on any new `.svelte` files
+
+4. **Regression suite** — run `cd apps/storefront && npx playwright test` to catch regressions in existing flows. Fix failures before continuing.
+
+5. **Smoke test** — use MCP Playwright tools to test the specific changed pages interactively:
+   - Check `git diff` first to know exactly what changed, then focus testing on those areas
+   - Test the happy path end-to-end and at least one error case
+   - Check console for errors (`browser_console_messages`)
+
+6. **Fix and hand off** — fix any bugs found, then declare done.
+
 ## Playwright Testing
 
-**After every plan implementation**, run a Playwright smoke test before handing off to Joe. This catches bugs faster than manual clicking.
+**Regression suite** lives in `apps/storefront/tests/`. Run it with:
 
-- Navigate to the affected pages, interact with forms/buttons, verify the expected outcomes
-- Test the happy path end-to-end (e.g., fill form → submit → verify redirect/result)
-- Test at least one error case if applicable (e.g., duplicate slug, missing required field)
-- Check console for errors (`browser_console_messages`)
-- Fix any bugs found during testing before declaring the implementation complete
+```bash
+cd apps/storefront && npx playwright test
+```
+
+The suite self-manages test users (creates via Admin API, deletes after). No credentials needed. Optionally set `TEST_SELLER_SLUG` in `apps/storefront/.env.test` to override the default (`gathering-together-farm`). Both servers must be running (`npm run dev`).
+
+**Smoke tests** (MCP tools) are used for interactive testing of the specific pages changed in a given implementation. These complement the regression suite — they're fast and context-aware, while the suite catches regressions.
 
 The storefront runs at `http://localhost:5180` and the Vendure server at `http://localhost:3000`. Both must be running for Playwright tests (Joe starts them with `npm run dev`).
 

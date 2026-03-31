@@ -1,38 +1,96 @@
-# sv
+# YAYCSA
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Local food marketplace connecting farms, restaurants, grocery stores, and distributors with wholesale buyers. Multi-vendor from day one.
 
-## Creating a project
+## Stack
 
-If you're seeing this, you've probably already done this step. Congrats!
+| Layer | Tech |
+|---|---|
+| Backend | [Vendure](https://vendure.io) (Node.js e-commerce framework) |
+| Frontend | [SvelteKit](https://kit.svelte.dev) + Svelte 5 |
+| Database | [Supabase](https://supabase.com) cloud Postgres (Supabase session pooler, IPv4) |
+| UI components | [shadcn-svelte](https://shadcn-svelte.com) + Tailwind CSS v4 |
+| GraphQL client | [gql.tada](https://gql-tada.0no.co) (compile-time type-safe, no codegen step) |
+| Testing | [Playwright](https://playwright.dev) |
+| Planning AI | Wally (Opus 4.6, accessed via Discord) |
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Monorepo structure
 
-# create a new project in my-app
-npx sv create my-app
+```
+apps/
+  server/      — Vendure backend (port 3000, admin dashboard port 3001)
+  storefront/  — SvelteKit frontend (port 5180)
+  docs/        — shared git submodule: architecture docs + project todo
 ```
 
-## Developing
+`apps/docs/` is a shared submodule — Joe plans features with Wally on Discord, results get distilled into the docs here. These are the single source of truth for architecture and feature specs.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Dev setup
 
-```sh
+```bash
+# Install dependencies
+npm install
+
+# Start both servers (concurrently)
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+**First time only** — set up Playwright test browser:
 
-To create a production version of your app:
-
-```sh
-npm run build
+```bash
+cd apps/storefront
+npm install
+npx playwright install chromium
 ```
 
-You can preview the production build with `npm run preview`.
+## Running tests
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Requires both servers running (`npm run dev`). The suite creates and deletes its own test user via the Vendure Admin API — no credentials needed.
+
+```bash
+# From apps/storefront/
+npx playwright test          # full regression suite
+npx playwright test --ui     # interactive UI mode
+npx playwright test auth     # specific spec file
+
+# Or from the monorepo root
+npm run test -w storefront
+```
+
+## Docs submodule
+
+Pull latest before starting work:
+
+```bash
+cd apps/docs && git pull origin main && cd ../..
+```
+
+Key locations:
+- `apps/docs/library/yaycsa/vision.md` — project vision + feature index
+- `apps/docs/library/yaycsa/features/` — feature specs
+- `apps/docs/library/yaycsa/plugins/` — plugin specs
+- `apps/docs/todos/yaycsa.md` — project todo / phase tracker
+
+Push after updating docs:
+
+```bash
+cd apps/docs && git add -A && git commit -m "Update: ..." && git push && cd ../..
+```
+
+## Vendure
+
+```bash
+# Run Vendure CLI commands from apps/server/
+cd apps/server && npx vendure <command>
+
+# Admin login
+# http://localhost:3001 — superadmin / superadmin
+```
+
+## Schema codegen (storefront)
+
+Run after changing GraphQL queries or when the Vendure schema changes:
+
+```bash
+cd apps/storefront && npm run generate-schema
+```

@@ -166,7 +166,7 @@
 	</Card.Root>
 
 	<div class="pt-6 border-t">
-		<Button variant="destructive" disabled={loggingOut} onclick={handleLogout}>
+		<Button variant="destructive" disabled={loggingOut} onclick={handleLogout} data-testid="logout-btn">
 			{#if loggingOut}<SpinnerSun class="mr-2" />{/if}
 			{loggingOut ? 'Logging out...' : 'Log out'}
 		</Button>

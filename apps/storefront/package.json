@@ -14,13 +14,16 @@
 		"lint": "prettier --check . && eslint .",
 		"lint:fix": "prettier --write . && eslint --fix .",
 		"ui": "npx shadcn-svelte@latest",
-		"generate-schema": "gql.tada generate-schema 'http://localhost:3000/shop-api' --output ./schema.graphql && gql.tada generate-output"
+		"generate-schema": "gql.tada generate-schema 'http://localhost:3000/shop-api' --output ./schema.graphql && gql.tada generate-output",
+		"test": "playwright test",
+		"test:ui": "playwright test --ui"
 	},
 	"devDependencies": {
 		"@0no-co/graphqlsp": "^1.15.2",
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
 		"@lucide/svelte": "^0.575.0",
+		"@playwright/test": "^1.49.0",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.53.3",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
@@ -29,6 +32,7 @@
 		"@tailwindcss/vite": "^4.2.1",
 		"@types/node": "^24",
 		"bits-ui": "^1.8.0",
+		"dotenv": "^16.4.5",
 		"eslint": "^9.39.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.13.1",
