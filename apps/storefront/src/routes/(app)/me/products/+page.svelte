@@ -12,14 +12,14 @@
 		type FacetValueInfo
 	} from '$lib/api/admin/products.remote';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
-	import { Button } from '$lib/components/bits/button';
-	import { Badge } from '$lib/components/bits/badge';
-	import { Input } from '$lib/components/bits/input';
-	import * as Table from '$lib/components/bits/table';
-	import * as Select from '$lib/components/bits/select';
+	import { AddProductForm } from '$lib/components/bundles/add-product-form';
+	import { ProductList } from '$lib/components/bundles/product-list';
+	import { BulkToolbarProducts } from '$lib/components/bundles/bulk-toolbar-products';
+	import type { InputSelectItem } from '$lib/components/blocks/input-select';
+	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 
 	/** All available unit type options. */
-	const UNIT_TYPES = [
+	const UNIT_TYPES: InputSelectItem[] = [
 		{ value: '', label: 'None' },
 		{ value: 'ct', label: 'Count (ct)' },
 		{ value: 'lb', label: 'Pound (lb)' },
@@ -32,6 +32,13 @@
 		{ value: 'cs', label: 'Case (cs)' },
 		{ value: 'bu', label: 'Bushel (bu)' }
 	];
+
+	/** Convert a FacetValueInfo to the generic InputSelectItem format. */
+	function toItem(f: FacetValueInfo): InputSelectItem {
+		return { value: f.id, label: f.name, group: f.group };
+	}
+
+	// ─── Product state ───
 
 	/**
 	 * Local mutable copy of products.
@@ -47,52 +54,20 @@
 
 	// ─── Taxonomy data (fetched once, shared across form + editing) ───
 
-	/** All available bits (ingredients/components) from the bits facet. */
-	let allBits: FacetValueInfo[] = $state([]);
+	/** Raw taxonomy — FacetValueInfo arrays from the server. */
+	let rawBits: FacetValueInfo[] = $state([]);
+	let rawProcesses: FacetValueInfo[] = $state([]);
+	let rawAllergenWarnings: FacetValueInfo[] = $state([]);
 
-	/** All available processing types from the process facet. */
-	let allProcesses: FacetValueInfo[] = $state([]);
+	/** Taxonomy as InputSelectItem arrays for the components. */
+	let allBits = $derived(rawBits.map(toItem));
+	let allProcesses = $derived(rawProcesses.map(toItem));
+	let allAllergenWarnings = $derived(rawAllergenWarnings.map(toItem));
 
-	/** All available allergen warnings from the allergen-warning facet. */
-	let allAllergenWarnings: FacetValueInfo[] = $state([]);
+	/** Default process ID to pre-select "Raw / Fresh" in the add form. */
+	let defaultProcessId = $derived(rawProcesses.find((p) => p.code === 'raw')?.id);
 
-	// ─── Add product form state ───
-
-	/** Name input for the add-product row. */
-	let newName = $state('');
-
-	/** Unit type selection for the add-product row. */
-	let newUnitType = $state('');
-
-	/** Selected bit (ingredient) FacetValue IDs for the new product. */
-	let newBitIds: string[] = $state([]);
-
-	/** Selected process FacetValue IDs for the new product. */
-	let newProcessIds: string[] = $state([]);
-
-	/** Selected allergen warning FacetValue IDs for the new product. */
-	let newAllergenIds: string[] = $state([]);
-
-	/** Search filter for the bits typeahead in the create form. */
-	let bitsSearch = $state('');
-
-	/**
-	 * Whether the bits dropdown is open in the create form.
-	 * Toggled by clicking the search input, closed by clicking outside.
-	 */
-	let bitsDropdownOpen = $state(false);
-
-	/** Whether a new bit is currently being created via the Admin API. */
-	let creatingBit = $state(false);
-
-	/**
-	 * Reference to the bits dropdown container for click-outside detection.
-	 * When a click occurs outside this element, the dropdown closes.
-	 */
-	let bitsContainerEl: HTMLDivElement | null = $state(null);
-
-	/** Reference to the create form's bits search input for re-focusing after selection. */
-	let bitsSearchInput: HTMLInputElement | null = $state(null);
+	// ─── Optimistic create state ───
 
 	/** Counter for generating unique temporary IDs for optimistic inserts. */
 	let tempIdCounter = 0;
@@ -101,198 +76,21 @@
 	 * Set of temporary IDs for products that are currently being created on the server.
 	 * Products with these IDs show an inline loading state in the table.
 	 */
-	let pendingIds: Set<string> = $state(new Set());
+	let pendingIds = new SvelteSet<string>();
 
 	/**
 	 * Map of temporary IDs to error messages for products that failed to create.
 	 * Products with these IDs show an inline error state with a retry option.
 	 */
-	let failedIds: Map<string, string> = $state(new Map());
+	let failedIds = new SvelteMap<string, string>();
 
-	// ─── Inline editing state ───
-	// Multiple rows can have pending edits simultaneously.
-	// Only one field editor (input/dropdown) is open at a time.
+	// ─── Bulk selection state ───
 
-	/** Accumulated changes per product. Key = product ID. */
-	interface EditState {
-		name?: string;
-		unitType?: string;
-		bitIds?: string[];
-		processIds?: string[];
-		allergenIds?: string[];
-	}
+	/** Set of product IDs selected for bulk operations. */
+	let selectedIds: Set<string> = $state(new Set());
 
-	/**
-	 * Map of product ID → pending edits for that row.
-	 * Rows in this map show Save/Cancel and a highlight background.
-	 */
-	let edits: Record<string, EditState> = $state({});
-
-	/**
-	 * Which field editor is currently open (only one at a time).
-	 * null when no input/dropdown is visible.
-	 */
-	let activeEditor: {
-		id: string;
-		field: 'name' | 'unitType' | 'bits' | 'processes' | 'allergens';
-	} | null = $state(null);
-
-	/** Search filter for the bits typeahead when editing an existing product's bits. */
-	let editBitsSearch = $state('');
-
-	/** Reference to the edit bits search input for re-focusing after selection. */
-	let editBitsInput: HTMLInputElement | null = $state(null);
-
-	/**
-	 * Map of product ID → true for rows currently being saved.
-	 * Uses a $state record instead of SvelteSet because SvelteSet.has()
-	 * doesn't reliably trigger re-renders inside {#each} blocks.
-	 */
-	let saving: Record<string, boolean> = $state({});
-
-	/**
-	 * Reference to the edit facet dropdown container for click-outside detection.
-	 * Bound to whichever facet dropdown is currently open.
-	 */
-	let editFacetContainerEl: HTMLDivElement | null = $state(null);
-
-	/** Update the edit state for a product (immutable — triggers reactivity). */
-	function updateEditState(productId: string, patch: Partial<EditState>) {
-		const current = edits[productId] ?? {};
-		edits[productId] = { ...current, ...patch };
-	}
-
-	// ─── Delete state ───
-
-	/** Product ID pending delete confirmation. */
-	let confirmDeleteId: string | null = $state(null);
-
-	/** Whether a delete is in flight. */
-	let deleting = $state(false);
-
-	// ─── Derived: filtered bits for the typeahead dropdown ───
-
-	/**
-	 * Bits filtered by the search query, grouped by food group.
-	 * Only shown in the create form dropdown.
-	 */
-	let filteredBits = $derived.by(() => {
-		const q = bitsSearch.toLowerCase().trim();
-		const filtered = q
-			? allBits.filter(
-					(b) => b.name.toLowerCase().includes(q) || (b.group ?? '').toLowerCase().includes(q)
-				)
-			: allBits;
-		return filtered.slice(0, 50); // cap at 50 results for performance
-	});
-
-	/**
-	 * Normalize a bit name to Title Case, letters/numbers/spaces/ampersands only.
-	 * Mirrors the server-side normalization so the preview matches what gets created.
-	 */
-	function normalizeBitName(raw: string): string {
-		return raw
-			.replace(/[^a-zA-Z0-9\s&]/g, ' ')
-			.replace(/\s+/g, ' ')
-			.trim()
-			.split(' ')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-			.join(' ');
-	}
-
-	/**
-	 * The normalized version of the current search term, ready for display in
-	 * the "Create" button. Empty string when the search is too short.
-	 */
-	let normalizedBitName = $derived(
-		bitsSearch.trim().length >= 2 ? normalizeBitName(bitsSearch) : ''
-	);
-
-	/**
-	 * Whether the current search term can be created as a new bit.
-	 * True when the normalized name has no exact match in allBits.
-	 */
-	let canCreateBit = $derived.by(() => {
-		if (!normalizedBitName) return false;
-		return !allBits.some((b) => b.name.toLowerCase() === normalizedBitName.toLowerCase());
-	});
-
-	// ─── Derived: filtered bits for the edit dropdown ───
-
-	/**
-	 * Bits filtered by the edit search query.
-	 * Only shown when editing an existing product's bits column.
-	 */
-	let filteredEditBits = $derived.by(() => {
-		const q = editBitsSearch.toLowerCase().trim();
-		const filtered = q
-			? allBits.filter(
-					(b) => b.name.toLowerCase().includes(q) || (b.group ?? '').toLowerCase().includes(q)
-				)
-			: allBits;
-		return filtered.slice(0, 50);
-	});
-
-	// ─── Click-outside handlers for dropdowns ───
-
-	function handleClickOutside(event: MouseEvent) {
-		if (bitsContainerEl && !bitsContainerEl.contains(event.target as Node)) {
-			bitsDropdownOpen = false;
-		}
-	}
-
-	/** Close the active facet dropdown when clicking outside it; discard edits if unchanged. */
-	function handleEditFacetClickOutside(event: MouseEvent) {
-		if (editFacetContainerEl && !editFacetContainerEl.contains(event.target as Node)) {
-			const id = activeEditor?.id;
-			activeEditor = null;
-			if (id) clearIfUnchanged(id);
-		}
-	}
-
-	$effect(() => {
-		if (bitsDropdownOpen) {
-			document.addEventListener('mousedown', handleClickOutside);
-			return () => document.removeEventListener('mousedown', handleClickOutside);
-		}
-	});
-
-	$effect(() => {
-		if (
-			activeEditor &&
-			['bits', 'processes', 'allergens'].includes(activeEditor.field)
-		) {
-			document.addEventListener('mousedown', handleEditFacetClickOutside);
-			return () => document.removeEventListener('mousedown', handleEditFacetClickOutside);
-		}
-	});
-
-	// ─── Create custom bit ───
-
-	/**
-	 * Create a new bit (ingredient) from the current search term.
-	 * Calls the Admin API, adds to local state, and selects it.
-	 */
-	async function handleCreateBit() {
-		const name = bitsSearch.trim();
-		if (name.length < 2) return;
-
-		creatingBit = true;
-		try {
-			const newBit = await createBit({ name });
-			// Add to local taxonomy cache (skip if already present — server-side dedup)
-			if (!allBits.some((b) => b.id === newBit.id)) {
-				allBits = [...allBits, newBit];
-			}
-			if (!newBitIds.includes(newBit.id)) {
-				newBitIds = [...newBitIds, newBit.id];
-			}
-			bitsSearch = '';
-		} catch (err) {
-			console.error('Failed to create bit:', err);
-		}
-		creatingBit = false;
-	}
+	/** Whether a bulk operation is in progress. */
+	let bulkBusy = $state(false);
 
 	// ─── Initial data load (runs once on mount) ───
 
@@ -309,15 +107,9 @@
 				fetchAllergenWarnings()
 			]);
 			products = prods;
-			allBits = bits;
-			allProcesses = procs.sort((a, b) => a.name.localeCompare(b.name));
-			allAllergenWarnings = allergens.sort((a, b) => a.name.localeCompare(b.name));
-
-			// Default-select "Raw / Fresh" for new products
-			const rawProcess = procs.find((p) => p.code === 'raw');
-			if (rawProcess) {
-				newProcessIds = [rawProcess.id];
-			}
+			rawBits = bits;
+			rawProcesses = procs.sort((a, b) => a.name.localeCompare(b.name));
+			rawAllergenWarnings = allergens.sort((a, b) => a.name.localeCompare(b.name));
 		} catch (err) {
 			loadError =
 				err instanceof Error ? err.message : typeof err === 'string' ? err : JSON.stringify(err);
@@ -326,74 +118,71 @@
 		loading = false;
 	}
 
-	// ─── Actions ───
+	// ─── Handlers ───
 
-	/** Reference to the product name input for re-focusing after submit. */
-	let nameInput: HTMLInputElement | null = $state(null);
-
-	async function handleCreate() {
-		const name = newName.trim();
-		if (!name) return;
-
-		const sku = name.toUpperCase().replace(/\s+/g, '-');
-		const unitType = newUnitType || undefined;
-		const facetValueIds = [...newBitIds, ...newProcessIds, ...newAllergenIds];
+	async function handleCreate(data: {
+		name: string;
+		unitType: string;
+		bitIds: string[];
+		processIds: string[];
+		allergenIds: string[];
+	}) {
+		const sku = data.name.toUpperCase().replace(/\s+/g, '-');
+		const unitType = data.unitType || undefined;
+		const facetValueIds = [...data.bitIds, ...data.processIds, ...data.allergenIds];
 
 		// Generate a temporary ID and optimistically insert into the table
 		const tempId = `__pending_${++tempIdCounter}`;
 		const optimisticProduct: SellerProduct = {
 			id: tempId,
-			name,
+			name: data.name,
 			variantId: '',
 			sku,
 			unitType: unitType ?? null,
-			bits: allBits.filter((b) => newBitIds.includes(b.id)),
-			processes: allProcesses.filter((p) => newProcessIds.includes(p.id)),
-			allergenWarnings: allAllergenWarnings.filter((a) => newAllergenIds.includes(a.id))
+			bits: rawBits.filter((b) => data.bitIds.includes(b.id)),
+			processes: rawProcesses.filter((p) => data.processIds.includes(p.id)),
+			allergenWarnings: rawAllergenWarnings.filter((a) => data.allergenIds.includes(a.id))
 		};
 
 		products = [...products, optimisticProduct];
-		pendingIds = new Set([...pendingIds, tempId]);
-
-		// Clear form immediately so the user can keep adding
-		newName = '';
-		newUnitType = '';
-		newBitIds = [];
-		// Re-default to "Raw / Fresh"
-		const rawProcess = allProcesses.find((p) => p.code === 'raw');
-		newProcessIds = rawProcess ? [rawProcess.id] : [];
-		newAllergenIds = [];
-		bitsSearch = '';
-		nameInput?.focus();
+		pendingIds.add(tempId);
 
 		try {
 			const created = await createProduct({
-				name,
+				name: data.name,
 				sku,
 				unitType,
 				facetValueIds: facetValueIds.length ? facetValueIds : undefined
 			});
-
-			// Replace the optimistic placeholder with the real server data
 			products = products.map((p) => (p.id === tempId ? created : p));
-			pendingIds = new Set([...pendingIds].filter((id) => id !== tempId));
+			pendingIds.delete(tempId);
 		} catch (err) {
 			console.error('Failed to create product:', err);
-			pendingIds = new Set([...pendingIds].filter((id) => id !== tempId));
-			failedIds = new Map([...failedIds, [tempId, 'Failed to create']]);
+			pendingIds.delete(tempId);
+			failedIds.set(tempId, 'Failed to create');
 		}
 	}
 
-	/**
-	 * Retry creating a product that previously failed.
-	 * Removes the failed state, re-inserts as pending, and tries again.
-	 */
-	async function retryCreate(tempId: string) {
+	async function handleCreateBit(name: string): Promise<InputSelectItem | null> {
+		try {
+			const newBit = await createBit({ name });
+			// Add to local taxonomy cache (skip if already present — server-side dedup)
+			if (!rawBits.some((b) => b.id === newBit.id)) {
+				rawBits = [...rawBits, newBit];
+			}
+			return toItem(newBit);
+		} catch (err) {
+			console.error('Failed to create bit:', err);
+			return null;
+		}
+	}
+
+	function retryCreate(tempId: string) {
 		const product = products.find((p) => p.id === tempId);
 		if (!product) return;
 
-		failedIds = new Map([...failedIds].filter(([id]) => id !== tempId));
-		pendingIds = new Set([...pendingIds, tempId]);
+		failedIds.delete(tempId);
+		pendingIds.add(tempId);
 
 		const facetValueIds = [
 			...product.bits.map((b) => b.id),
@@ -401,202 +190,150 @@
 			...product.allergenWarnings.map((a) => a.id)
 		];
 
-		try {
-			const created = await createProduct({
-				name: product.name,
-				sku: product.sku || undefined,
-				unitType: product.unitType || undefined,
-				facetValueIds: facetValueIds.length ? facetValueIds : undefined
+		createProduct({
+			name: product.name,
+			sku: product.sku || undefined,
+			unitType: product.unitType || undefined,
+			facetValueIds: facetValueIds.length ? facetValueIds : undefined
+		})
+			.then((created) => {
+				products = products.map((p) => (p.id === tempId ? created : p));
+				pendingIds.delete(tempId);
+			})
+			.catch((err) => {
+				console.error('Failed to create product (retry):', err);
+				pendingIds.delete(tempId);
+				failedIds.set(tempId, 'Failed to create');
 			});
-			products = products.map((p) => (p.id === tempId ? created : p));
-			pendingIds = new Set([...pendingIds].filter((id) => id !== tempId));
-		} catch (err) {
-			console.error('Failed to create product (retry):', err);
-			pendingIds = new Set([...pendingIds].filter((id) => id !== tempId));
-			failedIds = new Map([...failedIds, [tempId, 'Failed to create']]);
-		}
 	}
 
-	/**
-	 * Dismiss a failed optimistic insert, removing it from the table entirely.
-	 */
 	function dismissFailed(tempId: string) {
 		products = products.filter((p) => p.id !== tempId);
-		failedIds = new Map([...failedIds].filter(([id]) => id !== tempId));
+		failedIds.delete(tempId);
 	}
 
-	type EditField = 'name' | 'unitType' | 'bits' | 'processes' | 'allergens';
-
-	/**
-	 * Open an editor for a specific field on a product.
-	 * Initializes the field's value from product data if not already set.
-	 * Multiple rows can have pending edits simultaneously.
-	 */
-	function openEditor(product: SellerProduct, field: EditField) {
-		const state = edits[product.id] ?? {};
-		activeEditor = { id: product.id, field };
-
-		// Initialize the field's edit value from product data if not already set
-		if (field === 'name' && state.name === undefined) {
-			updateEditState(product.id, { name: product.name });
-		} else if (field === 'unitType' && state.unitType === undefined) {
-			updateEditState(product.id, { unitType: product.unitType ?? '' });
-		} else if (field === 'bits') {
-			if (state.bitIds === undefined)
-				updateEditState(product.id, { bitIds: product.bits.map((b) => b.id) });
-			editBitsSearch = '';
-		} else if (field === 'processes') {
-			if (state.processIds === undefined)
-				updateEditState(product.id, { processIds: product.processes.map((p) => p.id) });
-		} else if (field === 'allergens') {
-			if (state.allergenIds === undefined)
-				updateEditState(product.id, { allergenIds: product.allergenWarnings.map((a) => a.id) });
-		}
-	}
-
-	/**
-	 * Save ALL accumulated edits for a specific product row.
-	 * Sends a single updateProduct call with every changed field.
-	 */
-	async function saveRow(productId: string) {
-		// Snapshot the edit state before any async work (avoid proxy staleness)
-		const rawEdits = edits[productId];
-		const state = rawEdits ? { ...rawEdits } : undefined;
+	async function handleSave(
+		productId: string,
+		edits: { name?: string; unitType?: string; facetValueIds?: string[] }
+	) {
 		const product = products.find((p) => p.id === productId);
-		if (!state || !product) return;
+		if (!product) return;
 
-		const bitsChanged = state.bitIds !== undefined;
-		const processChanged = state.processIds !== undefined;
-		const allergensChanged = state.allergenIds !== undefined;
+		await updateProduct({
+			id: product.id,
+			variantId: product.variantId,
+			...edits
+		});
 
-		// Build the facetValueIds (full replacement set) if any facet was edited
-		let facetValueIds: string[] | undefined;
-		if (bitsChanged || processChanged || allergensChanged) {
-			const bitIds = state.bitIds ?? product.bits.map((b) => b.id);
-			const processIds = state.processIds ?? product.processes.map((p) => p.id);
-			const allergenIds = state.allergenIds ?? product.allergenWarnings.map((a) => a.id);
-			facetValueIds = [...bitIds, ...processIds, ...allergenIds];
+		// Optimistic updates
+		if (edits.name) product.name = edits.name;
+		if (edits.unitType !== undefined) product.unitType = edits.unitType || null;
+		if (edits.facetValueIds) {
+			product.bits = rawBits.filter((b) => edits.facetValueIds!.includes(b.id));
+			product.processes = rawProcesses.filter((p) => edits.facetValueIds!.includes(p.id));
+			product.allergenWarnings = rawAllergenWarnings.filter((a) =>
+				edits.facetValueIds!.includes(a.id)
+			);
 		}
-
-		const nameChanged = state.name !== undefined && state.name !== product.name;
-		const unitTypeChanged =
-			state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
-
-		// Nothing actually changed — just close
-		if (!nameChanged && !unitTypeChanged && !facetValueIds) {
-			cancelRow(productId);
-			return;
-		}
-
-		saving[productId] = true;
-		if (activeEditor?.id === productId) activeEditor = null;
-
-		try {
-			await updateProduct({
-				id: product.id,
-				variantId: product.variantId,
-				...(nameChanged ? { name: state.name } : {}),
-				...(unitTypeChanged ? { unitType: state.unitType } : {}),
-				...(facetValueIds ? { facetValueIds } : {})
-			});
-
-			// Optimistic updates
-			if (nameChanged) product.name = state.name!;
-			if (unitTypeChanged) product.unitType = state.unitType || null;
-			if (bitsChanged) product.bits = allBits.filter((b) => state.bitIds!.includes(b.id));
-			if (processChanged)
-				product.processes = allProcesses.filter((p) => state.processIds!.includes(p.id));
-			if (allergensChanged)
-				product.allergenWarnings = allAllergenWarnings.filter((a) =>
-					state.allergenIds!.includes(a.id)
-				);
-			products = [...products];
-		} catch (err) {
-			console.error('Failed to update product:', err);
-			// Keep edits on error so the user can retry
-			delete saving[productId];
-			return;
-		}
-
-		delete saving[productId];
-		delete edits[productId];
+		products = [...products]; // trigger reactivity
 	}
 
-	/**
-	 * Check whether a row's edit state has any actual changes vs. the product data.
-	 * Returns true if the edits are identical to the current product (i.e. no real changes).
-	 */
-	function isRowUnchanged(productId: string): boolean {
-		const state = edits[productId];
-		if (!state) return true;
-		const product = products.find((p) => p.id === productId);
-		if (!product) return true;
-
-		const nameChanged = state.name !== undefined && state.name !== product.name;
-		const unitTypeChanged =
-			state.unitType !== undefined && state.unitType !== (product.unitType ?? '');
-		const bitsChanged =
-			state.bitIds !== undefined &&
-			JSON.stringify([...state.bitIds].sort()) !==
-				JSON.stringify(product.bits.map((b) => b.id).sort());
-		const processChanged =
-			state.processIds !== undefined &&
-			JSON.stringify([...state.processIds].sort()) !==
-				JSON.stringify(product.processes.map((p) => p.id).sort());
-		const allergensChanged =
-			state.allergenIds !== undefined &&
-			JSON.stringify([...state.allergenIds].sort()) !==
-				JSON.stringify(product.allergenWarnings.map((a) => a.id).sort());
-
-		return !nameChanged && !unitTypeChanged && !bitsChanged && !processChanged && !allergensChanged;
-	}
-
-	/**
-	 * Clear edit state for a row if no fields were actually changed.
-	 * Called when the active editor is dismissed (blur, click-outside).
-	 */
-	function clearIfUnchanged(productId: string) {
-		if (isRowUnchanged(productId)) {
-			delete edits[productId];
+	async function handleDelete(productId: string) {
+		await deleteProduct(productId);
+		products = products.filter((p) => p.id !== productId);
+		// Remove from selection if it was selected
+		if (selectedIds.has(productId)) {
+			const next = new Set(selectedIds);
+			next.delete(productId);
+			selectedIds = next;
 		}
 	}
 
-	/** Discard all pending edits for a specific product row. */
-	function cancelRow(productId: string) {
-		delete edits[productId];
-		if (activeEditor?.id === productId) activeEditor = null;
-		editBitsSearch = '';
-	}
+	// ─── Bulk operation handlers ───
 
-	async function handleDelete(id: string) {
-		deleting = true;
-		try {
-			await deleteProduct(id);
-			products = products.filter((p) => p.id !== id);
-		} catch (err) {
-			console.error('Failed to delete product:', err);
+	/** Delete all selected products (batched, 5 concurrent). */
+	async function handleBulkDelete() {
+		const ids = [...selectedIds];
+		bulkBusy = true;
+
+		// Process in batches of 5
+		for (let i = 0; i < ids.length; i += 5) {
+			const batch = ids.slice(i, i + 5);
+			const results = await Promise.allSettled(batch.map((id) => deleteProduct(id)));
+			// Remove successfully deleted products
+			const deleted = batch.filter((_, idx) => results[idx].status === 'fulfilled');
+			products = products.filter((p) => !deleted.includes(p.id));
 		}
-		deleting = false;
-		confirmDeleteId = null;
+
+		selectedIds = new Set();
+		bulkBusy = false;
 	}
 
-	async function reloadProducts() {
-		try {
-			products = await myProducts();
-		} catch (err) {
-			console.error('Failed to reload products:', err);
+	/** Set unit type on all selected products. */
+	async function handleBulkSetUnitType(value: string) {
+		const ids = [...selectedIds];
+		bulkBusy = true;
+
+		for (let i = 0; i < ids.length; i += 5) {
+			const batch = ids.slice(i, i + 5);
+			await Promise.allSettled(
+				batch.map((id) => {
+					const product = products.find((p) => p.id === id);
+					if (!product) return Promise.resolve();
+					return updateProduct({
+						id: product.id,
+						variantId: product.variantId,
+						unitType: value
+					}).then(() => {
+						product.unitType = value || null;
+					});
+				})
+			);
 		}
+
+		products = [...products]; // trigger reactivity
+		selectedIds = new Set();
+		bulkBusy = false;
 	}
 
-	/** Get the display label for a unit type value. */
-	function unitTypeLabel(value: string | null): string {
-		if (!value) return '—';
-		return UNIT_TYPES.find((u) => u.value === value)?.label ?? value;
-	}
+	/** Add facet values to all selected products (union with existing). */
+	async function handleBulkAddFacets(newFacetIds: string[]) {
+		const ids = [...selectedIds];
+		bulkBusy = true;
 
-	/** Toggle a facet value ID in an array (add if missing, remove if present). */
-	function toggleId(ids: string[], id: string): string[] {
-		return ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id];
+		for (let i = 0; i < ids.length; i += 5) {
+			const batch = ids.slice(i, i + 5);
+			await Promise.allSettled(
+				batch.map((id) => {
+					const product = products.find((p) => p.id === id);
+					if (!product) return Promise.resolve();
+
+					// Compute union of existing + new facet IDs
+					const existingIds = [
+						...product.bits.map((b) => b.id),
+						...product.processes.map((p) => p.id),
+						...product.allergenWarnings.map((a) => a.id)
+					];
+					const merged = [...new Set([...existingIds, ...newFacetIds])];
+
+					return updateProduct({
+						id: product.id,
+						variantId: product.variantId,
+						facetValueIds: merged
+					}).then(() => {
+						product.bits = rawBits.filter((b) => merged.includes(b.id));
+						product.processes = rawProcesses.filter((p) => merged.includes(p.id));
+						product.allergenWarnings = rawAllergenWarnings.filter((a) =>
+							merged.includes(a.id)
+						);
+					});
+				})
+			);
+		}
+
+		products = [...products]; // trigger reactivity
+		selectedIds = new Set();
+		bulkBusy = false;
 	}
 </script>
 
@@ -610,598 +347,47 @@
 	<div class="space-y-2">
 		<h2 class="pt-2 text-xl font-bold">Add Product</h2>
 
-		<!-- Add product form -->
-		<form
-			class="space-y-5 rounded-md border px-3 pt-1 pb-3"
-			onsubmit={(e) => {
-				e.preventDefault();
-				handleCreate();
-			}}
-		>
-			<!-- Row 1: Name, Unit Type -->
-			<div class="flex flex-wrap items-end gap-2">
-				<div class="min-w-[180px] flex-1">
-					<label for="new-name" class="text-xs font-medium text-muted-foreground"
-						>Product Name</label
-					>
-					<Input
-						id="new-name"
-						bind:value={newName}
-						bind:ref={nameInput}
-						placeholder="e.g. Mixed Salad Greens"
-					/>
-				</div>
-				<div class="w-40">
-					<label class="text-xs font-medium text-muted-foreground">Unit Type</label>
-					<Select.Root type="single" items={UNIT_TYPES} bind:value={newUnitType}>
-						<Select.Trigger>{unitTypeLabel(newUnitType)}</Select.Trigger>
-						<Select.Content>
-							{#each UNIT_TYPES as unit (unit.value)}
-								<Select.Item value={unit.value} label={unit.label}>{unit.label}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-			</div>
-
-			<!-- Row 2: Bits (ingredients) — searchable multi-select -->
-			<div>
-				<label for="bits-search" class="text-xs font-medium text-muted-foreground">
-					Bits <span class="font-normal text-muted-foreground/70"
-						>(Ingredients — What's in it?)</span
-					>
-				</label>
-				<!-- Selected bits pills -->
-				{#if newBitIds.length > 0}
-					<div class="mb-1 flex flex-wrap gap-1">
-						{#each newBitIds as bitId (bitId)}
-							{@const bit = allBits.find((b) => b.id === bitId)}
-							{#if bit}
-								<button
-									type="button"
-									class="inline-flex items-center gap-0.5 rounded-full border border-green-600/30 bg-green-600/10 px-2 py-0.5 text-xs font-medium text-green-700 hover:bg-green-600/20 dark:text-green-300"
-									onclick={() => (newBitIds = newBitIds.filter((id) => id !== bitId))}
-								>
-									{bit.name}
-									<span class="ml-0.5 text-[10px]">×</span>
-								</button>
-							{/if}
-						{/each}
-					</div>
-				{/if}
-				<!-- Search input -->
-				<div class="relative" bind:this={bitsContainerEl}>
-					<Input
-						id="bits-search"
-						bind:value={bitsSearch}
-						bind:ref={bitsSearchInput}
-						placeholder="Search ingredients..."
-						onfocus={() => (bitsDropdownOpen = true)}
-						class="h-8 text-sm"
-					/>
-					{#if bitsDropdownOpen}
-						<!-- Dropdown list -->
-						<div
-							class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-popover shadow-lg"
-						>
-							{#if filteredBits.length === 0 && !canCreateBit}
-								<p class="px-3 py-2 text-xs text-muted-foreground">No matches</p>
-							{:else}
-								{#each filteredBits as bit (bit.id)}
-									<button
-										type="button"
-										class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-										onmousedown={(e) => e.preventDefault()}
-										onclick={() => {
-											newBitIds = toggleId(newBitIds, bit.id);
-											bitsSearch = '';
-										}}
-									>
-										<span
-											class="size-3.5 shrink-0 rounded border {newBitIds.includes(bit.id)
-												? 'border-green-600 bg-green-600'
-												: 'border-input'}"
-										></span>
-										<span>{bit.name}</span>
-										{#if bit.group}
-											<span class="ml-auto text-xs text-muted-foreground">{bit.group}</span>
-										{/if}
-									</button>
-								{/each}
-							{/if}
-							{#if canCreateBit}
-								<button
-									type="button"
-									class="flex w-full items-center gap-2 border-t px-3 py-1.5 text-left text-sm font-medium text-primary hover:bg-accent"
-									disabled={creatingBit}
-									onclick={handleCreateBit}
-								>
-									{#if creatingBit}
-										<SpinnerSun class="size-3.5 shrink-0" />
-										Creating...
-									{:else}
-										<span class="text-xs">+</span>
-										Create "{normalizedBitName}"
-									{/if}
-								</button>
-							{/if}
-							<button
-								type="button"
-								class="w-full border-t px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-accent"
-								onclick={() => (bitsDropdownOpen = false)}
-							>
-								Close
-							</button>
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Row 3: Processing (toggle pills) -->
-			<fieldset>
-				<legend class="text-xs font-medium text-muted-foreground">
-					Processing <span class="font-normal text-muted-foreground/70">(What was done to it?)</span
-					>
-				</legend>
-				<div class="flex flex-wrap gap-1.5 pt-1">
-					{#each allProcesses as proc (proc.id)}
-						<button
-							type="button"
-							class="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors
-								{newProcessIds.includes(proc.id)
-								? 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300'
-								: 'border-input text-muted-foreground hover:border-blue-500/50'}"
-							onclick={() => (newProcessIds = toggleId(newProcessIds, proc.id))}
-						>
-							{proc.name}
-						</button>
-					{/each}
-				</div>
-			</fieldset>
-
-			<!-- Row 4: Allergen Warnings (toggle pills) -->
-			<fieldset>
-				<legend class="text-xs font-medium text-muted-foreground">
-					Allergen Warnings <span class="font-normal text-muted-foreground/70"
-						>(May have come in contact with...)</span
-					>
-				</legend>
-				<div class="flex flex-wrap gap-1.5 pt-1">
-					{#each allAllergenWarnings as warning (warning.id)}
-						<button
-							type="button"
-							class="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors
-								{newAllergenIds.includes(warning.id)
-								? 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300'
-								: 'border-input text-muted-foreground hover:border-orange-500/50'}"
-							onclick={() => (newAllergenIds = toggleId(newAllergenIds, warning.id))}
-						>
-							{warning.name.replace(/^May contain /i, '')}
-						</button>
-					{/each}
-				</div>
-			</fieldset>
-
-			<!-- Submit -->
-			<div class="flex justify-center pt-1 pb-2">
-				<Button type="submit" disabled={newName.trim().length < 3} class="w-full max-w-md" data-testid="add-product-submit"
-					>Add Product</Button
-				>
-			</div>
-		</form>
+		<AddProductForm
+			{allBits}
+			{allProcesses}
+			{allAllergenWarnings}
+			unitTypes={UNIT_TYPES}
+			{defaultProcessId}
+			oncreate={handleCreate}
+			onCreateBit={handleCreateBit}
+		/>
 
 		<h2 class="mt-8 text-xl font-bold">Products</h2>
 
-		{#if products.length === 0}
-			<div class="flex items-center justify-center rounded-md border py-16">
-				<p class="text-muted-foreground">No products yet. Add your first product above.</p>
-			</div>
-		{:else}
-			<div class="overflow-visible rounded-md border" data-testid="products-table">
-				<Table.Table class="table-fixed">
-					<Table.TableHeader>
-						<Table.TableRow>
-							<Table.TableHead>Product Name</Table.TableHead>
-							<Table.TableHead class="w-[180px]">Bits</Table.TableHead>
-							<Table.TableHead class="w-[120px]">Processing</Table.TableHead>
-							<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
-							<Table.TableHead class="w-36">Unit Type</Table.TableHead>
-							<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
-						</Table.TableRow>
-					</Table.TableHeader>
-					<Table.TableBody>
-						{#each products as product (product.id)}
-							{@const isPending = pendingIds.has(product.id)}
-							{@const isFailed = failedIds.has(product.id)}
-							{@const rowEdits = edits[product.id]}
-							{@const isRowEditing = !!rowEdits}
-							{@const isActiveRow = activeEditor?.id === product.id}
-							{@const displayName = rowEdits?.name ?? product.name}
-							{@const displayBits = rowEdits?.bitIds
-								? allBits.filter((b) => rowEdits.bitIds!.includes(b.id))
-								: product.bits}
-							{@const displayProcesses = rowEdits?.processIds
-								? allProcesses.filter((p) => rowEdits.processIds!.includes(p.id))
-								: product.processes}
-							{@const displayAllergens = rowEdits?.allergenIds
-								? allAllergenWarnings.filter((a) => rowEdits.allergenIds!.includes(a.id))
-								: product.allergenWarnings}
-							{@const displayUnitType = rowEdits?.unitType ?? product.unitType}
+		<ProductList
+			{products}
+			{allBits}
+			{allProcesses}
+			{allAllergenWarnings}
+			unitTypes={UNIT_TYPES}
+			{pendingIds}
+			{failedIds}
+			bind:selectedIds
+			showCheckboxes={true}
+			onsave={handleSave}
+			ondelete={handleDelete}
+			onretry={retryCreate}
+			ondismiss={dismissFailed}
+			onCreateBit={handleCreateBit}
+		/>
 
-							<Table.TableRow
-								class={isPending
-									? 'opacity-50'
-									: isFailed
-										? 'bg-destructive/5'
-										: isRowEditing
-											? ''
-											: 'hover:bg-accent'}
-								style={isRowEditing
-									? 'background-color: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.15))'
-									: ''}
-							>
-								<!-- Product Name -->
-								<Table.TableCell>
-									{#if isPending}
-										<span class="flex items-center gap-2">
-											<SpinnerSun class="size-3.5 shrink-0 text-muted-foreground" />
-											{product.name}
-										</span>
-									{:else if isFailed}
-										<span class="text-destructive">{product.name}</span>
-									{:else if isActiveRow && activeEditor.field === 'name'}
-										<Input
-											value={rowEdits?.name ?? product.name}
-											oninput={(e) => updateEditState(product.id, { name: e.currentTarget.value })}
-											onblur={() => {
-												activeEditor = null;
-												clearIfUnchanged(product.id);
-											}}
-											onkeydown={(e) => {
-												if (e.key === 'Enter') {
-													activeEditor = null;
-													clearIfUnchanged(product.id);
-												}
-												if (e.key === 'Escape') cancelRow(product.id);
-											}}
-											disabled={saving[product.id]}
-											class="h-7 text-sm"
-											autofocus
-										/>
-									{:else}
-										<button
-											class="w-full cursor-text text-left hover:underline"
-											onclick={() => openEditor(product, 'name')}
-										>
-											{displayName}
-										</button>
-									{/if}
-								</Table.TableCell>
-
-								<!-- Bits (ingredients) -->
-								<Table.TableCell class="overflow-visible">
-									{#if isPending || isFailed}
-										{#if product.bits.length > 0}
-											<div class="flex flex-wrap gap-0.5">
-												{#each product.bits as bit (bit.id)}
-													<Badge
-														variant="outline"
-														class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
-														>{bit.name}</Badge
-													>
-												{/each}
-											</div>
-										{:else}
-											<span class="text-xs text-muted-foreground">—</span>
-										{/if}
-									{:else if isActiveRow && activeEditor.field === 'bits'}
-										<div class="relative w-full max-w-full" bind:this={editFacetContainerEl}>
-											<Input
-												bind:value={editBitsSearch}
-												bind:ref={editBitsInput}
-												placeholder="Search bits..."
-												class="h-7 w-full text-sm"
-												autofocus
-											/>
-											<div
-												class="absolute top-full z-10 mt-1 max-h-48 w-64 overflow-y-auto rounded-md border bg-popover shadow-lg"
-											>
-												{#each filteredEditBits as bit (bit.id)}
-													<button
-														type="button"
-														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-														onmousedown={(e) => e.preventDefault()}
-														onclick={() => {
-															const cur = edits[product.id]?.bitIds ?? [];
-															updateEditState(product.id, { bitIds: toggleId(cur, bit.id) });
-														}}
-													>
-														<span
-															class="size-3.5 shrink-0 rounded border {rowEdits?.bitIds?.includes(
-																bit.id
-															)
-																? 'border-green-600 bg-green-600'
-																: 'border-input'}"
-														></span>
-														<span>{bit.name}</span>
-														{#if bit.group}
-															<span class="ml-auto text-xs text-muted-foreground">{bit.group}</span>
-														{/if}
-													</button>
-												{/each}
-												{#if filteredEditBits.length === 0}
-													<p class="px-3 py-2 text-xs text-muted-foreground">No matches</p>
-												{/if}
-											</div>
-										</div>
-									{:else}
-										<button
-											class="w-full cursor-pointer text-left"
-											onclick={() => openEditor(product, 'bits')}
-										>
-											{#if displayBits.length > 0}
-												<div class="flex flex-wrap gap-0.5">
-													{#each displayBits.slice(0, 4) as bit (bit.id)}
-														<Badge
-															variant="outline"
-															class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
-															>{bit.name}</Badge
-														>
-													{/each}
-													{#if displayBits.length > 4}
-														<Badge
-															variant="outline"
-															class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
-															>+{displayBits.length - 4}</Badge
-														>
-													{/if}
-												</div>
-											{:else}
-												<span class="text-xs text-muted-foreground hover:underline">—</span>
-											{/if}
-										</button>
-									{/if}
-								</Table.TableCell>
-
-								<!-- Processing -->
-								<Table.TableCell>
-									{#if isPending || isFailed}
-										{#if product.processes.length > 0}
-											<div class="flex flex-wrap gap-0.5">
-												{#each product.processes as proc (proc.id)}
-													<Badge
-														variant="outline"
-														class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
-														>{proc.name}</Badge
-													>
-												{/each}
-											</div>
-										{:else}
-											<span class="text-xs text-muted-foreground">—</span>
-										{/if}
-									{:else}
-										<div class="relative">
-											<button
-												class="w-full cursor-pointer text-left"
-												onclick={() => openEditor(product, 'processes')}
-											>
-												{#if displayProcesses.length > 0}
-													<div class="flex flex-wrap gap-0.5">
-														{#each displayProcesses as proc (proc.id)}
-															<Badge
-																variant="outline"
-																class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
-																>{proc.name}</Badge
-															>
-														{/each}
-													</div>
-												{:else}
-													<span class="text-xs text-muted-foreground">—</span>
-												{/if}
-											</button>
-											{#if isActiveRow && activeEditor.field === 'processes'}
-												<div
-													class="absolute top-full z-10 mt-1 w-48 rounded-md border bg-popover shadow-lg"
-													bind:this={editFacetContainerEl}
-												>
-													{#each allProcesses as proc (proc.id)}
-														<button
-															type="button"
-															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-															onmousedown={(e) => e.preventDefault()}
-															onclick={() => {
-																const cur = edits[product.id]?.processIds ?? [];
-																updateEditState(product.id, { processIds: toggleId(cur, proc.id) });
-															}}
-														>
-															<span
-																class="size-3.5 shrink-0 rounded border {rowEdits?.processIds?.includes(
-																	proc.id
-																)
-																	? 'border-blue-500 bg-blue-500'
-																	: 'border-input'}"
-															></span>
-															<span>{proc.name}</span>
-														</button>
-													{/each}
-												</div>
-											{/if}
-										</div>
-									{/if}
-								</Table.TableCell>
-
-								<!-- Allergen Warnings -->
-								<Table.TableCell>
-									{#if isPending || isFailed}
-										{#if product.allergenWarnings.length > 0}
-											<div class="flex flex-wrap gap-0.5">
-												{#each product.allergenWarnings as warning (warning.id)}
-													<Badge
-														variant="outline"
-														class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
-														>{warning.name.replace(/^May contain /i, '')}</Badge
-													>
-												{/each}
-											</div>
-										{:else}
-											<span class="text-xs text-muted-foreground">—</span>
-										{/if}
-									{:else}
-										<div class="relative">
-											<button
-												class="w-full cursor-pointer text-left"
-												onclick={() => openEditor(product, 'allergens')}
-											>
-												{#if displayAllergens.length > 0}
-													<div class="flex flex-wrap gap-0.5">
-														{#each displayAllergens as warning (warning.id)}
-															<Badge
-																variant="outline"
-																class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
-																>{warning.name.replace(/^May contain /i, '')}</Badge
-															>
-														{/each}
-													</div>
-												{:else}
-													<span class="text-xs text-muted-foreground">—</span>
-												{/if}
-											</button>
-											{#if isActiveRow && activeEditor.field === 'allergens'}
-												<div
-													class="absolute top-full z-10 mt-1 w-52 rounded-md border bg-popover shadow-lg"
-													bind:this={editFacetContainerEl}
-												>
-													{#each allAllergenWarnings as warning (warning.id)}
-														<button
-															type="button"
-															class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
-															onmousedown={(e) => e.preventDefault()}
-															onclick={() => {
-																const cur = edits[product.id]?.allergenIds ?? [];
-																updateEditState(product.id, {
-																	allergenIds: toggleId(cur, warning.id)
-																});
-															}}
-														>
-															<span
-																class="size-3.5 shrink-0 rounded border {rowEdits?.allergenIds?.includes(
-																	warning.id
-																)
-																	? 'border-orange-500 bg-orange-500'
-																	: 'border-input'}"
-															></span>
-															<span>{warning.name.replace(/^May contain /i, '')}</span>
-														</button>
-													{/each}
-												</div>
-											{/if}
-										</div>
-									{/if}
-								</Table.TableCell>
-
-								<!-- Unit Type -->
-								<Table.TableCell>
-									{#if isPending || isFailed}
-										<span class="text-muted-foreground">{unitTypeLabel(product.unitType)}</span>
-									{:else}
-										<Select.Root
-											type="single"
-											items={UNIT_TYPES}
-											value={displayUnitType ?? ''}
-											onValueChange={(v) => {
-												openEditor(product, 'unitType');
-												updateEditState(product.id, { unitType: v });
-											}}
-										>
-											<Select.Trigger class="border-none bg-transparent shadow-none text-muted-foreground">
-												{unitTypeLabel(displayUnitType)}
-											</Select.Trigger>
-											<Select.Content>
-												{#each UNIT_TYPES as unit (unit.value)}
-													<Select.Item value={unit.value} label={unit.label}>{unit.label}</Select.Item>
-												{/each}
-											</Select.Content>
-										</Select.Root>
-									{/if}
-								</Table.TableCell>
-
-								<!-- Actions -->
-								<Table.TableCell class="w-40 text-right">
-									{#if isPending}
-										<span class="text-xs text-muted-foreground">Saving...</span>
-									{:else if isFailed}
-										<div class="flex items-center justify-end gap-1">
-											<Button
-												size="sm"
-												variant="ghost"
-												onclick={() => retryCreate(product.id)}
-												class="text-xs"
-											>
-												Retry
-											</Button>
-											<Button
-												size="sm"
-												variant="ghost"
-												onclick={() => dismissFailed(product.id)}
-												class="text-xs text-destructive hover:text-destructive"
-											>
-												Dismiss
-											</Button>
-										</div>
-									{:else if isRowEditing}
-										<div class="flex items-center justify-end gap-1">
-											<Button
-												size="sm"
-												disabled={saving[product.id]}
-												onmousedown={(e: MouseEvent) => e.stopPropagation()}
-												onclick={() => saveRow(product.id)}
-											>
-												{#if saving[product.id]}
-													<SpinnerSun class="size-3.5" />
-												{:else}
-													Save
-												{/if}
-											</Button>
-											<Button
-												size="sm"
-												variant="ghost"
-												disabled={saving[product.id]}
-												onmousedown={(e: MouseEvent) => e.stopPropagation()}
-												onclick={() => cancelRow(product.id)}
-											>
-												Cancel
-											</Button>
-										</div>
-									{:else if confirmDeleteId === product.id}
-										<div class="flex items-center justify-end gap-1">
-											<Button
-												size="sm"
-												variant="destructive"
-												disabled={deleting}
-												onclick={() => handleDelete(product.id)}
-											>
-												{#if deleting}<SpinnerSun class="size-3.5" />{:else}Yes{/if}
-											</Button>
-											<Button size="sm" variant="ghost" onclick={() => (confirmDeleteId = null)}>
-												No
-											</Button>
-										</div>
-									{:else}
-										<Button
-											size="sm"
-											variant="ghost"
-											onclick={() => (confirmDeleteId = product.id)}
-											class="text-destructive hover:text-destructive"
-										>
-											Delete
-										</Button>
-									{/if}
-								</Table.TableCell>
-							</Table.TableRow>
-						{/each}
-					</Table.TableBody>
-				</Table.Table>
-			</div>
-		{/if}
+		<BulkToolbarProducts
+			selectedCount={selectedIds.size}
+			{allBits}
+			{allProcesses}
+			{allAllergenWarnings}
+			unitTypes={UNIT_TYPES}
+			visible={selectedIds.size > 0}
+			busy={bulkBusy}
+			onclear={() => (selectedIds = new Set())}
+			ondelete={handleBulkDelete}
+			onSetUnitType={handleBulkSetUnitType}
+			onAddFacets={handleBulkAddFacets}
+		/>
 	</div>
 {/if}
