@@ -96,7 +96,7 @@
 	 */
 	let colOrder = $derived(
 		showCheckboxes
-			? ['checkbox', 'name', 'bits', 'processes', 'allergens', 'unitType', 'actions']
+			? ['name', 'bits', 'processes', 'allergens', 'unitType', 'actions', 'checkbox']
 			: ['name', 'bits', 'processes', 'allergens', 'unitType', 'actions']
 	);
 
@@ -322,8 +322,14 @@
 		<Table.Table class="table-fixed">
 			<Table.TableHeader>
 				<Table.TableRow>
+					<Table.TableHead>Product Name</Table.TableHead>
+					<Table.TableHead class="w-[180px]">Bits</Table.TableHead>
+					<Table.TableHead class="w-[180px]">Processing</Table.TableHead>
+					<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
+					<Table.TableHead class="w-36">Unit Type</Table.TableHead>
+					<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
 					{#if showCheckboxes}
-						<Table.TableHead class="w-10 pr-0">
+						<Table.TableHead class="w-10 pl-0">
 							<input
 								type="checkbox"
 								checked={allSelected}
@@ -332,12 +338,6 @@
 							/>
 						</Table.TableHead>
 					{/if}
-					<Table.TableHead>Product Name</Table.TableHead>
-					<Table.TableHead class="w-[180px]">Bits</Table.TableHead>
-					<Table.TableHead class="w-[120px]">Processing</Table.TableHead>
-					<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
-					<Table.TableHead class="w-36">Unit Type</Table.TableHead>
-					<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
 				</Table.TableRow>
 			</Table.TableHeader>
 			<Table.TableBody>

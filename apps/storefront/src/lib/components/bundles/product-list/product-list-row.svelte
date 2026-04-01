@@ -146,15 +146,21 @@
 	 * close the editor and clear edit state.
 	 */
 	function handleRowFocusOut(e: FocusEvent) {
+		// When relatedTarget is null, the focused element was removed from DOM
+		// (e.g., auto-open swapping a button for an editor). Ignore these — they're
+		// not real "focus left the row" events.
+		const related = e.relatedTarget as Node | null;
+		if (!related) return;
+
 		const row = e.currentTarget as HTMLElement;
-		const focusLeavingRow = !e.relatedTarget || !row.contains(e.relatedTarget as Node);
-		if (focusLeavingRow) {
-			if (!isEditing) {
-				activeField = null;
-				editState = null;
-			} else {
-				activeField = null;
-			}
+		if (row.contains(related)) return;
+
+		// Focus genuinely moved outside this row
+		if (!isEditing) {
+			activeField = null;
+			editState = null;
+		} else {
+			activeField = null;
 		}
 	}
 
@@ -325,25 +331,6 @@
 		: ''}
 	onfocusout={handleRowFocusOut}
 >
-	<!-- Checkbox -->
-	{#if showCheckbox}
-		<Table.TableCell class="w-10 pr-0" data-row={rowIndex} data-col="checkbox" onpointerenter={handleCellHover}>
-			{#if !isPending && !isFailed}
-				<input
-					type="checkbox"
-					checked={selected}
-					data-focusable
-					onchange={(e) => {
-						const checked = e.currentTarget.checked;
-						onselect?.(checked);
-						if (checked) cancelEdits();
-					}}
-					class="size-4 rounded border-input"
-				/>
-			{/if}
-		</Table.TableCell>
-	{/if}
-
 	<!-- Product Name -->
 	<Table.TableCell data-row={rowIndex} data-col="name" onpointerenter={handleCellHover}>
 		{#if isPending}
@@ -634,4 +621,23 @@
 			</Button>
 		{/if}
 	</Table.TableCell>
+
+	<!-- Checkbox (far right) -->
+	{#if showCheckbox}
+		<Table.TableCell class="w-10 pl-0" data-row={rowIndex} data-col="checkbox" onpointerenter={handleCellHover}>
+			{#if !isPending && !isFailed}
+				<input
+					type="checkbox"
+					checked={selected}
+					data-focusable
+					onchange={(e) => {
+						const checked = e.currentTarget.checked;
+						onselect?.(checked);
+						if (checked) cancelEdits();
+					}}
+					class="size-4 rounded border-input"
+				/>
+			{/if}
+		</Table.TableCell>
+	{/if}
 </Table.TableRow>
