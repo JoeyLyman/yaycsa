@@ -296,12 +296,12 @@
 		<Table.Table class="table-fixed">
 			<Table.TableHeader>
 				<Table.TableRow>
-					<Table.TableHead>Product</Table.TableHead>
-					<Table.TableHead class="w-[180px]">Ingredients</Table.TableHead>
-					<Table.TableHead class="w-[180px]">Processing</Table.TableHead>
-					<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
-					<Table.TableHead class="w-36">Unit</Table.TableHead>
-					<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
+					<Table.TableHead class="text-center">Product</Table.TableHead>
+					<Table.TableHead class="text-center">Ingredients</Table.TableHead>
+					<Table.TableHead class="text-center">Processing</Table.TableHead>
+					<Table.TableHead class="text-center">Allergens</Table.TableHead>
+					<Table.TableHead class="text-center">Unit</Table.TableHead>
+					<Table.TableHead class="text-center">Actions</Table.TableHead>
 				</Table.TableRow>
 			</Table.TableHeader>
 			<Table.TableBody>

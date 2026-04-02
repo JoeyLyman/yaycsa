@@ -330,9 +330,9 @@
 	onfocusout={handleRowFocusOut}
 >
 	<!-- Product Name -->
-	<Table.TableCell data-row={rowIndex} data-col="name">
+	<Table.TableCell class="text-center" data-row={rowIndex} data-col="name">
 		{#if isPending}
-			<span class="flex items-center gap-2">
+			<span class="flex items-center justify-center gap-2 text-center">
 				<SpinnerSun class="size-3.5 shrink-0 text-muted-foreground" />
 				{product.name}
 			</span>
@@ -352,11 +352,11 @@
 					if (e.key === 'Escape') { e.stopPropagation(); cancelEdits(); }
 				}}
 				disabled={saving}
-				class="h-7 text-sm"
+				class="h-7 text-center text-sm"
 			/>
 		{:else}
 			<button
-				class="w-full cursor-text text-left hover:underline focus-visible:underline outline-none"
+				class="w-full cursor-text text-center hover:underline focus-visible:underline outline-none"
 				data-focusable
 				data-auto-open
 				onclick={() => openEditor('name')}
@@ -367,10 +367,10 @@
 	</Table.TableCell>
 
 	<!-- Bits -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="bits">
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="bits">
 		{#if isPending || isFailed}
 			{#if product.bits.length > 0}
-				<div class="flex flex-wrap gap-0.5">
+				<div class="flex flex-wrap justify-center gap-0.5">
 					{#each product.bits as bit (bit.id)}
 						<Badge
 							variant="outline"
@@ -399,13 +399,13 @@
 			/>
 		{:else}
 			<button
-				class="w-full cursor-pointer text-left outline-none"
+				class="w-full cursor-pointer text-center outline-none"
 				data-focusable
 				data-auto-open
 				onclick={() => openEditor('bits')}
 			>
 				{#if displayBits.length > 0}
-					<div class="flex flex-wrap gap-0.5">
+					<div class="flex flex-wrap justify-center gap-0.5">
 						{#each displayBits.slice(0, 4) as bit (bit.value)}
 							<Badge
 								variant="outline"
@@ -427,10 +427,10 @@
 	</Table.TableCell>
 
 	<!-- Processing -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="processes">
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="processes">
 		{#if isPending || isFailed}
 			{#if product.processes.length > 0}
-				<div class="flex flex-wrap gap-0.5">
+				<div class="flex flex-wrap justify-center gap-0.5">
 					{#each product.processes as proc (proc.id)}
 						<Badge
 							variant="outline"
@@ -456,13 +456,13 @@
 			/>
 		{:else}
 			<button
-				class="w-full cursor-pointer text-left outline-none"
+				class="w-full cursor-pointer text-center outline-none"
 				data-focusable
 				data-auto-open
 				onclick={() => openEditor('processes')}
 			>
 				{#if displayProcesses.length > 0}
-					<div class="flex flex-wrap gap-0.5">
+					<div class="flex flex-wrap justify-center gap-0.5">
 						{#each displayProcesses as proc (proc.value)}
 							<Badge
 								variant="outline"
@@ -478,10 +478,10 @@
 	</Table.TableCell>
 
 	<!-- Allergen Warnings -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="allergens">
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="allergens">
 		{#if isPending || isFailed}
 			{#if product.allergenWarnings.length > 0}
-				<div class="flex flex-wrap gap-0.5">
+				<div class="flex flex-wrap justify-center gap-0.5">
 					{#each product.allergenWarnings as warning (warning.id)}
 						<Badge
 							variant="outline"
@@ -508,13 +508,13 @@
 			/>
 		{:else}
 			<button
-				class="w-full cursor-pointer text-left outline-none"
+				class="w-full cursor-pointer text-center outline-none"
 				data-focusable
 				data-auto-open
 				onclick={() => openEditor('allergens')}
 			>
 				{#if displayAllergens.length > 0}
-					<div class="flex flex-wrap gap-0.5">
+					<div class="flex flex-wrap justify-center gap-0.5">
 						{#each displayAllergens as warning (warning.value)}
 							<Badge
 								variant="outline"
@@ -530,7 +530,7 @@
 	</Table.TableCell>
 
 	<!-- Unit Type -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="unitType">
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="unitType">
 		{#if isPending || isFailed}
 			<span class="text-muted-foreground">
 				{unitTypes.find((u) => u.value === product.unitType)?.label ?? '—'}
@@ -546,7 +546,7 @@
 			/>
 		{:else}
 			<button
-				class="w-full text-left outline-none"
+				class="w-full text-center outline-none"
 				data-focusable
 				data-auto-open
 				onclick={() => openEditor('unitType')}
@@ -559,11 +559,11 @@
 	</Table.TableCell>
 
 	<!-- Actions -->
-	<Table.TableCell class="w-40 text-right" data-row={rowIndex} data-col="actions">
+	<Table.TableCell class="text-center" data-row={rowIndex} data-col="actions">
 		{#if isPending}
 			<span class="text-xs text-muted-foreground">Saving...</span>
 		{:else if isFailed}
-			<div class="flex items-center justify-end gap-1">
+			<div class="flex items-center justify-center gap-1">
 				<Button
 					size="sm"
 					variant="ghost"
@@ -584,7 +584,7 @@
 				</Button>
 			</div>
 		{:else if isEditing}
-			<div class="flex items-center justify-end gap-1">
+			<div class="flex items-center justify-center gap-1">
 				<Button
 					size="sm"
 					disabled={saving}
@@ -608,7 +608,7 @@
 				</Button>
 			</div>
 		{:else if confirmingDelete}
-			<div class="flex items-center justify-end gap-1">
+			<div class="flex items-center justify-center gap-1">
 				<Button
 					size="sm"
 					variant="destructive"
