@@ -159,6 +159,15 @@
 		items.filter((item) => selectedValues.includes(item.value))
 	);
 
+	/**
+	 * Placeholder passed to the underlying text input.
+	 * For closed single-selects with a chosen value, hide the placeholder so it does not overlap
+	 * the overlaid selected label text.
+	 */
+	let inputPlaceholder = $derived(
+		!multiSelect && selectedItems.length > 0 && !open ? '' : placeholder
+	);
+
 	/** Update selectedValues and fire onchange if provided. */
 	function updateSelection(newValues: string[]) {
 		selectedValues = newValues;
@@ -364,7 +373,7 @@
 	<Input
 		bind:value={searchQuery}
 		bind:ref={inputEl}
-		{placeholder}
+		placeholder={inputPlaceholder}
 		{disabled}
 		autocomplete="off"
 		autocapitalize="off"

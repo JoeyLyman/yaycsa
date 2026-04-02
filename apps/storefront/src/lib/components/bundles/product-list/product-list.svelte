@@ -75,7 +75,7 @@
 	 * Ordered column names for keyboard navigation.
 	 * Matches the visible product table columns from left to right.
 	 */
-	let colOrder = $derived(['name', 'bits', 'processes', 'allergens', 'unitType', 'actions']);
+	let colOrder = $derived(['name', 'unitType', 'bits', 'processes', 'allergens', 'actions']);
 
 	/**
 	 * Indices of selectable (non-pending, non-failed) product rows.
@@ -297,10 +297,10 @@
 			<Table.TableHeader>
 				<Table.TableRow>
 					<Table.TableHead class="text-center">Product</Table.TableHead>
+					<Table.TableHead class="text-center">Unit</Table.TableHead>
 					<Table.TableHead class="text-center">Ingredients</Table.TableHead>
 					<Table.TableHead class="text-center">Processing</Table.TableHead>
 					<Table.TableHead class="text-center">Allergens</Table.TableHead>
-					<Table.TableHead class="text-center">Unit</Table.TableHead>
 					<Table.TableHead class="text-center">Actions</Table.TableHead>
 				</Table.TableRow>
 			</Table.TableHeader>

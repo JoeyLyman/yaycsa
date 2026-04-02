@@ -11,6 +11,7 @@
 		type SellerProduct,
 		type FacetValueInfo
 	} from '$lib/api/admin/products.remote';
+	import * as Accordion from '$lib/components/bits/accordion';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { AddProductForm } from '$lib/components/bundles/add-product-form';
 	import { ProductList } from '$lib/components/bundles/product-list';
@@ -63,8 +64,35 @@
 	let allProcesses = $derived(rawProcesses.map(toItem));
 	let allAllergenWarnings = $derived(rawAllergenWarnings.map(toItem));
 
-	/** Default process ID to pre-select "Raw / Fresh" in the add form. */
-	let defaultProcessId = $derived(rawProcesses.find((p) => p.code === 'raw')?.id);
+	/**
+	 * Currently open accordion item for the add-product section.
+	 * When this equals `add-product`, the add-product form is expanded.
+	 * When this is an empty string, the form is collapsed.
+	 */
+	let addProductAccordionValue = $state('add-product');
+
+	/**
+	 * Running clockwise rotation angle for the add-product chevron.
+	 * This starts at 180 degrees because the accordion defaults open, so the
+	 * chevron should initially point up. Each toggle adds another 180 degrees
+	 * so both open and close animations rotate clockwise instead of reversing.
+	 */
+	let addProductChevronRotation = $state(180);
+
+	/**
+	 * Previous open/closed state for the add-product accordion.
+	 * Used to detect actual state changes so the chevron only advances when the
+	 * accordion toggles, not on unrelated reactive updates.
+	 */
+	let wasAddProductOpen = $state(true);
+
+	$effect(() => {
+		const isAddProductOpen = addProductAccordionValue === 'add-product';
+		if (isAddProductOpen !== wasAddProductOpen) {
+			addProductChevronRotation += 180;
+			wasAddProductOpen = isAddProductOpen;
+		}
+	});
 
 	// ─── Optimistic create state ───
 
@@ -243,17 +271,45 @@
 	<p class="mt-4 text-destructive">Error loading products: {loadError}</p>
 {:else}
 	<div class="space-y-2">
-		<h2 class="pt-2 text-xl font-bold">Add Product</h2>
+		<Accordion.Root
+			type="single"
+			value={addProductAccordionValue}
+			onValueChange={(value) => {
+				addProductAccordionValue = value;
+			}}
+		>
+			<Accordion.Item value="add-product">
+				<Accordion.Trigger class="add-product-trigger pt-2 text-xl font-bold">
+					<span class="inline-flex items-center gap-2">
+						<span>Add Product</span>
+						<svg
+							class="add-product-chevron size-5"
+							style={`transform: rotate(${addProductChevronRotation}deg)`}
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="m6 9 6 6 6-6" />
+						</svg>
+					</span>
+				</Accordion.Trigger>
 
-		<AddProductForm
-			{allBits}
-			{allProcesses}
-			{allAllergenWarnings}
-			unitTypes={UNIT_TYPES}
-			{defaultProcessId}
-			oncreate={handleCreate}
-			onCreateBit={handleCreateBit}
-		/>
+				<Accordion.Content class="overflow-visible pt-2">
+					<AddProductForm
+						{allBits}
+						{allProcesses}
+						{allAllergenWarnings}
+						unitTypes={UNIT_TYPES}
+						oncreate={handleCreate}
+						onCreateBit={handleCreateBit}
+					/>
+				</Accordion.Content>
+			</Accordion.Item>
+		</Accordion.Root>
 
 		<h2 class="mt-8 text-xl font-bold">Products</h2>
 
@@ -273,3 +329,9 @@
 		/>
 	</div>
 {/if}
+
+<style>
+	:global(.add-product-chevron) {
+		transition: transform 200ms ease;
+	}
+</style>

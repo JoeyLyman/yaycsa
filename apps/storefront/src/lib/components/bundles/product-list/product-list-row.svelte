@@ -43,7 +43,7 @@
 		/** Callback to dismiss a failed create. */
 		ondismiss,
 		/** Callback to create a new bit (ingredient). */
-		onCreateBit,
+		onCreateBit
 	}: {
 		product: SellerProduct;
 		rowIndex: number;
@@ -53,11 +53,14 @@
 		unitTypes: InputSelectItem[];
 		isPending?: boolean;
 		isFailed?: boolean;
-		onsave: (productId: string, edits: {
-			name?: string;
-			unitType?: string;
-			facetValueIds?: string[];
-		}) => Promise<void>;
+		onsave: (
+			productId: string,
+			edits: {
+				name?: string;
+				unitType?: string;
+				facetValueIds?: string[];
+			}
+		) => Promise<void>;
 		ondelete: (productId: string) => Promise<void>;
 		onretry: (productId: string) => void;
 		ondismiss: (productId: string) => void;
@@ -117,7 +120,11 @@
 
 	/** Display bits resolved to full items. */
 	let displayBits = $derived(allBits.filter((b) => displayBitIds.includes(b.value)));
+
+	/** Display processing values resolved to full items, excluding the removed raw/fresh pseudo-state. */
 	let displayProcesses = $derived(allProcesses.filter((p) => displayProcessIds.includes(p.value)));
+
+	/** Display allergen warnings resolved to full items. */
 	let displayAllergens = $derived(
 		allAllergenWarnings.filter((a) => displayAllergenIds.includes(a.value))
 	);
@@ -160,8 +167,9 @@
 	$effect(() => {
 		if (activeField !== null) {
 			tick().then(() => {
-				const row = document.querySelector(`[data-row="${rowIndex}"]`)?.closest('tr')
-					?? document.querySelector(`tr:has([data-row="${rowIndex}"])`);
+				const row =
+					document.querySelector(`[data-row="${rowIndex}"]`)?.closest('tr') ??
+					document.querySelector(`tr:has([data-row="${rowIndex}"])`);
 				const cell = row?.querySelector(`[data-col="${activeField}"]`);
 				const focusable = cell?.querySelector('[data-focusable]') as HTMLElement | null;
 				focusable?.focus();
@@ -280,7 +288,7 @@
 			await onsave(product.id, {
 				...(nameChanged ? { name: editState.name } : {}),
 				...(unitTypeChanged ? { unitType: editState.unitType } : {}),
-				...(facetValueIds ? { facetValueIds } : {}),
+				...(facetValueIds ? { facetValueIds } : {})
 			});
 			editState = null;
 		} catch (err) {
@@ -324,9 +332,7 @@
 			: isEditing
 				? ''
 				: 'hover:bg-accent'}
-	style={isEditing
-		? 'background-color: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.15))'
-		: ''}
+	style={isEditing ? 'background-color: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.15))' : ''}
 	onfocusout={handleRowFocusOut}
 >
 	<!-- Product Name -->
@@ -348,183 +354,26 @@
 				}}
 				onblur={closeEditor}
 				onkeydown={(e) => {
-					if (e.key === 'Enter') { e.stopPropagation(); closeEditor(); }
-					if (e.key === 'Escape') { e.stopPropagation(); cancelEdits(); }
+					if (e.key === 'Enter') {
+						e.stopPropagation();
+						closeEditor();
+					}
+					if (e.key === 'Escape') {
+						e.stopPropagation();
+						cancelEdits();
+					}
 				}}
 				disabled={saving}
 				class="h-7 text-center text-sm"
 			/>
 		{:else}
 			<button
-				class="w-full cursor-text text-center hover:underline focus-visible:underline outline-none"
+				class="w-full cursor-text text-center outline-none hover:underline focus-visible:underline"
 				data-focusable
 				data-auto-open
 				onclick={() => openEditor('name')}
 			>
 				{displayName}
-			</button>
-		{/if}
-	</Table.TableCell>
-
-	<!-- Bits -->
-	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="bits">
-		{#if isPending || isFailed}
-			{#if product.bits.length > 0}
-				<div class="flex flex-wrap justify-center gap-0.5">
-					{#each product.bits as bit (bit.id)}
-						<Badge
-							variant="outline"
-							class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
-						>{bit.name}</Badge>
-					{/each}
-				</div>
-			{:else}
-				<span class="text-xs text-muted-foreground">—</span>
-			{/if}
-		{:else if activeField === 'bits'}
-			<InputSelect
-				items={allBits}
-				selectedValues={editState?.bitIds ?? product.bits.map((b) => b.id)}
-				onchange={(v) => {
-					if (!editState) editState = {};
-					editState.bitIds = v;
-				}}
-				onfocusleave={() => closeEditorIfActive('bits')}
-				multiSelect={true}
-				color="green"
-				allowCreate={true}
-				onCreate={onCreateBit}
-				placeholder="Search bits..."
-				maxVisible={3}
-			/>
-		{:else}
-			<button
-				class="w-full cursor-pointer text-center outline-none"
-				data-focusable
-				data-auto-open
-				onclick={() => openEditor('bits')}
-			>
-				{#if displayBits.length > 0}
-					<div class="flex flex-wrap justify-center gap-0.5">
-						{#each displayBits.slice(0, 4) as bit (bit.value)}
-							<Badge
-								variant="outline"
-								class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
-							>{bit.label}</Badge>
-						{/each}
-						{#if displayBits.length > 4}
-							<Badge
-								variant="outline"
-								class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
-							>+{displayBits.length - 4}</Badge>
-						{/if}
-					</div>
-				{:else}
-					<span class="text-xs text-muted-foreground hover:underline">—</span>
-				{/if}
-			</button>
-		{/if}
-	</Table.TableCell>
-
-	<!-- Processing -->
-	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="processes">
-		{#if isPending || isFailed}
-			{#if product.processes.length > 0}
-				<div class="flex flex-wrap justify-center gap-0.5">
-					{#each product.processes as proc (proc.id)}
-						<Badge
-							variant="outline"
-							class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
-						>{proc.name}</Badge>
-					{/each}
-				</div>
-			{:else}
-				<span class="text-xs text-muted-foreground">—</span>
-			{/if}
-		{:else if activeField === 'processes'}
-			<InputSelect
-				items={allProcesses}
-				selectedValues={editState?.processIds ?? product.processes.map((p) => p.id)}
-				onchange={(v) => {
-					if (!editState) editState = {};
-					editState.processIds = v;
-				}}
-				onfocusleave={() => closeEditorIfActive('processes')}
-				multiSelect={true}
-				color="blue"
-				placeholder="Search processing..."
-			/>
-		{:else}
-			<button
-				class="w-full cursor-pointer text-center outline-none"
-				data-focusable
-				data-auto-open
-				onclick={() => openEditor('processes')}
-			>
-				{#if displayProcesses.length > 0}
-					<div class="flex flex-wrap justify-center gap-0.5">
-						{#each displayProcesses as proc (proc.value)}
-							<Badge
-								variant="outline"
-								class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
-							>{proc.label}</Badge>
-						{/each}
-					</div>
-				{:else}
-					<span class="text-xs text-muted-foreground">—</span>
-				{/if}
-			</button>
-		{/if}
-	</Table.TableCell>
-
-	<!-- Allergen Warnings -->
-	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="allergens">
-		{#if isPending || isFailed}
-			{#if product.allergenWarnings.length > 0}
-				<div class="flex flex-wrap justify-center gap-0.5">
-					{#each product.allergenWarnings as warning (warning.id)}
-						<Badge
-							variant="outline"
-							class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
-						>{warning.name.replace(/^May contain /i, '')}</Badge>
-					{/each}
-				</div>
-			{:else}
-				<span class="text-xs text-muted-foreground">—</span>
-			{/if}
-		{:else if activeField === 'allergens'}
-			<InputSelect
-				items={allAllergenWarnings}
-				selectedValues={editState?.allergenIds ?? product.allergenWarnings.map((a) => a.id)}
-				onchange={(v) => {
-					if (!editState) editState = {};
-					editState.allergenIds = v;
-				}}
-				onfocusleave={() => closeEditorIfActive('allergens')}
-				multiSelect={true}
-				color="orange"
-				displayName={(item) => item.label.replace(/^May contain /i, '')}
-				placeholder="Search allergens..."
-			/>
-		{:else}
-			<button
-				class="w-full cursor-pointer text-center outline-none"
-				data-focusable
-				data-auto-open
-				onclick={() => openEditor('allergens')}
-			>
-				{#if displayAllergens.length > 0}
-					<div class="flex flex-wrap justify-center gap-0.5">
-						{#each displayAllergens as warning (warning.value)}
-							<Badge
-								variant="outline"
-								class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
-							>{warning.label.replace(/^May contain /i, '')}</Badge>
-						{/each}
-					</div>
-				{:else}
-					<span class="text-xs text-muted-foreground">—</span>
-				{/if}
 			</button>
 		{/if}
 	</Table.TableCell>
@@ -558,6 +407,176 @@
 		{/if}
 	</Table.TableCell>
 
+	<!-- Bits -->
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="bits">
+		{#if isPending || isFailed}
+			{#if product.bits.length > 0}
+				<div class="flex flex-wrap justify-center gap-0.5">
+					{#each product.bits as bit (bit.id)}
+						<Badge
+							variant="outline"
+							class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
+							>{bit.name}</Badge
+						>
+					{/each}
+				</div>
+			{:else}
+				<span class="text-xs text-muted-foreground italic">raw</span>
+			{/if}
+		{:else if activeField === 'bits'}
+			<InputSelect
+				items={allBits}
+				selectedValues={editState?.bitIds ?? product.bits.map((b) => b.id)}
+				onchange={(v) => {
+					if (!editState) editState = {};
+					editState.bitIds = v;
+				}}
+				onfocusleave={() => closeEditorIfActive('bits')}
+				multiSelect={true}
+				color="green"
+				allowCreate={true}
+				onCreate={onCreateBit}
+				placeholder="Search..."
+				maxVisible={3}
+			/>
+		{:else}
+			<button
+				class="w-full cursor-pointer text-center outline-none"
+				data-focusable
+				data-auto-open
+				onclick={() => openEditor('bits')}
+			>
+				{#if displayBits.length > 0}
+					<div class="flex flex-wrap justify-center gap-0.5">
+						{#each displayBits.slice(0, 4) as bit (bit.value)}
+							<Badge
+								variant="outline"
+								class="border-green-600/30 bg-green-600/10 px-1.5 py-0 text-[11px] font-normal text-green-700 dark:text-green-300"
+								>{bit.label}</Badge
+							>
+						{/each}
+						{#if displayBits.length > 4}
+							<Badge
+								variant="outline"
+								class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+								>+{displayBits.length - 4}</Badge
+							>
+						{/if}
+					</div>
+				{:else}
+					<span class="text-xs text-muted-foreground italic">raw</span>
+				{/if}
+			</button>
+		{/if}
+	</Table.TableCell>
+
+	<!-- Processing -->
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="processes">
+		{#if isPending || isFailed}
+			{#if product.processes.length > 0}
+				<div class="flex flex-wrap justify-center gap-0.5">
+					{#each product.processes as proc (proc.id)}
+						<Badge
+							variant="outline"
+							class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
+							>{proc.name}</Badge
+						>
+					{/each}
+				</div>
+			{:else}
+				<span class="text-xs text-muted-foreground italic">fresh</span>
+			{/if}
+		{:else if activeField === 'processes'}
+			<InputSelect
+				items={allProcesses}
+				selectedValues={editState?.processIds ?? product.processes.map((p) => p.id)}
+				onchange={(v) => {
+					if (!editState) editState = {};
+					editState.processIds = v;
+				}}
+				onfocusleave={() => closeEditorIfActive('processes')}
+				multiSelect={true}
+				color="blue"
+				placeholder="Search..."
+			/>
+		{:else}
+			<button
+				class="w-full cursor-pointer text-center outline-none"
+				data-focusable
+				data-auto-open
+				onclick={() => openEditor('processes')}
+			>
+				{#if displayProcesses.length > 0}
+					<div class="flex flex-wrap justify-center gap-0.5">
+						{#each displayProcesses as proc (proc.value)}
+							<Badge
+								variant="outline"
+								class="border-blue-500/30 bg-blue-500/10 px-1.5 py-0 text-[11px] font-normal text-blue-700 dark:text-blue-300"
+								>{proc.label}</Badge
+							>
+						{/each}
+					</div>
+				{:else}
+					<span class="text-xs text-muted-foreground italic">fresh</span>
+				{/if}
+			</button>
+		{/if}
+	</Table.TableCell>
+
+	<!-- Allergen Warnings -->
+	<Table.TableCell class="overflow-visible text-center" data-row={rowIndex} data-col="allergens">
+		{#if isPending || isFailed}
+			{#if product.allergenWarnings.length > 0}
+				<div class="flex flex-wrap justify-center gap-0.5">
+					{#each product.allergenWarnings as warning (warning.id)}
+						<Badge
+							variant="outline"
+							class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
+							>{warning.name.replace(/^May contain /i, '')}</Badge
+						>
+					{/each}
+				</div>
+			{:else}
+				<span class="text-xs text-muted-foreground italic">none</span>
+			{/if}
+		{:else if activeField === 'allergens'}
+			<InputSelect
+				items={allAllergenWarnings}
+				selectedValues={editState?.allergenIds ?? product.allergenWarnings.map((a) => a.id)}
+				onchange={(v) => {
+					if (!editState) editState = {};
+					editState.allergenIds = v;
+				}}
+				onfocusleave={() => closeEditorIfActive('allergens')}
+				multiSelect={true}
+				color="orange"
+				displayName={(item) => item.label.replace(/^May contain /i, '')}
+				placeholder="Search..."
+			/>
+		{:else}
+			<button
+				class="w-full cursor-pointer text-center outline-none"
+				data-focusable
+				data-auto-open
+				onclick={() => openEditor('allergens')}
+			>
+				{#if displayAllergens.length > 0}
+					<div class="flex flex-wrap justify-center gap-0.5">
+						{#each displayAllergens as warning (warning.value)}
+							<Badge
+								variant="outline"
+								class="border-orange-500/30 bg-orange-500/10 px-1.5 py-0 text-[11px] font-normal text-orange-700 dark:text-orange-300"
+								>{warning.label.replace(/^May contain /i, '')}</Badge
+							>
+						{/each}
+					</div>
+				{:else}
+					<span class="text-xs text-muted-foreground italic">none</span>
+				{/if}
+			</button>
+		{/if}
+	</Table.TableCell>
+
 	<!-- Actions -->
 	<Table.TableCell class="text-center" data-row={rowIndex} data-col="actions">
 		{#if isPending}
@@ -585,25 +604,14 @@
 			</div>
 		{:else if isEditing}
 			<div class="flex items-center justify-center gap-1">
-				<Button
-					size="sm"
-					disabled={saving}
-					data-focusable
-					onclick={handleSave}
-				>
+				<Button size="sm" disabled={saving} data-focusable onclick={handleSave}>
 					{#if saving}
 						<SpinnerSun class="size-3.5" />
 					{:else}
 						Save
 					{/if}
 				</Button>
-				<Button
-					size="sm"
-					variant="ghost"
-					disabled={saving}
-					data-focusable
-					onclick={cancelEdits}
-				>
+				<Button size="sm" variant="ghost" disabled={saving} data-focusable onclick={cancelEdits}>
 					Cancel
 				</Button>
 			</div>
@@ -634,5 +642,4 @@
 			</Button>
 		{/if}
 	</Table.TableCell>
-
 </Table.TableRow>

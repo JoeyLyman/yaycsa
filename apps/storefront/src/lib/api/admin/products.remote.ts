@@ -199,7 +199,9 @@ function toSellerProduct(product: AdminProduct): SellerProduct {
 		sku: variant?.sku ?? '',
 		unitType: variant?.customFields?.unitType ?? null,
 		bits: fvs.filter((fv) => fv.facet.code === 'bits').map(toFacetValueInfo),
-		processes: fvs.filter((fv) => fv.facet.code === 'process').map(toFacetValueInfo),
+		processes: fvs
+			.filter((fv) => fv.facet.code === 'process' && fv.code !== 'raw')
+			.map(toFacetValueInfo),
 		allergenWarnings: fvs.filter((fv) => fv.facet.code === 'allergen-warning').map(toFacetValueInfo),
 	};
 }
@@ -462,7 +464,7 @@ export const fetchBits = query(async (): Promise<FacetValueInfo[]> => {
  * Fetch all available processing types (raw, frozen, fermented, etc.).
  */
 export const fetchProcessTypes = query(async (): Promise<FacetValueInfo[]> => {
-	return fetchFacetValues('process');
+	return (await fetchFacetValues('process')).filter((processType) => processType.code !== 'raw');
 });
 
 /**

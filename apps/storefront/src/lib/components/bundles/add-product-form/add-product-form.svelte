@@ -12,18 +12,15 @@
 		allAllergenWarnings,
 		/** Unit type options (value + label). */
 		unitTypes,
-		/** Default process ID to pre-select (e.g., "Raw / Fresh"). */
-		defaultProcessId,
 		/** Callback when the user submits a new product. */
 		oncreate,
 		/** Callback for creating a new bit (ingredient). */
-		onCreateBit,
+		onCreateBit
 	}: {
 		allBits: InputSelectItem[];
 		allProcesses: InputSelectItem[];
 		allAllergenWarnings: InputSelectItem[];
 		unitTypes: InputSelectItem[];
-		defaultProcessId?: string;
 		oncreate: (data: {
 			name: string;
 			unitType: string;
@@ -45,15 +42,8 @@
 	/** Selected bit (ingredient) IDs. */
 	let newBitIds: string[] = $state([]);
 
-	/** Selected process IDs. Pre-populated with defaultProcessId if provided. */
+	/** Selected process IDs for non-fresh handling like frozen, cured, or fermented. */
 	let newProcessIds: string[] = $state([]);
-
-	/** Initialize process selection with default on first render. */
-	$effect(() => {
-		if (defaultProcessId && newProcessIds.length === 0) {
-			newProcessIds = [defaultProcessId];
-		}
-	});
 
 	/** Selected allergen warning IDs. */
 	let newAllergenIds: string[] = $state([]);
@@ -70,7 +60,7 @@
 			unitType: newUnitTypeValues[0] ?? '',
 			bitIds: newBitIds,
 			processIds: newProcessIds,
-			allergenIds: newAllergenIds,
+			allergenIds: newAllergenIds
 		});
 
 		// Reset form
@@ -84,7 +74,7 @@
 </script>
 
 <form
-	class="space-y-5 rounded-md border px-3 pt-1 pb-3"
+	class="space-y-5 overflow-visible rounded-md border px-3 pt-1 pb-3"
 	onsubmit={(e) => {
 		e.preventDefault();
 		handleSubmit();
@@ -93,21 +83,21 @@
 	<!-- Row 1: Name, Unit Type -->
 	<div class="flex flex-wrap items-end gap-2">
 		<div class="min-w-[180px] flex-1">
-			<label for="new-name" class="text-xs font-medium text-muted-foreground">Product Name</label>
+			<label for="new-name" class="text-xs font-medium text-muted-foreground">Name</label>
 			<Input
 				id="new-name"
 				bind:value={newName}
 				bind:ref={nameInput}
-				placeholder="e.g. Mixed Salad Greens"
+				placeholder="i.e. Beer, salad greens, whiskey marinated pork loins..."
 			/>
 		</div>
 		<div class="w-40">
-			<p class="text-xs font-medium text-muted-foreground">Unit Type</p>
+			<p class="text-xs font-medium text-muted-foreground">Units</p>
 			<InputSelect
 				items={unitTypes}
 				bind:selectedValues={newUnitTypeValues}
 				multiSelect={false}
-				placeholder="Select unit..."
+				placeholder="..."
 			/>
 		</div>
 	</div>
@@ -115,7 +105,8 @@
 	<!-- Row 2: Bits (ingredients) — searchable multi-select -->
 	<div>
 		<p class="text-xs font-medium text-muted-foreground">
-			Bits <span class="font-normal text-muted-foreground/70">(Ingredients — What's in it?)</span>
+			Ingredients
+			<!-- <span class="font-normal text-muted-foreground/70">(What's in it?)</span> -->
 		</p>
 		<InputSelect
 			items={allBits}
@@ -124,28 +115,29 @@
 			color="green"
 			allowCreate={true}
 			onCreate={onCreateBit}
-			placeholder="Search ingredients..."
+			placeholder="raw"
 		/>
 	</div>
 
 	<!-- Row 3: Processing — searchable multi-select -->
 	<div>
 		<p class="text-xs font-medium text-muted-foreground">
-			Processing <span class="font-normal text-muted-foreground/70">(What was done to it?)</span>
+			Processing
+			<!-- <span class="font-normal text-muted-foreground/70">(What was done to it?)</span> -->
 		</p>
 		<InputSelect
 			items={allProcesses}
 			bind:selectedValues={newProcessIds}
 			multiSelect={true}
 			color="blue"
-			placeholder="Search processing..."
+			placeholder="fresh"
 		/>
 	</div>
 
 	<!-- Row 4: Allergen Warnings — searchable multi-select -->
 	<div>
 		<p class="text-xs font-medium text-muted-foreground">
-			Allergen Warnings <span class="font-normal text-muted-foreground/70"
+			Allergens <span class="font-normal text-muted-foreground/70"
 				>(May have come in contact with...)</span
 			>
 		</p>
@@ -155,7 +147,7 @@
 			multiSelect={true}
 			color="orange"
 			displayName={(item) => item.label.replace(/^May contain /i, '')}
-			placeholder="Search allergens..."
+			placeholder="none"
 		/>
 	</div>
 
