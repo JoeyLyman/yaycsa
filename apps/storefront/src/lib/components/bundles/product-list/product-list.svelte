@@ -28,7 +28,7 @@
 		/** Callback to dismiss a failed create. */
 		ondismiss,
 		/** Callback to create a new bit. */
-		onCreateBit,
+		onCreateBit
 	}: {
 		products: SellerProduct[];
 		allBits: InputSelectItem[];
@@ -37,11 +37,14 @@
 		unitTypes: InputSelectItem[];
 		pendingIds: Set<string>;
 		failedIds: Map<string, string>;
-		onsave: (productId: string, edits: {
-			name?: string;
-			unitType?: string;
-			facetValueIds?: string[];
-		}) => Promise<void>;
+		onsave: (
+			productId: string,
+			edits: {
+				name?: string;
+				unitType?: string;
+				facetValueIds?: string[];
+			}
+		) => Promise<void>;
 		ondelete: (productId: string) => Promise<void>;
 		onretry: (productId: string) => void;
 		ondismiss: (productId: string) => void;
@@ -106,7 +109,7 @@
 		if (!cell) return null;
 		return {
 			row: parseInt(cell.dataset.row!),
-			col: cell.dataset.col!,
+			col: cell.dataset.col!
 		};
 	}
 
@@ -213,9 +216,6 @@
 			(e.target as HTMLElement).tagName === 'INPUT' &&
 			(e.target as HTMLInputElement).type !== 'checkbox';
 
-		/** Whether the focused element is inside an InputSelect component. */
-		const isInputSelectInput = !!(e.target as HTMLElement).closest('[data-input-select]');
-
 		/** Whether the focused element is a checkbox. */
 		const isCheckbox =
 			(e.target as HTMLElement).tagName === 'INPUT' &&
@@ -296,11 +296,11 @@
 		<Table.Table class="table-fixed">
 			<Table.TableHeader>
 				<Table.TableRow>
-					<Table.TableHead>Product Name</Table.TableHead>
-					<Table.TableHead class="w-[180px]">Bits</Table.TableHead>
+					<Table.TableHead>Product</Table.TableHead>
+					<Table.TableHead class="w-[180px]">Ingredients</Table.TableHead>
 					<Table.TableHead class="w-[180px]">Processing</Table.TableHead>
 					<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
-					<Table.TableHead class="w-36">Unit Type</Table.TableHead>
+					<Table.TableHead class="w-36">Unit</Table.TableHead>
 					<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
 				</Table.TableRow>
 			</Table.TableHeader>

@@ -62,6 +62,8 @@
 		placeholder = 'Search...',
 		/** Optional change callback (alternative to binding selectedValues). */
 		onchange,
+		/** Callback fired when focus leaves the entire InputSelect container. */
+		onfocusleave,
 		/** Additional class for the outer container. */
 		class: className = '',
 	}: {
@@ -76,6 +78,7 @@
 		maxVisible?: number;
 		placeholder?: string;
 		onchange?: (values: string[]) => void;
+		onfocusleave?: () => void;
 		class?: string;
 	} = $props();
 
@@ -317,6 +320,7 @@
 		if (focusLeavingContainer) {
 			open = false;
 			searchQuery = '';
+			onfocusleave?.();
 		}
 	}
 
@@ -362,6 +366,10 @@
 		bind:ref={inputEl}
 		{placeholder}
 		{disabled}
+		autocomplete="off"
+		autocapitalize="off"
+		autocorrect="off"
+		spellcheck={false}
 		onfocus={() => (open = true)}
 		onkeydown={handleKeydown}
 		class="h-8 text-sm"

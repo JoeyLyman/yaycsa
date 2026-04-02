@@ -122,14 +122,6 @@
 		allAllergenWarnings.filter((a) => displayAllergenIds.includes(a.value))
 	);
 
-	// ─── Hover-to-focus ───
-
-	/** Focus the first [data-focusable] child when pointer enters a cell. */
-	function handleCellHover(e: PointerEvent) {
-		const focusable = (e.currentTarget as HTMLElement).querySelector('[data-focusable]');
-		(focusable as HTMLElement)?.focus();
-	}
-
 	// ─── Row focus-out cleanup ───
 
 	/**
@@ -237,6 +229,17 @@
 		}
 	}
 
+	/**
+	 * Close a specific cell editor when focus leaves that InputSelect entirely.
+	 * This keeps the table spreadsheet-like: once focus leaves the cell, the
+	 * transient editor UI should disappear and fall back to read mode.
+	 */
+	function closeEditorIfActive(field: EditField) {
+		if (activeField === field) {
+			closeEditor();
+		}
+	}
+
 	/** Discard all pending edits for this row. */
 	function cancelEdits() {
 		editState = null;
@@ -327,7 +330,7 @@
 	onfocusout={handleRowFocusOut}
 >
 	<!-- Product Name -->
-	<Table.TableCell data-row={rowIndex} data-col="name" onpointerenter={handleCellHover}>
+	<Table.TableCell data-row={rowIndex} data-col="name">
 		{#if isPending}
 			<span class="flex items-center gap-2">
 				<SpinnerSun class="size-3.5 shrink-0 text-muted-foreground" />
@@ -364,7 +367,7 @@
 	</Table.TableCell>
 
 	<!-- Bits -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="bits" onpointerenter={handleCellHover}>
+	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="bits">
 		{#if isPending || isFailed}
 			{#if product.bits.length > 0}
 				<div class="flex flex-wrap gap-0.5">
@@ -386,6 +389,7 @@
 					if (!editState) editState = {};
 					editState.bitIds = v;
 				}}
+				onfocusleave={() => closeEditorIfActive('bits')}
 				multiSelect={true}
 				color="green"
 				allowCreate={true}
@@ -423,7 +427,7 @@
 	</Table.TableCell>
 
 	<!-- Processing -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="processes" onpointerenter={handleCellHover}>
+	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="processes">
 		{#if isPending || isFailed}
 			{#if product.processes.length > 0}
 				<div class="flex flex-wrap gap-0.5">
@@ -445,6 +449,7 @@
 					if (!editState) editState = {};
 					editState.processIds = v;
 				}}
+				onfocusleave={() => closeEditorIfActive('processes')}
 				multiSelect={true}
 				color="blue"
 				placeholder="Search processing..."
@@ -473,7 +478,7 @@
 	</Table.TableCell>
 
 	<!-- Allergen Warnings -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="allergens" onpointerenter={handleCellHover}>
+	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="allergens">
 		{#if isPending || isFailed}
 			{#if product.allergenWarnings.length > 0}
 				<div class="flex flex-wrap gap-0.5">
@@ -495,6 +500,7 @@
 					if (!editState) editState = {};
 					editState.allergenIds = v;
 				}}
+				onfocusleave={() => closeEditorIfActive('allergens')}
 				multiSelect={true}
 				color="orange"
 				displayName={(item) => item.label.replace(/^May contain /i, '')}
@@ -524,24 +530,36 @@
 	</Table.TableCell>
 
 	<!-- Unit Type -->
-	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="unitType" onpointerenter={handleCellHover}>
+	<Table.TableCell class="overflow-visible" data-row={rowIndex} data-col="unitType">
 		{#if isPending || isFailed}
 			<span class="text-muted-foreground">
 				{unitTypes.find((u) => u.value === product.unitType)?.label ?? '—'}
 			</span>
-		{:else}
+		{:else if activeField === 'unitType'}
 			<InputSelect
 				items={unitTypes}
 				selectedValues={displayUnitType ? [displayUnitType] : []}
 				onchange={handleUnitTypeChange}
+				onfocusleave={() => closeEditorIfActive('unitType')}
 				multiSelect={false}
 				placeholder="Unit..."
 			/>
+		{:else}
+			<button
+				class="w-full text-left outline-none"
+				data-focusable
+				data-auto-open
+				onclick={() => openEditor('unitType')}
+			>
+				<span class="text-muted-foreground">
+					{unitTypes.find((u) => u.value === displayUnitType)?.label ?? '—'}
+				</span>
+			</button>
 		{/if}
 	</Table.TableCell>
 
 	<!-- Actions -->
-	<Table.TableCell class="w-40 text-right" data-row={rowIndex} data-col="actions" onpointerenter={handleCellHover}>
+	<Table.TableCell class="w-40 text-right" data-row={rowIndex} data-col="actions">
 		{#if isPending}
 			<span class="text-xs text-muted-foreground">Saving...</span>
 		{:else if isFailed}
