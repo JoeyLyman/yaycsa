@@ -5,6 +5,23 @@ import { getAuthToken, setAuthToken } from './auth.js';
 
 const VENDURE_API_URL = 'http://localhost:3000/shop-api';
 
+/**
+ * Error raised when the storefront cannot reach the Vendure Shop API at all.
+ * This is a network / service-availability problem, not a GraphQL validation error.
+ */
+export class VendureConnectionError extends Error {
+	readonly url: string;
+
+	constructor(url: string, cause?: unknown) {
+		super(
+			`Vendure server unavailable at ${url}. Make sure the server is running on localhost:3000, then refresh.`
+		);
+		this.name = 'VendureConnectionError';
+		this.url = url;
+		this.cause = cause;
+	}
+}
+
 export type VendureClient = ReturnType<typeof createVendureClient>;
 
 export function createVendureClient(cookies: Cookies) {
@@ -32,11 +49,16 @@ export function createVendureClient(cookies: Cookies) {
 			variables: variables ?? undefined
 		});
 
-		const res = await fetch(VENDURE_API_URL, {
-			method: 'POST',
-			headers,
-			body
-		});
+		let res: Response;
+		try {
+			res = await fetch(VENDURE_API_URL, {
+				method: 'POST',
+				headers,
+				body
+			});
+		} catch (err) {
+			throw new VendureConnectionError(VENDURE_API_URL, err);
+		}
 
 		// Capture auth token from response
 		const responseToken = res.headers.get('vendure-auth-token');

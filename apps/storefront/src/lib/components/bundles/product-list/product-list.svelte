@@ -19,10 +19,6 @@
 		pendingIds,
 		/** Map of temporary IDs to error messages for failed creates. */
 		failedIds,
-		/** Set of selected product IDs for bulk operations. Bindable. */
-		selectedIds = $bindable(new Set()),
-		/** Whether to show checkboxes for bulk selection. */
-		showCheckboxes = false,
 		/** Callback to save edits for a product. */
 		onsave,
 		/** Callback to delete a product. */
@@ -41,8 +37,6 @@
 		unitTypes: InputSelectItem[];
 		pendingIds: Set<string>;
 		failedIds: Map<string, string>;
-		selectedIds?: Set<string>;
-		showCheckboxes?: boolean;
 		onsave: (productId: string, edits: {
 			name?: string;
 			unitType?: string;
@@ -54,51 +48,31 @@
 		onCreateBit: (name: string) => Promise<InputSelectItem | null>;
 	} = $props();
 
-	/**
-	 * Whether all non-pending, non-failed products are selected.
-	 * Used for the select-all checkbox in the header.
-	 */
-	let selectableProducts = $derived(
-		products.filter((p) => !pendingIds.has(p.id) && !failedIds.has(p.id))
-	);
-	let allSelected = $derived(
-		selectableProducts.length > 0 && selectableProducts.every((p) => selectedIds.has(p.id))
-	);
-
-	/** Toggle select-all / deselect-all. */
-	function toggleSelectAll() {
-		if (allSelected) {
-			selectedIds = new Set();
-		} else {
-			selectedIds = new Set(selectableProducts.map((p) => p.id));
-		}
-	}
-
-	/** Toggle selection for a single product. */
-	function toggleSelection(productId: string, selected: boolean) {
-		const next = new Set(selectedIds);
-		if (selected) {
-			next.add(productId);
-		} else {
-			next.delete(productId);
-		}
-		selectedIds = next;
-	}
-
 	// ─── DOM-first cell navigation ───
+	//
+	// No JS focus state variable — document.activeElement IS the focus state.
+	// Each cell has data-row + data-col attributes; interactive elements have data-focusable.
+	// Navigation works via event delegation on the table wrapper's onkeydown.
+	//
+	// Key design contract with InputSelect:
+	//   - InputSelect calls stopPropagation on ArrowUp/Down when its dropdown is open.
+	//   - At dropdown boundaries (top/bottom), it closes the dropdown and lets the
+	//     event bubble here, where we handle row-to-row navigation.
+	//   - data-input-select marks InputSelect containers so we can distinguish them
+	//     from regular text inputs (which don't need boundary logic).
+	//
+	// Auto-open (data-auto-open):
+	//   focusCell() clicks (not focuses) elements with data-auto-open, opening the
+	//   editor when arriving via keyboard. Hover just focuses — no auto-open.
 
 	/** Reference to the table wrapper for DOM queries. */
 	let tableEl: HTMLDivElement | null = $state(null);
 
 	/**
 	 * Ordered column names for keyboard navigation.
-	 * Includes checkbox (when shown) and actions.
+	 * Matches the visible product table columns from left to right.
 	 */
-	let colOrder = $derived(
-		showCheckboxes
-			? ['name', 'bits', 'processes', 'allergens', 'unitType', 'actions', 'checkbox']
-			: ['name', 'bits', 'processes', 'allergens', 'unitType', 'actions']
-	);
+	let colOrder = $derived(['name', 'bits', 'processes', 'allergens', 'unitType', 'actions']);
 
 	/**
 	 * Indices of selectable (non-pending, non-failed) product rows.
@@ -328,16 +302,6 @@
 					<Table.TableHead class="w-[140px]">Allergens</Table.TableHead>
 					<Table.TableHead class="w-36">Unit Type</Table.TableHead>
 					<Table.TableHead class="w-40 text-right">Actions</Table.TableHead>
-					{#if showCheckboxes}
-						<Table.TableHead class="w-10 pl-0">
-							<input
-								type="checkbox"
-								checked={allSelected}
-								onchange={toggleSelectAll}
-								class="size-4 rounded border-input"
-							/>
-						</Table.TableHead>
-					{/if}
 				</Table.TableRow>
 			</Table.TableHeader>
 			<Table.TableBody>
@@ -351,14 +315,11 @@
 						{unitTypes}
 						isPending={pendingIds.has(product.id)}
 						isFailed={failedIds.has(product.id)}
-						selected={selectedIds.has(product.id)}
-						showCheckbox={showCheckboxes}
 						{onsave}
 						{ondelete}
 						{onretry}
 						{ondismiss}
 						{onCreateBit}
-						onselect={(sel) => toggleSelection(product.id, sel)}
 					/>
 				{/each}
 			</Table.TableBody>

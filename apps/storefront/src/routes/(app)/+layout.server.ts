@@ -1,6 +1,8 @@
+import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { graphql, readFragment } from '../../graphql';
 import { ActiveCustomerFields } from '$lib/api/shop/fragments';
+import { VendureConnectionError } from '$lib/api/vendure';
 
 const ACTIVE_CUSTOMER_QUERY = graphql(
 	`
@@ -14,7 +16,19 @@ const ACTIVE_CUSTOMER_QUERY = graphql(
 );
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-	const data = await locals.vendure.query(ACTIVE_CUSTOMER_QUERY);
-	const customer = data.activeCustomer ? readFragment(ActiveCustomerFields, data.activeCustomer) : null;
-	return { customer };
+	try {
+		const data = await locals.vendure.query(ACTIVE_CUSTOMER_QUERY);
+		const customer = data.activeCustomer
+			? readFragment(ActiveCustomerFields, data.activeCustomer)
+			: null;
+		return { customer };
+	} catch (err) {
+		if (err instanceof VendureConnectionError) {
+			throw error(503, {
+				message: err.message
+			});
+		}
+
+		throw err;
+	}
 };

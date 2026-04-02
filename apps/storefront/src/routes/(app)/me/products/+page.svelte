@@ -14,7 +14,6 @@
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { AddProductForm } from '$lib/components/bundles/add-product-form';
 	import { ProductList } from '$lib/components/bundles/product-list';
-	import { BulkToolbarProducts } from '$lib/components/bundles/bulk-toolbar-products';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 
@@ -83,14 +82,6 @@
 	 * Products with these IDs show an inline error state with a retry option.
 	 */
 	let failedIds = new SvelteMap<string, string>();
-
-	// ─── Bulk selection state ───
-
-	/** Set of product IDs selected for bulk operations. */
-	let selectedIds: Set<string> = $state(new Set());
-
-	/** Whether a bulk operation is in progress. */
-	let bulkBusy = $state(false);
 
 	// ─── Initial data load (runs once on mount) ───
 
@@ -241,99 +232,6 @@
 	async function handleDelete(productId: string) {
 		await deleteProduct(productId);
 		products = products.filter((p) => p.id !== productId);
-		// Remove from selection if it was selected
-		if (selectedIds.has(productId)) {
-			const next = new Set(selectedIds);
-			next.delete(productId);
-			selectedIds = next;
-		}
-	}
-
-	// ─── Bulk operation handlers ───
-
-	/** Delete all selected products (batched, 5 concurrent). */
-	async function handleBulkDelete() {
-		const ids = [...selectedIds];
-		bulkBusy = true;
-
-		// Process in batches of 5
-		for (let i = 0; i < ids.length; i += 5) {
-			const batch = ids.slice(i, i + 5);
-			const results = await Promise.allSettled(batch.map((id) => deleteProduct(id)));
-			// Remove successfully deleted products
-			const deleted = batch.filter((_, idx) => results[idx].status === 'fulfilled');
-			products = products.filter((p) => !deleted.includes(p.id));
-		}
-
-		selectedIds = new Set();
-		bulkBusy = false;
-	}
-
-	/** Set unit type on all selected products. */
-	async function handleBulkSetUnitType(value: string) {
-		const ids = [...selectedIds];
-		bulkBusy = true;
-
-		for (let i = 0; i < ids.length; i += 5) {
-			const batch = ids.slice(i, i + 5);
-			await Promise.allSettled(
-				batch.map((id) => {
-					const product = products.find((p) => p.id === id);
-					if (!product) return Promise.resolve();
-					return updateProduct({
-						id: product.id,
-						variantId: product.variantId,
-						unitType: value
-					}).then(() => {
-						product.unitType = value || null;
-					});
-				})
-			);
-		}
-
-		products = [...products]; // trigger reactivity
-		selectedIds = new Set();
-		bulkBusy = false;
-	}
-
-	/** Add facet values to all selected products (union with existing). */
-	async function handleBulkAddFacets(newFacetIds: string[]) {
-		const ids = [...selectedIds];
-		bulkBusy = true;
-
-		for (let i = 0; i < ids.length; i += 5) {
-			const batch = ids.slice(i, i + 5);
-			await Promise.allSettled(
-				batch.map((id) => {
-					const product = products.find((p) => p.id === id);
-					if (!product) return Promise.resolve();
-
-					// Compute union of existing + new facet IDs
-					const existingIds = [
-						...product.bits.map((b) => b.id),
-						...product.processes.map((p) => p.id),
-						...product.allergenWarnings.map((a) => a.id)
-					];
-					const merged = [...new Set([...existingIds, ...newFacetIds])];
-
-					return updateProduct({
-						id: product.id,
-						variantId: product.variantId,
-						facetValueIds: merged
-					}).then(() => {
-						product.bits = rawBits.filter((b) => merged.includes(b.id));
-						product.processes = rawProcesses.filter((p) => merged.includes(p.id));
-						product.allergenWarnings = rawAllergenWarnings.filter((a) =>
-							merged.includes(a.id)
-						);
-					});
-				})
-			);
-		}
-
-		products = [...products]; // trigger reactivity
-		selectedIds = new Set();
-		bulkBusy = false;
 	}
 </script>
 
@@ -367,27 +265,11 @@
 			unitTypes={UNIT_TYPES}
 			{pendingIds}
 			{failedIds}
-			bind:selectedIds
-			showCheckboxes={true}
 			onsave={handleSave}
 			ondelete={handleDelete}
 			onretry={retryCreate}
 			ondismiss={dismissFailed}
 			onCreateBit={handleCreateBit}
-		/>
-
-		<BulkToolbarProducts
-			selectedCount={selectedIds.size}
-			{allBits}
-			{allProcesses}
-			{allAllergenWarnings}
-			unitTypes={UNIT_TYPES}
-			visible={selectedIds.size > 0}
-			busy={bulkBusy}
-			onclear={() => (selectedIds = new Set())}
-			ondelete={handleBulkDelete}
-			onSetUnitType={handleBulkSetUnitType}
-			onAddFacets={handleBulkAddFacets}
 		/>
 	</div>
 {/if}

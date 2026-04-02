@@ -34,12 +34,6 @@
 		isPending = false,
 		/** Whether this product failed to create. */
 		isFailed = false,
-		/** Whether this row's checkbox is selected (for bulk operations). */
-		selected = false,
-		/** Whether to show the checkbox column. */
-		showCheckbox = false,
-		/** Callback when selection changes. */
-		onselect,
 		/** Callback to save accumulated edits. */
 		onsave,
 		/** Callback to delete this product. */
@@ -59,9 +53,6 @@
 		unitTypes: InputSelectItem[];
 		isPending?: boolean;
 		isFailed?: boolean;
-		selected?: boolean;
-		showCheckbox?: boolean;
-		onselect?: (selected: boolean) => void;
 		onsave: (productId: string, edits: {
 			name?: string;
 			unitType?: string;
@@ -144,11 +135,15 @@
 	/**
 	 * When focus leaves this row and no actual changes were made,
 	 * close the editor and clear edit state.
+	 *
+	 * IMPORTANT: We must ignore focusout events where relatedTarget is null.
+	 * When auto-open swaps a read-mode button for an editor input, the button
+	 * is removed from DOM, which fires focusout with relatedTarget=null. Acting
+	 * on this would clear activeField/editState and collapse the editor before
+	 * it can mount. Do NOT use requestAnimationFrame to defer the check — it
+	 * fights with Svelte's DOM update batching and breaks clicking entirely.
 	 */
 	function handleRowFocusOut(e: FocusEvent) {
-		// When relatedTarget is null, the focused element was removed from DOM
-		// (e.g., auto-open swapping a button for an editor). Ignore these — they're
-		// not real "focus left the row" events.
 		const related = e.relatedTarget as Node | null;
 		if (!related) return;
 
@@ -622,22 +617,4 @@
 		{/if}
 	</Table.TableCell>
 
-	<!-- Checkbox (far right) -->
-	{#if showCheckbox}
-		<Table.TableCell class="w-10 pl-0" data-row={rowIndex} data-col="checkbox" onpointerenter={handleCellHover}>
-			{#if !isPending && !isFailed}
-				<input
-					type="checkbox"
-					checked={selected}
-					data-focusable
-					onchange={(e) => {
-						const checked = e.currentTarget.checked;
-						onselect?.(checked);
-						if (checked) cancelEdits();
-					}}
-					class="size-4 rounded border-input"
-				/>
-			{/if}
-		</Table.TableCell>
-	{/if}
 </Table.TableRow>

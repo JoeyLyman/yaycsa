@@ -1,0 +1,11 @@
+{
+  "supabase": {
+    "projectRef": "nygmkufogodcsmfftueq",
+    "accessTokenEnv": "YAYCSA_SUPABASE_ACCESS_TOKEN"
+  },
+  "playwright": {
+    "browser": "firefox",
+    "headless": true,
+    "baseUrl": "http://localhost:5180"
+  }
+}
