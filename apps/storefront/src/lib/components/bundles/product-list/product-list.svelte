@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as Table from '$lib/components/bits/table';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
+	import { Button } from '$lib/components/bits/button';
 	import ProductListRow from './product-list-row.svelte';
 
 	let {
@@ -13,8 +13,6 @@
 		allProcesses,
 		/** All available allergen warnings. */
 		allAllergenWarnings,
-		/** Unit type options for the InputSelect. */
-		unitTypes,
 		/** Set of temporary IDs for products currently being created. */
 		pendingIds,
 		/** Map of temporary IDs to error messages for failed creates. */
@@ -34,14 +32,12 @@
 		allBits: InputSelectItem[];
 		allProcesses: InputSelectItem[];
 		allAllergenWarnings: InputSelectItem[];
-		unitTypes: InputSelectItem[];
 		pendingIds: Set<string>;
 		failedIds: Map<string, string>;
 		onsave: (
 			productId: string,
 			edits: {
 				name?: string;
-				unitType?: string;
 				facetValueIds?: string[];
 			}
 		) => Promise<void>;
@@ -51,11 +47,19 @@
 		onCreateBit: (name: string) => Promise<InputSelectItem | null>;
 	} = $props();
 
+	// ─── Bulk expand/collapse toggles ───
+
+	/** Global default for whether metadata tiers are expanded across all rows. */
+	let globalMetadata = $state(false);
+
 	// ─── DOM-first cell navigation ───
 	//
 	// No JS focus state variable — document.activeElement IS the focus state.
 	// Each cell has data-row + data-col attributes; interactive elements have data-focusable.
-	// Navigation works via event delegation on the table wrapper's onkeydown.
+	// Navigation works via event delegation on the list wrapper's onkeydown.
+	//
+	// Arrow keys navigate tier-1 columns only (name, unitType, actions).
+	// Tab/Shift-Tab walks the full sequence including expanded tier-2 fields.
 	//
 	// Key design contract with InputSelect:
 	//   - InputSelect calls stopPropagation on ArrowUp/Down when its dropdown is open.
@@ -68,14 +72,20 @@
 	//   focusCell() clicks (not focuses) elements with data-auto-open, opening the
 	//   editor when arriving via keyboard. Hover just focuses — no auto-open.
 
-	/** Reference to the table wrapper for DOM queries. */
-	let tableEl: HTMLDivElement | null = $state(null);
+	/** Reference to the list wrapper for DOM queries. */
+	let listEl: HTMLDivElement | null = $state(null);
 
 	/**
-	 * Ordered column names for keyboard navigation.
-	 * Matches the visible product table columns from left to right.
+	 * Tier-1 column order for arrow key navigation.
+	 * Arrow keys only move between these three columns.
 	 */
-	let colOrder = $derived(['name', 'unitType', 'bits', 'processes', 'allergens', 'actions']);
+	let colOrder = $derived(['name', 'actions']);
+
+	/**
+	 * Full column order for Tab navigation.
+	 * Tab walks tier-1 then tier-2 (if expanded), skipping collapsed cells.
+	 */
+	const tabOrder = ['name', 'actions', 'bits', 'processes', 'allergens'];
 
 	/**
 	 * Indices of selectable (non-pending, non-failed) product rows.
@@ -101,10 +111,10 @@
 		return selectableRowIndices[nextPos];
 	}
 
-	/** Get the row/col of the currently focused element within the table. */
+	/** Get the row/col of the currently focused element within the list. */
 	function getCurrentCell(): { row: number; col: string } | null {
 		const active = document.activeElement;
-		if (!active || !tableEl?.contains(active)) return null;
+		if (!active || !listEl?.contains(active)) return null;
 		const cell = active.closest('[data-row][data-col]') as HTMLElement | null;
 		if (!cell) return null;
 		return {
@@ -116,9 +126,10 @@
 	/**
 	 * Focus the first [data-focusable] element in the given cell.
 	 * If the element has data-auto-open, click it to open the editor instead.
+	 * Returns true if a focusable element was found.
 	 */
-	function focusCell(row: number, col: string) {
-		const el = tableEl?.querySelector(
+	function focusCell(row: number, col: string): boolean {
+		const el = listEl?.querySelector(
 			`[data-row="${row}"][data-col="${col}"] [data-focusable]`
 		) as HTMLElement | null;
 		if (el) {
@@ -129,15 +140,18 @@
 				el.focus();
 				el.scrollIntoView({ block: 'nearest' });
 			}
+			return true;
 		}
+		return false;
 	}
 
 	/**
 	 * Focus the last [data-focusable] element in the given cell (for Shift+Tab into actions).
 	 * If the element has data-auto-open, click it to open the editor instead.
+	 * Returns true if a focusable element was found.
 	 */
-	function focusCellLast(row: number, col: string) {
-		const all = tableEl?.querySelectorAll(
+	function focusCellLast(row: number, col: string): boolean {
+		const all = listEl?.querySelectorAll(
 			`[data-row="${row}"][data-col="${col}"] [data-focusable]`
 		);
 		const el = all?.[all.length - 1] as HTMLElement | null;
@@ -149,7 +163,9 @@
 				el.focus();
 				el.scrollIntoView({ block: 'nearest' });
 			}
+			return true;
 		}
+		return false;
 	}
 
 	/**
@@ -173,13 +189,13 @@
 	}
 
 	/**
-	 * Move focus to the next or previous column.
+	 * Move focus to the next or previous column using arrow keys (tier-1 only).
 	 * Wraps to the next/prev selectable row at edges.
-	 * For forward movement into a cell, focuses the first focusable.
-	 * For backward movement, focuses the last (relevant for actions with multiple buttons).
 	 */
 	function moveToAdjacentCol(current: { row: number; col: string }, direction: 1 | -1) {
 		const colIdx = colOrder.indexOf(current.col);
+		if (colIdx === -1) return; // Current col not in tier-1 colOrder (e.g. in expanded metadata)
+
 		const nextColIdx = colIdx + direction;
 
 		if (nextColIdx >= 0 && nextColIdx < colOrder.length) {
@@ -201,13 +217,52 @@
 	}
 
 	/**
-	 * Handle keyboard navigation at the table level via event delegation.
-	 * Keydown events bubble from focused elements inside cells up to the table wrapper.
+	 * Move focus to the next or previous cell using Tab (full order including tier-2).
+	 * Skips cells that don't exist in DOM (collapsed tier-2).
+	 */
+	function moveToAdjacentTabCell(current: { row: number; col: string }, direction: 1 | -1) {
+		const tabIdx = tabOrder.indexOf(current.col);
+		if (tabIdx === -1) return;
+
+		// Try remaining columns in this row
+		let nextIdx = tabIdx + direction;
+		while (nextIdx >= 0 && nextIdx < tabOrder.length) {
+			const col = tabOrder[nextIdx];
+			const found =
+				direction === -1
+					? focusCellLast(current.row, col)
+					: focusCell(current.row, col);
+			if (found) return;
+			// Cell not in DOM (collapsed tier) — skip to next
+			nextIdx += direction;
+		}
+
+		// Exhausted this row — wrap to next/prev row
+		if (direction === 1) {
+			const nextRow = nextSelectableRow(current.row, 1);
+			if (nextRow !== null) focusCell(nextRow, tabOrder[0]);
+		} else {
+			const prevRow = nextSelectableRow(current.row, -1);
+			if (prevRow !== null) {
+				// Try from the end of tabOrder backwards to find last existing cell
+				for (let i = tabOrder.length - 1; i >= 0; i--) {
+					if (focusCellLast(prevRow, tabOrder[i])) return;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Handle keyboard navigation at the list level via event delegation.
+	 * Keydown events bubble from focused elements inside cells up to the list wrapper.
+	 *
+	 * Arrow keys navigate tier-1 only (name, unitType, actions).
+	 * Tab walks the full sequence including expanded tier-2 fields.
 	 *
 	 * InputSelect components call stopPropagation when handling Up/Down internally.
 	 * When they let events bubble (at dropdown boundaries), we handle row navigation.
 	 */
-	function handleTableKeydown(e: KeyboardEvent) {
+	function handleListKeydown(e: KeyboardEvent) {
 		const current = getCurrentCell();
 		if (!current) return;
 
@@ -223,17 +278,23 @@
 
 		switch (e.key) {
 			case 'ArrowUp': {
-				// InputSelect handles its own Up/Down when dropdown is open (via stopPropagation).
-				// If the event reaches here, the dropdown is closed or at a boundary — navigate rows.
+				// Arrow keys only navigate tier-1 rows
 				e.preventDefault();
 				const prevRow = nextSelectableRow(current.row, -1);
-				if (prevRow !== null) focusCell(prevRow, current.col);
+				if (prevRow !== null) {
+					// If currently in a tier-2 cell, jump to tier-1 'name' of prev row
+					const targetCol = colOrder.includes(current.col) ? current.col : 'name';
+					focusCell(prevRow, targetCol);
+				}
 				break;
 			}
 			case 'ArrowDown': {
 				e.preventDefault();
 				const nextRow = nextSelectableRow(current.row, 1);
-				if (nextRow !== null) focusCell(nextRow, current.col);
+				if (nextRow !== null) {
+					const targetCol = colOrder.includes(current.col) ? current.col : 'name';
+					focusCell(nextRow, targetCol);
+				}
 				break;
 			}
 			case 'Enter': {
@@ -274,7 +335,7 @@
 				const dir = e.shiftKey ? -1 : 1;
 				// In actions column, try to cycle through buttons first
 				if (current.col === 'actions' && focusNextInCell(dir)) break;
-				moveToAdjacentCol(current, dir);
+				moveToAdjacentTabCell(current, dir);
 				break;
 			}
 		}
@@ -286,43 +347,56 @@
 		<p class="text-muted-foreground">No products yet. Add your first product above.</p>
 	</div>
 {:else}
+	<!-- Bulk toggles -->
+	<div class="mb-2 flex items-center gap-2">
+		<Button
+			size="sm"
+			variant="ghost"
+			class="h-7 gap-1 px-2 text-xs text-muted-foreground"
+			onclick={() => (globalMetadata = !globalMetadata)}
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="12"
+				height="12"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				class="transition-transform {globalMetadata ? 'rotate-90' : ''}"
+			>
+				<polyline points="9 18 15 12 9 6" />
+			</svg>
+			Metadata
+		</Button>
+	</div>
+
+	<!-- Product list -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="overflow-visible rounded-md border"
 		data-testid="products-table"
-		bind:this={tableEl}
-		onkeydown={handleTableKeydown}
+		bind:this={listEl}
+		onkeydown={handleListKeydown}
 	>
-		<Table.Table class="table-fixed">
-			<Table.TableHeader>
-				<Table.TableRow>
-					<Table.TableHead class="text-center">Product</Table.TableHead>
-					<Table.TableHead class="text-center">Unit</Table.TableHead>
-					<Table.TableHead class="text-center">Ingredients</Table.TableHead>
-					<Table.TableHead class="text-center">Processing</Table.TableHead>
-					<Table.TableHead class="text-center">Allergens</Table.TableHead>
-					<Table.TableHead class="text-center">Actions</Table.TableHead>
-				</Table.TableRow>
-			</Table.TableHeader>
-			<Table.TableBody>
-				{#each products as product, rowIndex (product.id)}
-					<ProductListRow
-						{product}
-						{rowIndex}
-						{allBits}
-						{allProcesses}
-						{allAllergenWarnings}
-						{unitTypes}
-						isPending={pendingIds.has(product.id)}
-						isFailed={failedIds.has(product.id)}
-						{onsave}
-						{ondelete}
-						{onretry}
-						{ondismiss}
-						{onCreateBit}
-					/>
-				{/each}
-			</Table.TableBody>
-		</Table.Table>
+		{#each products as product, rowIndex (product.id)}
+			<ProductListRow
+				{product}
+				{rowIndex}
+				{allBits}
+				{allProcesses}
+				{allAllergenWarnings}
+				isPending={pendingIds.has(product.id)}
+				isFailed={failedIds.has(product.id)}
+				globalMetadataDefault={globalMetadata}
+				{onsave}
+				{ondelete}
+				{onretry}
+				{ondismiss}
+				{onCreateBit}
+			/>
+		{/each}
 	</div>
 {/if}

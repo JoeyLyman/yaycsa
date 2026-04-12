@@ -318,7 +318,6 @@
 			{allBits}
 			{allProcesses}
 			{allAllergenWarnings}
-			unitTypes={UNIT_TYPES}
 			{pendingIds}
 			{failedIds}
 			onsave={handleSave}
