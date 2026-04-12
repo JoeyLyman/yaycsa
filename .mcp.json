@@ -8,11 +8,7 @@
       "command": "npx",
       "args": ["@playwright/mcp@latest", "--browser", "firefox", "--headless"]
     },
-    "grepai": {
-      "command": "grepai",
-      "args": ["mcp-serve"]
-    },
-    "supabase": {
+"supabase": {
       "command": "npx",
       "args": [
         "-y",
