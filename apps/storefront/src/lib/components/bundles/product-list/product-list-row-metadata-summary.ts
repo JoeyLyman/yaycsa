@@ -1,61 +1,57 @@
 /**
- * A segment of the metadata summary — either a label (italic) or a value (normal).
+ * A segment of the metadata summary.
  */
 export interface SummarySegment {
 	text: string;
 	italic: boolean;
+	/** Whether this segment should have left margin (value following a label). */
+	spaced: boolean;
+	/** Whether this segment starts a new section (larger left margin). */
+	section: boolean;
 }
 
-/**
- * Compute structured metadata summary segments for a collapsed product row.
- *
- * Returns an array of segments with italic flags so the template can style
- * labels ("Ingredients:", "Processed:", "Allergens:") differently from values.
- *
- * Examples:
- *   [{ text: "Raw", italic: false }, { text: " · ", italic: false }, { text: "fresh", italic: false }]
- *   [{ text: "Ingredients: ", italic: true }, { text: "Kale, Garlic +2", italic: false }, ...]
- */
+/** Capitalize the first letter of each word. */
+function titleCase(s: string): string {
+	return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function computeMetadataSummary(
 	bits: { label: string }[],
 	processes: { label: string }[],
 	allergens: { label: string }[]
 ): SummarySegment[] {
 	const segments: SummarySegment[] = [];
-	const sep: SummarySegment = { text: ' \u00A0·\u00A0 ', italic: false };
 
-	// Bits / Ingredients
+	// Ingredients
+	segments.push({ text: 'Ingredients', italic: true, spaced: false, section: false });
 	if (bits.length === 0) {
-		segments.push({ text: 'Raw', italic: false });
+		segments.push({ text: '–', italic: false, spaced: true, section: false });
 	} else {
 		const names =
 			bits.length <= 2
-				? bits.map((b) => b.label).join(', ')
+				? bits.map((b) => titleCase(b.label)).join(', ')
 				: `${bits
 						.slice(0, 2)
-						.map((b) => b.label)
+						.map((b) => titleCase(b.label))
 						.join(', ')} +${bits.length - 2}`;
-		segments.push({ text: 'Ingredients: ', italic: true });
-		segments.push({ text: names, italic: false });
+		segments.push({ text: names, italic: false, spaced: true, section: false });
 	}
 
 	// Processing
-	segments.push(sep);
+	segments.push({ text: 'Processing', italic: true, spaced: false, section: true });
 	if (processes.length === 0) {
-		segments.push({ text: 'fresh', italic: false });
+		segments.push({ text: '–', italic: false, spaced: true, section: false });
 	} else {
-		segments.push({ text: 'Processed: ', italic: true });
-		segments.push({ text: processes.map((p) => p.label).join(', '), italic: false });
+		segments.push({ text: processes.map((p) => titleCase(p.label)).join(', '), italic: false, spaced: true, section: false });
 	}
 
 	// Allergens (only shown if present)
 	if (allergens.length > 0) {
 		const names = allergens
-			.map((a) => a.label.replace(/^May contain /i, ''))
+			.map((a) => titleCase(a.label.replace(/^May contain /i, '')))
 			.join(', ');
-		segments.push(sep);
-		segments.push({ text: 'Allergens: ', italic: true });
-		segments.push({ text: names, italic: false });
+		segments.push({ text: 'Allergens', italic: true, spaced: false, section: true });
+		segments.push({ text: names, italic: false, spaced: true, section: false });
 	}
 
 	return segments;

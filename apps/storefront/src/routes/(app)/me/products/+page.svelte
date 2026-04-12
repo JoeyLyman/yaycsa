@@ -60,7 +60,7 @@
 	let rawAllergenWarnings: FacetValueInfo[] = $state([]);
 
 	/** Taxonomy as InputSelectItem arrays for the components. */
-	let allBits = $derived(rawBits.map(toItem));
+	let allBits = $derived(rawBits.map(toItem).sort((a, b) => a.label.localeCompare(b.label)));
 	let allProcesses = $derived(rawProcesses.map(toItem));
 	let allAllergenWarnings = $derived(rawAllergenWarnings.map(toItem));
 

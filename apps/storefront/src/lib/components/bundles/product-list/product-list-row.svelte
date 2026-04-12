@@ -356,6 +356,8 @@
 		) {
 			return;
 		}
+		// Close any open editor when expanding/collapsing
+		activeField = null;
 		metadataExpanded = !showMetadata;
 	}
 </script>
@@ -375,7 +377,7 @@
 	onclick={handleRowClick}
 >
 	<!-- ═══ Tier 1: Product name, actions (always visible) ═══ -->
-	<div class="flex min-h-12 items-center gap-2 px-3 py-1 md:gap-3 md:px-4 md:py-1.5">
+	<div class="flex min-h-11 items-center gap-2 px-3 py-1 md:gap-3 md:px-4 md:py-1.5">
 		<!-- Product Name — sized to content, not full width, so empty row space is clickable for expand -->
 		<div class="min-w-0 shrink truncate" data-col="name">
 			{#if isPending}
@@ -409,7 +411,7 @@
 				/>
 			{:else}
 				<button
-					class="cursor-text truncate text-left outline-none hover:underline focus-visible:underline"
+					class="-ml-1 cursor-text truncate rounded px-1 py-0.5 text-left outline-none hover:underline focus-visible:underline"
 					data-focusable
 					data-auto-open
 					onclick={() => openEditor('name')}
@@ -517,41 +519,39 @@
 
 	<!-- Metadata summary line (visible when tier 2 is collapsed, hidden for pending/failed) -->
 	{#if !showMetadata && !isPending && !isFailed}
-		<div class="-mt-2 truncate px-3 pb-2.5 text-xs text-muted-foreground md:px-4">
-			{#each metadataSummary as segment}{#if segment.italic}<span class="italic">{segment.text}</span>{:else}{segment.text}{/if}{/each}
+		<div class="-mt-1 truncate px-3 pb-3 text-xs text-muted-foreground md:px-4">
+			{#each metadataSummary as segment}{#if segment.italic}<span class="{segment.section ? 'ml-4' : ''} italic">{segment.text}</span>{:else}<span class="{segment.spaced ? 'ml-2' : ''} text-foreground">{segment.text}</span>{/if}{/each}
 		</div>
 	{/if}
 
 	<!-- ═══ Tier 2: Metadata — bits, processing, allergens (collapsible) ═══ -->
 	{#if showMetadata}
-		<div class="border-t border-dashed">
-			<ProductListRowMetadata
-				{product}
-				{rowIndex}
-				{allBits}
-				{allProcesses}
-				{allAllergenWarnings}
-				{activeField}
-				{editState}
-				{isPending}
-				{isFailed}
-				{saving}
-				onOpenEditor={openEditor}
-				onCloseEditorIfActive={closeEditorIfActive}
-				onBitsChange={(v: string[]) => {
-					if (!editState) editState = {};
-					editState.bitIds = v;
-				}}
-				onProcessesChange={(v: string[]) => {
-					if (!editState) editState = {};
-					editState.processIds = v;
-				}}
-				onAllergensChange={(v: string[]) => {
-					if (!editState) editState = {};
-					editState.allergenIds = v;
-				}}
-				{onCreateBit}
-			/>
-		</div>
+		<ProductListRowMetadata
+			{product}
+			{rowIndex}
+			{allBits}
+			{allProcesses}
+			{allAllergenWarnings}
+			{activeField}
+			{editState}
+			{isPending}
+			{isFailed}
+			{saving}
+			onOpenEditor={openEditor}
+			onCloseEditorIfActive={closeEditorIfActive}
+			onBitsChange={(v: string[]) => {
+				if (!editState) editState = {};
+				editState.bitIds = v;
+			}}
+			onProcessesChange={(v: string[]) => {
+				if (!editState) editState = {};
+				editState.processIds = v;
+			}}
+			onAllergensChange={(v: string[]) => {
+				if (!editState) editState = {};
+				editState.allergenIds = v;
+			}}
+			{onCreateBit}
+		/>
 	{/if}
 </div>

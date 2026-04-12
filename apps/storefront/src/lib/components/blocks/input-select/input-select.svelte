@@ -64,6 +64,8 @@
 		onchange,
 		/** Callback fired when focus leaves the entire InputSelect container. */
 		onfocusleave,
+		/** Hide the selected-item pills above the input (when parent renders them externally). */
+		hidePills = false,
 		/** Additional class for the outer container. */
 		class: className = '',
 	}: {
@@ -79,6 +81,7 @@
 		placeholder?: string;
 		onchange?: (values: string[]) => void;
 		onfocusleave?: () => void;
+		hidePills?: boolean;
 		class?: string;
 	} = $props();
 
@@ -345,7 +348,7 @@
 
 <div class="relative {className}" bind:this={containerEl} data-dropdown-open={open || undefined} data-input-select onfocusout={handleFocusOut}>
 	<!-- Selected pills (multi-select only, shown above the input) -->
-	{#if multiSelect && selectedItems.length > 0}
+	{#if multiSelect && selectedItems.length > 0 && !hidePills}
 		<div class="mb-1 flex flex-wrap gap-1">
 			{#each selectedItems.slice(0, maxVisible) as item (item.value)}
 				<button
