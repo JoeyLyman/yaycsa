@@ -1,37 +1,50 @@
 <script lang="ts">
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
-	import { Button } from '$lib/components/bits/button';
+	import type { ProductDraft, ProductDraftPatch, ProductMetadataMode } from './product-list-types';
+	import DraftProductListRow from './draft-product-list-row.svelte';
 	import ProductListRow from './product-list-row.svelte';
 
 	let {
-		/** The list of products to display. */
+		/** The saved products currently shown in the seller table. */
 		products,
+		/** The unsaved inline draft rows currently shown below saved products. */
+		productDrafts,
 		/** All available bits (ingredients/components). */
 		allBits,
 		/** All available processing types. */
 		allProcesses,
 		/** All available allergen warnings. */
 		allAllergenWarnings,
+		/** Global default metadata visibility mode for the whole product table. */
+		metadataMode,
 		/** Set of temporary IDs for products currently being created. */
 		pendingIds,
 		/** Map of temporary IDs to error messages for failed creates. */
 		failedIds,
-		/** Callback to save edits for a product. */
+		/** Callback to save edits for an existing product. */
 		onsave,
-		/** Callback to delete a product. */
+		/** Callback to delete an existing product. */
 		ondelete,
 		/** Callback to retry a failed create. */
 		onretry,
 		/** Callback to dismiss a failed create. */
 		ondismiss,
+		/** Callback to update an unsaved draft row. */
+		onupdateProductDraft,
+		/** Callback to save an unsaved draft row. */
+		onsaveProductDraft,
+		/** Callback to cancel an unsaved draft row. */
+		oncancelProductDraft,
 		/** Callback to create a new bit. */
 		onCreateBit
 	}: {
 		products: SellerProduct[];
+		productDrafts: ProductDraft[];
 		allBits: InputSelectItem[];
 		allProcesses: InputSelectItem[];
 		allAllergenWarnings: InputSelectItem[];
+		metadataMode: ProductMetadataMode;
 		pendingIds: Set<string>;
 		failedIds: Map<string, string>;
 		onsave: (
@@ -44,336 +57,291 @@
 		ondelete: (productId: string) => Promise<void>;
 		onretry: (productId: string) => void;
 		ondismiss: (productId: string) => void;
+		onupdateProductDraft: (draftId: string, patch: ProductDraftPatch) => void;
+		onsaveProductDraft: (draftId: string) => void | Promise<void>;
+		oncancelProductDraft: (draftId: string) => void;
 		onCreateBit: (name: string) => Promise<InputSelectItem | null>;
 	} = $props();
 
-	// ─── Bulk expand/collapse toggles ───
-
-	/** Global default for whether metadata tiers are expanded across all rows. */
-	let globalMetadata = $state(false);
-
-	// ─── DOM-first cell navigation ───
-	//
-	// No JS focus state variable — document.activeElement IS the focus state.
-	// Each cell has data-row + data-col attributes; interactive elements have data-focusable.
-	// Navigation works via event delegation on the list wrapper's onkeydown.
-	//
-	// Arrow keys navigate tier-1 columns only (name, unitType, actions).
-	// Tab/Shift-Tab walks the full sequence including expanded tier-2 fields.
-	//
-	// Key design contract with InputSelect:
-	//   - InputSelect calls stopPropagation on ArrowUp/Down when its dropdown is open.
-	//   - At dropdown boundaries (top/bottom), it closes the dropdown and lets the
-	//     event bubble here, where we handle row-to-row navigation.
-	//   - data-input-select marks InputSelect containers so we can distinguish them
-	//     from regular text inputs (which don't need boundary logic).
-	//
-	// Auto-open (data-auto-open):
-	//   focusCell() clicks (not focuses) elements with data-auto-open, opening the
-	//   editor when arriving via keyboard. Hover just focuses — no auto-open.
-
-	/** Reference to the list wrapper for DOM queries. */
+	/** Reference to the list wrapper for DOM-based keyboard navigation queries. */
 	let listEl: HTMLDivElement | null = $state(null);
 
 	/**
 	 * Tier-1 column order for arrow key navigation.
-	 * Arrow keys only move between these three columns.
+	 * Arrow keys only move between the row name cell and the actions cell.
 	 */
 	let colOrder = $derived(['name', 'actions']);
 
 	/**
 	 * Full column order for Tab navigation.
-	 * Tab walks tier-1 then tier-2 (if expanded), skipping collapsed cells.
+	 * Tab walks tier 1 and then the mounted metadata fields for expanded rows.
 	 */
 	const tabOrder = ['name', 'actions', 'bits', 'processes', 'allergens'];
 
 	/**
-	 * Indices of selectable (non-pending, non-failed) product rows.
-	 * Used to skip pending/failed rows during arrow key navigation.
+	 * Indices of selectable rows for keyboard navigation.
+	 * Pending and failed saved-product rows are skipped, but draft rows stay selectable.
 	 */
-	let selectableRowIndices = $derived(
-		products
-			.map((p, i) => ({ idx: i, selectable: !pendingIds.has(p.id) && !failedIds.has(p.id) }))
-			.filter((r) => r.selectable)
-			.map((r) => r.idx)
-	);
+	let selectableRowIndices = $derived.by(() => {
+		const savedRowIndices = products
+			.map((product, index) => ({
+				index,
+				isSelectable: !pendingIds.has(product.id) && !failedIds.has(product.id)
+			}))
+			.filter((row) => row.isSelectable)
+			.map((row) => row.index);
+
+		const draftRowIndices = productDrafts.map((_, draftIndex) => products.length + draftIndex);
+
+		return [...savedRowIndices, ...draftRowIndices];
+	});
 
 	/** Find the next selectable row index in a given direction. */
 	function nextSelectableRow(currentRow: number, direction: 1 | -1): number | null {
-		const currentPos = selectableRowIndices.indexOf(currentRow);
-		if (currentPos === -1) {
+		const currentPosition = selectableRowIndices.indexOf(currentRow);
+		if (currentPosition === -1) {
 			return direction === 1
-				? (selectableRowIndices.find((i) => i > currentRow) ?? null)
-				: ([...selectableRowIndices].reverse().find((i) => i < currentRow) ?? null);
+				? (selectableRowIndices.find((index) => index > currentRow) ?? null)
+				: ([...selectableRowIndices].reverse().find((index) => index < currentRow) ?? null);
 		}
-		const nextPos = currentPos + direction;
-		if (nextPos < 0 || nextPos >= selectableRowIndices.length) return null;
-		return selectableRowIndices[nextPos];
+
+		const nextPosition = currentPosition + direction;
+		if (nextPosition < 0 || nextPosition >= selectableRowIndices.length) return null;
+		return selectableRowIndices[nextPosition];
 	}
 
-	/** Get the row/col of the currently focused element within the list. */
+	/** Get the row / column of the currently focused element inside the list. */
 	function getCurrentCell(): { row: number; col: string } | null {
-		const active = document.activeElement;
-		if (!active || !listEl?.contains(active)) return null;
-		const cell = active.closest('[data-row][data-col]') as HTMLElement | null;
-		if (!cell) return null;
+		const activeElement = document.activeElement;
+		if (!activeElement || !listEl?.contains(activeElement)) return null;
+
+		const cellElement = activeElement.closest('[data-row][data-col]') as HTMLElement | null;
+		if (!cellElement) return null;
+
 		return {
-			row: parseInt(cell.dataset.row!),
-			col: cell.dataset.col!
+			row: parseInt(cellElement.dataset.row!, 10),
+			col: cellElement.dataset.col!
 		};
 	}
 
-	/**
-	 * Focus the first [data-focusable] element in the given cell.
-	 * If the element has data-auto-open, click it to open the editor instead.
-	 * Returns true if a focusable element was found.
-	 */
+	/** Focus the first focusable element inside the requested cell. */
 	function focusCell(row: number, col: string): boolean {
-		const el = listEl?.querySelector(
+		const focusableElement = listEl?.querySelector(
 			`[data-row="${row}"][data-col="${col}"] [data-focusable]`
 		) as HTMLElement | null;
-		if (el) {
-			if (el.hasAttribute('data-auto-open')) {
-				el.scrollIntoView({ block: 'nearest' });
-				el.click();
-			} else {
-				el.focus();
-				el.scrollIntoView({ block: 'nearest' });
-			}
-			return true;
+
+		if (!focusableElement) return false;
+
+		if (focusableElement.hasAttribute('data-auto-open')) {
+			focusableElement.scrollIntoView({ block: 'nearest' });
+			focusableElement.click();
+		} else {
+			focusableElement.focus();
+			focusableElement.scrollIntoView({ block: 'nearest' });
 		}
-		return false;
+
+		return true;
 	}
 
-	/**
-	 * Focus the last [data-focusable] element in the given cell (for Shift+Tab into actions).
-	 * If the element has data-auto-open, click it to open the editor instead.
-	 * Returns true if a focusable element was found.
-	 */
+	/** Focus the last focusable element inside the requested cell. */
 	function focusCellLast(row: number, col: string): boolean {
-		const all = listEl?.querySelectorAll(
+		const focusableElements = listEl?.querySelectorAll(
 			`[data-row="${row}"][data-col="${col}"] [data-focusable]`
 		);
-		const el = all?.[all.length - 1] as HTMLElement | null;
-		if (el) {
-			if (el.hasAttribute('data-auto-open')) {
-				el.scrollIntoView({ block: 'nearest' });
-				el.click();
-			} else {
-				el.focus();
-				el.scrollIntoView({ block: 'nearest' });
-			}
-			return true;
+		const focusableElement = focusableElements?.[focusableElements.length - 1] as HTMLElement | null;
+
+		if (!focusableElement) return false;
+
+		if (focusableElement.hasAttribute('data-auto-open')) {
+			focusableElement.scrollIntoView({ block: 'nearest' });
+			focusableElement.click();
+		} else {
+			focusableElement.focus();
+			focusableElement.scrollIntoView({ block: 'nearest' });
 		}
-		return false;
+
+		return true;
 	}
 
-	/**
-	 * Try to focus the next [data-focusable] sibling within the same cell.
-	 * Returns true if a next sibling was found and focused, false otherwise.
-	 */
+	/** Try to focus the next or previous focusable sibling inside the current cell. */
 	function focusNextInCell(direction: 1 | -1): boolean {
-		const active = document.activeElement as HTMLElement | null;
-		if (!active) return false;
-		const cell = active.closest('[data-row][data-col]');
-		if (!cell) return false;
-		const focusables = Array.from(cell.querySelectorAll('[data-focusable]')) as HTMLElement[];
-		const idx = focusables.indexOf(active);
-		if (idx === -1) return false;
-		const nextIdx = idx + direction;
-		if (nextIdx >= 0 && nextIdx < focusables.length) {
-			focusables[nextIdx].focus();
+		const activeElement = document.activeElement as HTMLElement | null;
+		if (!activeElement) return false;
+
+		const cellElement = activeElement.closest('[data-row][data-col]');
+		if (!cellElement) return false;
+
+		const focusableElements = Array.from(
+			cellElement.querySelectorAll('[data-focusable]')
+		) as HTMLElement[];
+		const currentIndex = focusableElements.indexOf(activeElement);
+		if (currentIndex === -1) return false;
+
+		const nextIndex = currentIndex + direction;
+		if (nextIndex >= 0 && nextIndex < focusableElements.length) {
+			focusableElements[nextIndex].focus();
 			return true;
 		}
+
 		return false;
 	}
 
-	/**
-	 * Move focus to the next or previous column using arrow keys (tier-1 only).
-	 * Wraps to the next/prev selectable row at edges.
-	 */
+	/** Move focus to the adjacent tier-1 column, wrapping to the next selectable row when needed. */
 	function moveToAdjacentCol(current: { row: number; col: string }, direction: 1 | -1) {
-		const colIdx = colOrder.indexOf(current.col);
-		if (colIdx === -1) return; // Current col not in tier-1 colOrder (e.g. in expanded metadata)
+		const currentColumnIndex = colOrder.indexOf(current.col);
+		if (currentColumnIndex === -1) return;
 
-		const nextColIdx = colIdx + direction;
-
-		if (nextColIdx >= 0 && nextColIdx < colOrder.length) {
-			// Same row, different column
+		const nextColumnIndex = currentColumnIndex + direction;
+		if (nextColumnIndex >= 0 && nextColumnIndex < colOrder.length) {
 			if (direction === -1) {
-				focusCellLast(current.row, colOrder[nextColIdx]);
+				focusCellLast(current.row, colOrder[nextColumnIndex]);
 			} else {
-				focusCell(current.row, colOrder[nextColIdx]);
+				focusCell(current.row, colOrder[nextColumnIndex]);
 			}
-		} else if (direction === 1) {
-			// Past last column — wrap to first column of next row
+			return;
+		}
+
+		if (direction === 1) {
 			const nextRow = nextSelectableRow(current.row, 1);
 			if (nextRow !== null) focusCell(nextRow, colOrder[0]);
 		} else {
-			// Before first column — wrap to last column of previous row
-			const prevRow = nextSelectableRow(current.row, -1);
-			if (prevRow !== null) focusCellLast(prevRow, colOrder[colOrder.length - 1]);
+			const previousRow = nextSelectableRow(current.row, -1);
+			if (previousRow !== null) {
+				focusCellLast(previousRow, colOrder[colOrder.length - 1]);
+			}
 		}
 	}
 
-	/**
-	 * Move focus to the next or previous cell using Tab (full order including tier-2).
-	 * Skips cells that don't exist in DOM (collapsed tier-2).
-	 */
+	/** Move focus through the full tab order, skipping metadata cells that are not currently mounted. */
 	function moveToAdjacentTabCell(current: { row: number; col: string }, direction: 1 | -1) {
-		const tabIdx = tabOrder.indexOf(current.col);
-		if (tabIdx === -1) return;
+		const currentTabIndex = tabOrder.indexOf(current.col);
+		if (currentTabIndex === -1) return;
 
-		// Try remaining columns in this row
-		let nextIdx = tabIdx + direction;
-		while (nextIdx >= 0 && nextIdx < tabOrder.length) {
-			const col = tabOrder[nextIdx];
+		let nextTabIndex = currentTabIndex + direction;
+		while (nextTabIndex >= 0 && nextTabIndex < tabOrder.length) {
+			const nextColumn = tabOrder[nextTabIndex];
 			const found =
 				direction === -1
-					? focusCellLast(current.row, col)
-					: focusCell(current.row, col);
+					? focusCellLast(current.row, nextColumn)
+					: focusCell(current.row, nextColumn);
 			if (found) return;
-			// Cell not in DOM (collapsed tier) — skip to next
-			nextIdx += direction;
+			nextTabIndex += direction;
 		}
 
-		// Exhausted this row — wrap to next/prev row
 		if (direction === 1) {
 			const nextRow = nextSelectableRow(current.row, 1);
 			if (nextRow !== null) focusCell(nextRow, tabOrder[0]);
 		} else {
-			const prevRow = nextSelectableRow(current.row, -1);
-			if (prevRow !== null) {
-				// Try from the end of tabOrder backwards to find last existing cell
-				for (let i = tabOrder.length - 1; i >= 0; i--) {
-					if (focusCellLast(prevRow, tabOrder[i])) return;
+			const previousRow = nextSelectableRow(current.row, -1);
+			if (previousRow !== null) {
+				for (let tabIndex = tabOrder.length - 1; tabIndex >= 0; tabIndex -= 1) {
+					if (focusCellLast(previousRow, tabOrder[tabIndex])) return;
 				}
 			}
 		}
 	}
 
 	/**
-	 * Handle keyboard navigation at the list level via event delegation.
-	 * Keydown events bubble from focused elements inside cells up to the list wrapper.
-	 *
-	 * Arrow keys navigate tier-1 only (name, unitType, actions).
-	 * Tab walks the full sequence including expanded tier-2 fields.
-	 *
-	 * InputSelect components call stopPropagation when handling Up/Down internally.
-	 * When they let events bubble (at dropdown boundaries), we handle row navigation.
+	 * Handle list-level keyboard navigation via event delegation.
+	 * Arrow keys move through tier 1. Tab walks the full mounted row structure.
 	 */
-	function handleListKeydown(e: KeyboardEvent) {
-		const current = getCurrentCell();
-		if (!current) return;
+	function handleListKeydown(event: KeyboardEvent) {
+		const currentCell = getCurrentCell();
+		if (!currentCell) return;
 
-		/** Whether the focused element is a text input (not checkbox). */
+		/** Whether the focused element is a text input rather than a checkbox. */
 		const isTextInput =
-			(e.target as HTMLElement).tagName === 'INPUT' &&
-			(e.target as HTMLInputElement).type !== 'checkbox';
+			(event.target as HTMLElement).tagName === 'INPUT' &&
+			(event.target as HTMLInputElement).type !== 'checkbox';
 
-		/** Whether the focused element is a checkbox. */
+		/** Whether the focused element is a checkbox input. */
 		const isCheckbox =
-			(e.target as HTMLElement).tagName === 'INPUT' &&
-			(e.target as HTMLInputElement).type === 'checkbox';
+			(event.target as HTMLElement).tagName === 'INPUT' &&
+			(event.target as HTMLInputElement).type === 'checkbox';
 
-		switch (e.key) {
+		switch (event.key) {
 			case 'ArrowUp': {
-				// Arrow keys only navigate tier-1 rows
-				e.preventDefault();
-				const prevRow = nextSelectableRow(current.row, -1);
-				if (prevRow !== null) {
-					// If currently in a tier-2 cell, jump to tier-1 'name' of prev row
-					const targetCol = colOrder.includes(current.col) ? current.col : 'name';
-					focusCell(prevRow, targetCol);
+				event.preventDefault();
+				const previousRow = nextSelectableRow(currentCell.row, -1);
+				if (previousRow !== null) {
+					const targetColumn = colOrder.includes(currentCell.col) ? currentCell.col : 'name';
+					focusCell(previousRow, targetColumn);
 				}
 				break;
 			}
 			case 'ArrowDown': {
-				e.preventDefault();
-				const nextRow = nextSelectableRow(current.row, 1);
+				event.preventDefault();
+				const nextRow = nextSelectableRow(currentCell.row, 1);
 				if (nextRow !== null) {
-					const targetCol = colOrder.includes(current.col) ? current.col : 'name';
-					focusCell(nextRow, targetCol);
+					const targetColumn = colOrder.includes(currentCell.col) ? currentCell.col : 'name';
+					focusCell(nextRow, targetColumn);
 				}
 				break;
 			}
 			case 'Enter': {
-				// Toggle checkbox on Enter (native behavior only triggers on Space)
 				if (isCheckbox) {
-					e.preventDefault();
-					(e.target as HTMLInputElement).click();
+					event.preventDefault();
+					(event.target as HTMLInputElement).click();
 				}
 				break;
 			}
 			case 'ArrowLeft': {
 				if (isTextInput) {
-					const input = e.target as HTMLInputElement;
-					// Only navigate if cursor is at the very start (no selection)
-					if (input.selectionStart !== 0 || input.selectionEnd !== 0) return;
+					const inputElement = event.target as HTMLInputElement;
+					if (inputElement.selectionStart !== 0 || inputElement.selectionEnd !== 0) return;
 				}
-				e.preventDefault();
-				// In actions column, try to focus previous button in same cell first
-				if (current.col === 'actions' && focusNextInCell(-1)) break;
-				moveToAdjacentCol(current, -1);
+				event.preventDefault();
+				if (currentCell.col === 'actions' && focusNextInCell(-1)) break;
+				moveToAdjacentCol(currentCell, -1);
 				break;
 			}
 			case 'ArrowRight': {
 				if (isTextInput) {
-					const input = e.target as HTMLInputElement;
-					const len = input.value.length;
-					// Only navigate if cursor is at the very end (no selection)
-					if (input.selectionStart !== len || input.selectionEnd !== len) return;
+					const inputElement = event.target as HTMLInputElement;
+					const inputLength = inputElement.value.length;
+					if (inputElement.selectionStart !== inputLength || inputElement.selectionEnd !== inputLength) {
+						return;
+					}
 				}
-				e.preventDefault();
-				// In actions column, try to focus next button in same cell first
-				if (current.col === 'actions' && focusNextInCell(1)) break;
-				moveToAdjacentCol(current, 1);
+				event.preventDefault();
+				if (currentCell.col === 'actions' && focusNextInCell(1)) break;
+				moveToAdjacentCol(currentCell, 1);
 				break;
 			}
 			case 'Tab': {
-				e.preventDefault();
-				const dir = e.shiftKey ? -1 : 1;
-				// In actions column, try to cycle through buttons first
-				if (current.col === 'actions' && focusNextInCell(dir)) break;
-				moveToAdjacentTabCell(current, dir);
+				event.preventDefault();
+				const direction = event.shiftKey ? -1 : 1;
+				if (currentCell.col === 'actions' && focusNextInCell(direction)) break;
+				moveToAdjacentTabCell(currentCell, direction);
 				break;
 			}
 		}
 	}
+
+	/** Names already taken by other rows when editing a saved product. */
+	function getTakenProductNamesForSavedProduct(productId: string): string[] {
+		return [
+			...products.filter((product) => product.id !== productId).map((product) => product.name),
+			...productDrafts.map((draftProduct) => draftProduct.name)
+		];
+	}
+
+	/** Names already taken by other rows when editing an unsaved draft. */
+	function getTakenProductNamesForDraftProduct(draftId: string): string[] {
+		return [
+			...products.map((product) => product.name),
+			...productDrafts
+				.filter((draftProduct) => draftProduct.id !== draftId)
+				.map((draftProduct) => draftProduct.name)
+		];
+	}
 </script>
 
-{#if products.length === 0}
+{#if products.length === 0 && productDrafts.length === 0}
 	<div class="flex items-center justify-center rounded-md border py-16">
-		<p class="text-muted-foreground">No products yet. Add your first product above.</p>
+		<p class="text-muted-foreground">No products yet. Use Add Product to create your first product.</p>
 	</div>
 {:else}
-	<!-- Bulk toggles -->
-	<div class="mb-2 flex items-center gap-2">
-		<Button
-			size="sm"
-			variant="ghost"
-			class="h-7 gap-1 px-2 text-xs text-muted-foreground"
-			onclick={() => (globalMetadata = !globalMetadata)}
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="12"
-				height="12"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				class="transition-transform {globalMetadata ? 'rotate-90' : ''}"
-			>
-				<polyline points="9 18 15 12 9 6" />
-			</svg>
-			Metadata
-		</Button>
-	</div>
-
-	<!-- Product list -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="overflow-visible rounded-md border"
@@ -388,13 +356,30 @@
 				{allBits}
 				{allProcesses}
 				{allAllergenWarnings}
+				takenProductNames={getTakenProductNamesForSavedProduct(product.id)}
 				isPending={pendingIds.has(product.id)}
 				isFailed={failedIds.has(product.id)}
-				globalMetadataDefault={globalMetadata}
+				globalMetadataMode={metadataMode}
 				{onsave}
 				{ondelete}
 				{onretry}
 				{ondismiss}
+				{onCreateBit}
+			/>
+		{/each}
+
+		{#each productDrafts as draftProduct, draftIndex (draftProduct.id)}
+			<DraftProductListRow
+				{draftProduct}
+				rowIndex={products.length + draftIndex}
+				{allBits}
+				{allProcesses}
+				{allAllergenWarnings}
+				globalMetadataMode={metadataMode}
+				takenProductNames={getTakenProductNamesForDraftProduct(draftProduct.id)}
+				onsave={onsaveProductDraft}
+				oncancel={oncancelProductDraft}
+				onupdate={onupdateProductDraft}
 				{onCreateBit}
 			/>
 		{/each}

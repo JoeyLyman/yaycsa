@@ -3,7 +3,7 @@
 		myProducts,
 		createProduct,
 		updateProduct,
-		deleteProduct,
+		deleteProduct as deleteRemoteProduct,
 		createBit,
 		fetchBits,
 		fetchProcessTypes,
@@ -11,107 +11,108 @@
 		type SellerProduct,
 		type FacetValueInfo
 	} from '$lib/api/admin/products.remote';
-	import * as Accordion from '$lib/components/bits/accordion';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
-	import { AddProductForm } from '$lib/components/bundles/add-product-form';
+	import { Button } from '$lib/components/bits/button';
 	import { ProductList } from '$lib/components/bundles/product-list';
+	import { nextProductMetadataMode } from '$lib/components/bundles/product-list/product-list-metadata-mode';
+	import type {
+		ProductDraft,
+		ProductDraftPatch,
+		ProductMetadataMode
+	} from '$lib/components/bundles/product-list/product-list-types';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 
-	/** All available unit type options. */
-	const UNIT_TYPES: InputSelectItem[] = [
-		{ value: '', label: 'None' },
-		{ value: 'ct', label: 'Count (ct)' },
-		{ value: 'lb', label: 'Pound (lb)' },
-		{ value: 'oz', label: 'Ounce (oz)' },
-		{ value: 'kg', label: 'Kilogram (kg)' },
-		{ value: 'g', label: 'Gram (g)' },
-		{ value: 'pt', label: 'Pint (pt)' },
-		{ value: 'qt', label: 'Quart (qt)' },
-		{ value: 'gal', label: 'Gallon (gal)' },
-		{ value: 'cs', label: 'Case (cs)' },
-		{ value: 'bu', label: 'Bushel (bu)' }
-	];
-
 	/** Convert a FacetValueInfo to the generic InputSelectItem format. */
-	function toItem(f: FacetValueInfo): InputSelectItem {
-		return { value: f.id, label: f.name, group: f.group };
+	function toItem(facetValue: FacetValueInfo): InputSelectItem {
+		return { value: facetValue.id, label: facetValue.name, group: facetValue.group };
 	}
 
-	// ─── Product state ───
+	/** Build the default shape for a newly added unsaved draft row. */
+	function createBlankProductDraft(id: string): ProductDraft {
+		return {
+			id,
+			name: '',
+			bitIds: [],
+			processIds: [],
+			allergenIds: []
+		};
+	}
+
+	/** Generate an optimistic SKU from a product name for pending rows. */
+	function generateProductSku(name: string): string {
+		return name
+			.toUpperCase()
+			.replace(/[^A-Z0-9]+/g, '-')
+			.replace(/^-|-$/g, '');
+	}
+
+	/** Convert unknown thrown values into a readable fallback message. */
+	function getErrorMessage(error: unknown, fallbackMessage: string): string {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'string' && error.length > 0) return error;
+		return fallbackMessage;
+	}
 
 	/**
-	 * Local mutable copy of products.
-	 * Updated optimistically on create/update/delete.
+	 * Local mutable copy of saved products.
+	 * Updated optimistically on create, update, retry-dismiss, and delete.
 	 */
 	let products: SellerProduct[] = $state([]);
 
-	/** Whether the initial data is still loading. */
+	/**
+	 * Unsaved inline draft rows currently shown at the bottom of the product table.
+	 * Multiple drafts can exist at once so sellers can batch-enter products.
+	 */
+	let productDrafts: ProductDraft[] = $state([]);
+
+	/** Whether the initial product + taxonomy load is still in flight. */
 	let loading = $state(true);
 
-	/** Error from initial load or reload. */
+	/** Error from the initial load or a later reload attempt. */
 	let loadError: string | null = $state(null);
 
-	// ─── Taxonomy data (fetched once, shared across form + editing) ───
-
-	/** Raw taxonomy — FacetValueInfo arrays from the server. */
+	/** Raw bit taxonomy from the server before UI mapping / sorting. */
 	let rawBits: FacetValueInfo[] = $state([]);
+
+	/** Raw processing taxonomy from the server before UI mapping / sorting. */
 	let rawProcesses: FacetValueInfo[] = $state([]);
+
+	/** Raw allergen taxonomy from the server before UI mapping / sorting. */
 	let rawAllergenWarnings: FacetValueInfo[] = $state([]);
 
-	/** Taxonomy as InputSelectItem arrays for the components. */
-	let allBits = $derived(rawBits.map(toItem).sort((a, b) => a.label.localeCompare(b.label)));
+	/** Sorted bit options shared by saved rows and draft rows. */
+	let allBits = $derived(rawBits.map(toItem).sort((left, right) => left.label.localeCompare(right.label)));
+
+	/** Sorted processing options shared by saved rows and draft rows. */
 	let allProcesses = $derived(rawProcesses.map(toItem));
+
+	/** Sorted allergen-warning options shared by saved rows and draft rows. */
 	let allAllergenWarnings = $derived(rawAllergenWarnings.map(toItem));
 
 	/**
-	 * Currently open accordion item for the add-product section.
-	 * When this equals `add-product`, the add-product form is expanded.
-	 * When this is an empty string, the form is collapsed.
+	 * Global default metadata visibility mode for the product table.
+	 * Cycles in this order: summary → expanded → hidden → summary.
 	 */
-	let addProductAccordionValue = $state('add-product');
+	let metadataMode = $state<ProductMetadataMode>('summary');
+
+	/** Counter for generating stable temporary IDs for optimistic pending products. */
+	let pendingProductIdCounter = 0;
+
+	/** Counter for generating stable IDs for unsaved inline draft rows. */
+	let productDraftIdCounter = 0;
 
 	/**
-	 * Running clockwise rotation angle for the add-product chevron.
-	 * This starts at 180 degrees because the accordion defaults open, so the
-	 * chevron should initially point up. Each toggle adds another 180 degrees
-	 * so both open and close animations rotate clockwise instead of reversing.
-	 */
-	let addProductChevronRotation = $state(180);
-
-	/**
-	 * Previous open/closed state for the add-product accordion.
-	 * Used to detect actual state changes so the chevron only advances when the
-	 * accordion toggles, not on unrelated reactive updates.
-	 */
-	let wasAddProductOpen = $state(true);
-
-	$effect(() => {
-		const isAddProductOpen = addProductAccordionValue === 'add-product';
-		if (isAddProductOpen !== wasAddProductOpen) {
-			addProductChevronRotation += 180;
-			wasAddProductOpen = isAddProductOpen;
-		}
-	});
-
-	// ─── Optimistic create state ───
-
-	/** Counter for generating unique temporary IDs for optimistic inserts. */
-	let tempIdCounter = 0;
-
-	/**
-	 * Set of temporary IDs for products that are currently being created on the server.
-	 * Products with these IDs show an inline loading state in the table.
+	 * Set of temporary product IDs currently being created on the server.
+	 * These rows stay in the saved-product list and show inline pending UI.
 	 */
 	let pendingIds = new SvelteSet<string>();
 
 	/**
-	 * Map of temporary IDs to error messages for products that failed to create.
-	 * Products with these IDs show an inline error state with a retry option.
+	 * Map of temporary product IDs to create errors.
+	 * Failed pending rows stay visible so sellers can retry or dismiss them.
 	 */
 	let failedIds = new SvelteMap<string, string>();
-
-	// ─── Initial data load (runs once on mount) ───
 
 	loadAll();
 
@@ -119,94 +120,127 @@
 		loading = true;
 		loadError = null;
 		try {
-			const [prods, bits, procs, allergens] = await Promise.all([
+			const [loadedProducts, bits, processes, allergenWarnings] = await Promise.all([
 				myProducts(),
 				fetchBits(),
 				fetchProcessTypes(),
 				fetchAllergenWarnings()
 			]);
-			products = prods;
+			products = loadedProducts;
 			rawBits = bits;
-			rawProcesses = procs.sort((a, b) => a.name.localeCompare(b.name));
-			rawAllergenWarnings = allergens.sort((a, b) => a.name.localeCompare(b.name));
-		} catch (err) {
-			loadError =
-				err instanceof Error ? err.message : typeof err === 'string' ? err : JSON.stringify(err);
-			console.error('Failed to load products:', err);
+			rawProcesses = processes.sort((left, right) => left.name.localeCompare(right.name));
+			rawAllergenWarnings = allergenWarnings.sort((left, right) =>
+				left.name.localeCompare(right.name)
+			);
+		} catch (error) {
+			loadError = getErrorMessage(error, 'Failed to load products');
+			console.error('Failed to load products:', error);
 		}
 		loading = false;
 	}
 
-	// ─── Handlers ───
+	/** Accessible label describing what the metadata toggle will do next. */
+	function getMetadataToggleActionLabel(currentMode: ProductMetadataMode): string {
+		if (currentMode === 'hidden') return 'Show metadata summary';
+		if (currentMode === 'summary') return 'Expand metadata';
+		return 'Hide metadata';
+	}
 
-	async function handleCreate(data: {
-		name: string;
-		unitType: string;
-		bitIds: string[];
-		processIds: string[];
-		allergenIds: string[];
-	}) {
-		const sku = data.name.toUpperCase().replace(/\s+/g, '-');
-		const unitType = data.unitType || undefined;
-		const facetValueIds = [...data.bitIds, ...data.processIds, ...data.allergenIds];
+	/** Append a new blank draft row to the bottom of the product table. */
+	function addProductDraft() {
+		const nextDraftId = `__draft_${++productDraftIdCounter}`;
+		productDrafts = [...productDrafts, createBlankProductDraft(nextDraftId)];
+	}
 
-		// Generate a temporary ID and optimistically insert into the table
-		const tempId = `__pending_${++tempIdCounter}`;
+	/** Apply a partial field update to one unsaved draft row. */
+	function updateProductDraft(draftId: string, patch: ProductDraftPatch) {
+		productDrafts = productDrafts.map((draftProduct) =>
+			draftProduct.id === draftId ? { ...draftProduct, ...patch } : draftProduct
+		);
+	}
+
+	/** Remove an unsaved draft row without creating a real product. */
+	function cancelProductDraft(draftId: string) {
+		productDrafts = productDrafts.filter((draftProduct) => draftProduct.id !== draftId);
+	}
+
+	/**
+	 * Save one unsaved draft row by handing it off to the existing optimistic create flow.
+	 * The draft row disappears immediately and is replaced by a pending saved-product row.
+	 */
+	async function saveProductDraft(draftId: string) {
+		const draftProduct = productDrafts.find((candidateDraft) => candidateDraft.id === draftId);
+		if (!draftProduct) return;
+
+		const trimmedName = draftProduct.name.trim();
+		if (trimmedName.length < 3) return;
+
+		const sku = generateProductSku(trimmedName);
+		const facetValueIds = [
+			...draftProduct.bitIds,
+			...draftProduct.processIds,
+			...draftProduct.allergenIds
+		];
+
+		const tempId = `__pending_${++pendingProductIdCounter}`;
 		const optimisticProduct: SellerProduct = {
 			id: tempId,
-			name: data.name,
+			name: trimmedName,
 			variantId: '',
 			sku,
-			unitType: unitType ?? null,
-			bits: rawBits.filter((b) => data.bitIds.includes(b.id)),
-			processes: rawProcesses.filter((p) => data.processIds.includes(p.id)),
-			allergenWarnings: rawAllergenWarnings.filter((a) => data.allergenIds.includes(a.id))
+			unitType: null,
+			bits: rawBits.filter((bit) => draftProduct.bitIds.includes(bit.id)),
+			processes: rawProcesses.filter((processItem) => draftProduct.processIds.includes(processItem.id)),
+			allergenWarnings: rawAllergenWarnings.filter((allergen) =>
+				draftProduct.allergenIds.includes(allergen.id)
+			)
 		};
 
+		productDrafts = productDrafts.filter((candidateDraft) => candidateDraft.id !== draftId);
 		products = [...products, optimisticProduct];
 		pendingIds.add(tempId);
 
 		try {
-			const created = await createProduct({
-				name: data.name,
+			const createdProduct = await createProduct({
+				name: trimmedName,
 				sku,
-				unitType,
 				facetValueIds: facetValueIds.length ? facetValueIds : undefined
 			});
-			products = products.map((p) => (p.id === tempId ? created : p));
+			products = products.map((product) => (product.id === tempId ? createdProduct : product));
 			pendingIds.delete(tempId);
-		} catch (err) {
-			console.error('Failed to create product:', err);
+		} catch (error) {
+			console.error('Failed to create product:', error);
 			pendingIds.delete(tempId);
-			failedIds.set(tempId, 'Failed to create');
+			failedIds.set(tempId, getErrorMessage(error, 'Failed to create product'));
 		}
 	}
 
+	/** Create a new reusable bit and merge it into the local taxonomy cache. */
 	async function handleCreateBit(name: string): Promise<InputSelectItem | null> {
 		try {
 			const newBit = await createBit({ name });
-			// Add to local taxonomy cache (skip if already present — server-side dedup)
-			if (!rawBits.some((b) => b.id === newBit.id)) {
+			if (!rawBits.some((existingBit) => existingBit.id === newBit.id)) {
 				rawBits = [...rawBits, newBit];
 			}
 			return toItem(newBit);
-		} catch (err) {
-			console.error('Failed to create bit:', err);
+		} catch (error) {
+			console.error('Failed to create bit:', error);
 			return null;
 		}
 	}
 
-	function retryCreate(tempId: string) {
-		const product = products.find((p) => p.id === tempId);
+	/** Retry a failed optimistic create row with the same pending data. */
+	function retryPendingProductCreate(tempId: string) {
+		const product = products.find((candidateProduct) => candidateProduct.id === tempId);
 		if (!product) return;
 
 		failedIds.delete(tempId);
 		pendingIds.add(tempId);
 
 		const facetValueIds = [
-			...product.bits.map((b) => b.id),
-			...product.processes.map((p) => p.id),
-			...product.allergenWarnings.map((a) => a.id)
+			...product.bits.map((bit) => bit.id),
+			...product.processes.map((processItem) => processItem.id),
+			...product.allergenWarnings.map((allergen) => allergen.id)
 		];
 
 		createProduct({
@@ -215,51 +249,60 @@
 			unitType: product.unitType || undefined,
 			facetValueIds: facetValueIds.length ? facetValueIds : undefined
 		})
-			.then((created) => {
-				products = products.map((p) => (p.id === tempId ? created : p));
+			.then((createdProduct) => {
+				products = products.map((candidateProduct) =>
+					candidateProduct.id === tempId ? createdProduct : candidateProduct
+				);
 				pendingIds.delete(tempId);
 			})
-			.catch((err) => {
-				console.error('Failed to create product (retry):', err);
+			.catch((error) => {
+				console.error('Failed to create product (retry):', error);
 				pendingIds.delete(tempId);
-				failedIds.set(tempId, 'Failed to create');
+				failedIds.set(tempId, getErrorMessage(error, 'Failed to create product'));
 			});
 	}
 
-	function dismissFailed(tempId: string) {
-		products = products.filter((p) => p.id !== tempId);
+	/** Remove a failed optimistic create row from the table entirely. */
+	function dismissFailedProductCreate(tempId: string) {
+		products = products.filter((product) => product.id !== tempId);
 		failedIds.delete(tempId);
 	}
 
-	async function handleSave(
+	/** Save inline edits for an existing persisted product row. */
+	async function saveProductEdits(
 		productId: string,
 		edits: { name?: string; unitType?: string; facetValueIds?: string[] }
 	) {
-		const product = products.find((p) => p.id === productId);
+		const product = products.find((candidateProduct) => candidateProduct.id === productId);
 		if (!product) return;
+
+		const trimmedName = edits.name !== undefined ? edits.name.trim() : undefined;
 
 		await updateProduct({
 			id: product.id,
 			variantId: product.variantId,
-			...edits
+			...edits,
+			...(trimmedName !== undefined ? { name: trimmedName } : {})
 		});
 
-		// Optimistic updates
-		if (edits.name) product.name = edits.name;
+		if (trimmedName !== undefined) product.name = trimmedName;
 		if (edits.unitType !== undefined) product.unitType = edits.unitType || null;
 		if (edits.facetValueIds) {
-			product.bits = rawBits.filter((b) => edits.facetValueIds!.includes(b.id));
-			product.processes = rawProcesses.filter((p) => edits.facetValueIds!.includes(p.id));
-			product.allergenWarnings = rawAllergenWarnings.filter((a) =>
-				edits.facetValueIds!.includes(a.id)
+			product.bits = rawBits.filter((bit) => edits.facetValueIds!.includes(bit.id));
+			product.processes = rawProcesses.filter((processItem) =>
+				edits.facetValueIds!.includes(processItem.id)
+			);
+			product.allergenWarnings = rawAllergenWarnings.filter((allergen) =>
+				edits.facetValueIds!.includes(allergen.id)
 			);
 		}
-		products = [...products]; // trigger reactivity
+		products = [...products];
 	}
 
-	async function handleDelete(productId: string) {
-		await deleteProduct(productId);
-		products = products.filter((p) => p.id !== productId);
+	/** Delete an existing persisted product row. */
+	async function deleteProductRow(productId: string) {
+		await deleteRemoteProduct(productId);
+		products = products.filter((product) => product.id !== productId);
 	}
 </script>
 
@@ -271,20 +314,23 @@
 	<p class="mt-4 text-destructive">Error loading products: {loadError}</p>
 {:else}
 	<div class="space-y-2">
-		<Accordion.Root
-			type="single"
-			value={addProductAccordionValue}
-			onValueChange={(value) => {
-				addProductAccordionValue = value;
-			}}
-		>
-			<Accordion.Item value="add-product">
-				<Accordion.Trigger class="add-product-trigger pt-2 text-xl font-bold">
-					<span class="inline-flex items-center gap-2">
-						<span>Add Product</span>
+		<div class="flex items-center gap-2">
+			<h2 class="text-xl font-bold">Products</h2>
+
+			{#if products.length > 0 || productDrafts.length > 0}
+				<Button
+					size="sm"
+					variant="ghost"
+					class="h-7 gap-1 px-2 text-xs text-muted-foreground"
+					title={getMetadataToggleActionLabel(metadataMode)}
+					onclick={() => (metadataMode = nextProductMetadataMode(metadataMode))}
+				>
+					<span>Metadata</span>
+					{#if metadataMode === 'hidden'}
 						<svg
-							class="add-product-chevron size-5"
-							style={`transform: rotate(${addProductChevronRotation}deg)`}
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -293,44 +339,66 @@
 							stroke-linejoin="round"
 							aria-hidden="true"
 						>
-							<path d="m6 9 6 6 6-6" />
+							<polyline points="6 9 12 15 18 9" />
 						</svg>
-					</span>
-				</Accordion.Trigger>
-
-				<Accordion.Content class="overflow-visible pt-2">
-					<AddProductForm
-						{allBits}
-						{allProcesses}
-						{allAllergenWarnings}
-						unitTypes={UNIT_TYPES}
-						oncreate={handleCreate}
-						onCreateBit={handleCreateBit}
-					/>
-				</Accordion.Content>
-			</Accordion.Item>
-		</Accordion.Root>
-
-		<h2 class="mt-8 text-xl font-bold">Products</h2>
+					{:else if metadataMode === 'summary'}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<polyline points="7 8 12 13 17 8" />
+							<polyline points="7 13 12 18 17 13" />
+						</svg>
+					{:else}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<line x1="6" y1="6" x2="18" y2="18" />
+							<line x1="18" y1="6" x2="6" y2="18" />
+						</svg>
+					{/if}
+				</Button>
+			{/if}
+		</div>
 
 		<ProductList
 			{products}
+			{productDrafts}
 			{allBits}
 			{allProcesses}
 			{allAllergenWarnings}
+			{metadataMode}
 			{pendingIds}
 			{failedIds}
-			onsave={handleSave}
-			ondelete={handleDelete}
-			onretry={retryCreate}
-			ondismiss={dismissFailed}
+			onsave={saveProductEdits}
+			ondelete={deleteProductRow}
+			onretry={retryPendingProductCreate}
+			ondismiss={dismissFailedProductCreate}
+			onupdateProductDraft={updateProductDraft}
+			onsaveProductDraft={saveProductDraft}
+			oncancelProductDraft={cancelProductDraft}
 			onCreateBit={handleCreateBit}
 		/>
+
+		<Button variant="outline" class="w-full" onclick={addProductDraft} data-testid="add-product-button">
+			+ Add Product
+		</Button>
 	</div>
 {/if}
-
-<style>
-	:global(.add-product-chevron) {
-		transition: transform 200ms ease;
-	}
-</style>

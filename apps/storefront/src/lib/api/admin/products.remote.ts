@@ -7,13 +7,14 @@
  *
  * NOTE: Channel scoping via `vendure-token` is NOT used because Vendure's
  * SuperAdmin role is only authorized in the default channel. Instead, all
- * queries run against the default channel and filter by `sellerId`. Products
- * are assigned to both the seller's channel and the default channel via
- * explicit `assignProductsToChannel` mutations.
+ * queries run against the default channel and filter by `sellerId`.
+ * Channel assignment is intentionally skipped — seller ownership is enforced
+ * by `customFields.sellerId`, not by seller-channel Admin API requests.
  */
 
 import * as v from 'valibot';
 import { query, command } from '$app/server';
+import { normalizeProductName } from '$lib/utils/product-name.js';
 import { adminQuery, adminMutate } from '../vendure-admin.js';
 import { requireSellerContext, assertProductOwnedBySeller } from '../seller-context.js';
 
@@ -206,6 +207,39 @@ function toSellerProduct(product: AdminProduct): SellerProduct {
 	};
 }
 
+/** Fetch every Admin API product owned by the given seller. */
+async function fetchSellerAdminProducts(sellerId: number): Promise<AdminProduct[]> {
+	const data = await adminQuery<{
+		products: { items: AdminProduct[]; totalItems: number };
+	}>(PRODUCTS_QUERY);
+
+	return data.products.items.filter((product) => product.customFields.sellerId === sellerId);
+}
+
+/**
+ * Enforce per-seller product-name uniqueness.
+ * The comparison is case-insensitive and ignores leading/trailing whitespace.
+ */
+async function assertUniqueSellerProductName(
+	sellerId: number,
+	candidateName: string,
+	excludeProductId?: string,
+): Promise<void> {
+	const normalizedCandidateName = normalizeProductName(candidateName);
+	if (!normalizedCandidateName) return;
+
+	const sellerProducts = await fetchSellerAdminProducts(sellerId);
+	const duplicateProduct = sellerProducts.find(
+		(product) =>
+			product.id !== excludeProductId &&
+			normalizeProductName(product.name) === normalizedCandidateName,
+	);
+
+	if (duplicateProduct) {
+		throw new Error(`A product named '${candidateName.trim()}' already exists`);
+	}
+}
+
 // ─── Remote functions ───
 
 /**
@@ -214,14 +248,7 @@ function toSellerProduct(product: AdminProduct): SellerProduct {
  */
 export const myProducts = query(async (): Promise<SellerProduct[]> => {
 	const { sellerId } = await requireSellerContext();
-
-	const data = await adminQuery<{
-		products: { items: AdminProduct[]; totalItems: number };
-	}>(PRODUCTS_QUERY);
-
-	return data.products.items
-		.filter((p) => p.customFields.sellerId === sellerId)
-		.map(toSellerProduct);
+	return (await fetchSellerAdminProducts(sellerId)).map(toSellerProduct);
 });
 
 /**
@@ -231,7 +258,7 @@ export const myProducts = query(async (): Promise<SellerProduct[]> => {
  * 1. createProduct — sets name, slug, sellerId
  * 2. createProductVariants — sets sku, unitType
  *
- * Also assigns the product to the seller's channel for channel-based visibility.
+ * Runs entirely in the default channel and relies on `sellerId` ownership filtering.
  * Rolls back (deletes) the product if variant creation fails.
  */
 export const createProduct = command(
@@ -249,6 +276,8 @@ export const createProduct = command(
 	}),
 	async ({ name, sku, unitType, facetValueIds }) => {
 		const { sellerId } = await requireSellerContext();
+
+		await assertUniqueSellerProductName(sellerId, name);
 
 		const slug = slugify(name);
 		const finalSku = sku?.trim() || generateSku(name);
@@ -341,6 +370,10 @@ export const updateProduct = command(
 
 		// Ownership check — throws 403 if not owned
 		await assertProductOwnedBySeller(id, sellerId);
+
+		if (name !== undefined) {
+			await assertUniqueSellerProductName(sellerId, name, id);
+		}
 
 		// Update product-level fields (name)
 		if (name !== undefined) {

@@ -52,16 +52,38 @@ When asked to "save this plan" or "save to plan library", save the current plan 
 
 ## Storefront Component Conventions
 
-Components live in `apps/storefront/src/lib/components/` and follow a consistent naming pattern:
+Components live in `apps/storefront/src/lib/components/` and follow a consistent naming pattern.
 
-- **`bits/`** — atomic UI primitives (button, card, input, avatar). These are shadcn-svelte components.
-- **`bundles/`** — composed components that combine bits or contain app-level logic (navbar, footer).
+### Filesystem naming
 
-Both use the same directory structure: `<category>/<component-name>/<component-name>.svelte` with an `index.ts` barrel export. For example:
+- **Use lowercase kebab-case for component directories and component filenames.**
+- Do **not** create camelCase or PascalCase component directories/files.
+- Standard structure: `<category>/<component-name>/<component-name>.svelte` with an `index.ts` barrel export.
+
+Examples:
 - `bits/button/button.svelte` + `bits/button/index.ts`
+- `blocks/product-list-row-fields/product-list-row-fields.svelte` + `blocks/product-list-row-fields/index.ts`
 - `bundles/navbar/navbar.svelte` + `bundles/navbar/index.ts`
 
 Import via the directory (barrel): `import { Navbar } from '$lib/components/bundles/navbar'`
+
+### Category meanings
+
+- **`bits/`** — atomic UI primitives (button, card, input, avatar). These are shadcn-svelte components.
+- **`blocks/`** — reusable composed components made from multiple bits. Use this for shared UI chunks that are reused across features, such as reusable row field editors like `product-list-row-fields`.
+- **`bundles/`** — app-specific composed implementations with feature or page-level behavior. These may still be reusable, but they are typically higher-level pieces such as forms, navbars, feature tables, and other concrete implementations.
+
+### Multi-file block convention
+
+- A block folder may contain **multiple related component files**, not just one large `.svelte` file.
+- Prefer splitting non-trivial reusable UI into focused subcomponents inside the same block folder instead of creating one monolithic component.
+- For subcomponents inside a shared folder, prefer **prefixing filenames with the parent folder name** for clarity and grep-ability.
+- Example: `blocks/product-list-row-fields/` can contain files like `product-list-row-fields-name.svelte`, `product-list-row-fields-bits.svelte`, `product-list-row-fields-processes.svelte`, and `product-list-row-fields-allergen-warnings.svelte`, plus an optional thin coordinator component and `index.ts` barrel exports.
+
+Rule of thumb:
+- If it is a small primitive, it belongs in `bits/`.
+- If it is a reusable multi-bit building block, it belongs in `blocks/`.
+- If it is a specific feature implementation or higher-level composed UI, it belongs in `bundles/`.
 
 ## Code Style
 
