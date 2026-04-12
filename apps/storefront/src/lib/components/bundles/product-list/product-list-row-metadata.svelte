@@ -21,8 +21,6 @@
 		isPending = false,
 		/** Whether this product failed to create. */
 		isFailed = false,
-		/** Whether the row is currently saving. */
-		saving = false,
 		/** Callback to open an editor for a field. */
 		onOpenEditor,
 		/** Callback to close editor if the given field is active. */
@@ -49,7 +47,6 @@
 		} | null;
 		isPending?: boolean;
 		isFailed?: boolean;
-		saving?: boolean;
 		onOpenEditor: (field: 'bits' | 'processes' | 'allergens') => void;
 		onCloseEditorIfActive: (field: 'bits' | 'processes' | 'allergens') => void;
 		onBitsChange: (values: string[]) => void;
@@ -105,7 +102,7 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="w-fit cursor-pointer py-1"
-				onclick={(e) => { e.stopPropagation(); if (activeField !== 'bits') onOpenEditor('bits'); }}
+				onclick={(e) => { e.stopPropagation(); activeField === 'bits' ? onCloseEditorIfActive('bits') : onOpenEditor('bits'); }}
 				data-focusable
 				data-auto-open
 			>
@@ -143,7 +140,7 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="w-fit cursor-pointer py-1"
-				onclick={(e) => { e.stopPropagation(); if (activeField !== 'processes') onOpenEditor('processes'); }}
+				onclick={(e) => { e.stopPropagation(); activeField === 'processes' ? onCloseEditorIfActive('processes') : onOpenEditor('processes'); }}
 				data-focusable
 				data-auto-open
 			>
@@ -179,7 +176,7 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="w-fit cursor-pointer py-1"
-				onclick={(e) => { e.stopPropagation(); if (activeField !== 'allergens') onOpenEditor('allergens'); }}
+				onclick={(e) => { e.stopPropagation(); activeField === 'allergens' ? onCloseEditorIfActive('allergens') : onOpenEditor('allergens'); }}
 				data-focusable
 				data-auto-open
 			>

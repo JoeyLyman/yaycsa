@@ -536,7 +536,6 @@
 			{editState}
 			{isPending}
 			{isFailed}
-			{saving}
 			onOpenEditor={openEditor}
 			onCloseEditorIfActive={closeEditorIfActive}
 			onBitsChange={(v: string[]) => {
