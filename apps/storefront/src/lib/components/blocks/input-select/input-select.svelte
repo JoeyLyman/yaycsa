@@ -395,7 +395,7 @@
 	<!-- Dropdown -->
 	{#if open}
 		<div
-			class="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-popover shadow-lg"
+			class="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-popover p-1 shadow-lg"
 			bind:this={dropdownEl}
 		>
 			{#each filteredItems as item, idx (item.value)}
@@ -403,7 +403,7 @@
 				{@const isHighlighted = idx === highlightedIndex}
 				<button
 					type="button"
-					class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm {isHighlighted ? 'bg-accent' : 'hover:bg-accent'}"
+					class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm outline-none {isHighlighted ? 'bg-accent/50' : ''}"
 					data-item-index={idx}
 					onmousedown={(e) => e.preventDefault()}
 					onmouseenter={() => (highlightedIndex = idx)}
@@ -416,11 +416,17 @@
 					}}
 				>
 					{#if multiSelect}
-						<span
-							class="size-3.5 shrink-0 rounded border {isSelected
-								? colors.checkbox
-								: 'border-input'}"
-						></span>
+						<span class="flex size-3.5 shrink-0 items-center justify-center rounded-sm border {isSelected ? colors.checkbox + ' text-white' : 'border-input'}">
+							{#if isSelected}
+								<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+							{/if}
+						</span>
+					{:else}
+						{#if isSelected}
+							<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
+						{:else}
+							<span class="size-3.5 shrink-0"></span>
+						{/if}
 					{/if}
 					<span class={!multiSelect && isSelected ? 'font-medium' : ''}>
 						{getDisplayName(item)}
@@ -439,7 +445,7 @@
 				{@const isCreateHighlighted = highlightedIndex === filteredItems.length}
 				<button
 					type="button"
-					class="flex w-full items-center gap-2 border-t px-3 py-1.5 text-left text-sm text-green-700 dark:text-green-300 {isCreateHighlighted ? 'bg-accent' : 'hover:bg-accent'}"
+					class="flex w-full items-center gap-2 border-t px-2 py-1.5 text-left text-sm text-green-700 dark:text-green-300 {isCreateHighlighted ? 'rounded-lg bg-accent/50' : ''}"
 					data-item-index={filteredItems.length}
 					{disabled}
 					onmousedown={(e) => e.preventDefault()}
