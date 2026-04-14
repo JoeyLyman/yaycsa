@@ -25,7 +25,6 @@ export const FulfillmentOptionFields = graphql(`
 		name
 		type
 		description
-		active
 		sortOrder
 		recurrence
 		fulfillmentStartDate

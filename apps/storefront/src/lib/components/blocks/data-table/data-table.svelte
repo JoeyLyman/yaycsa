@@ -8,8 +8,7 @@
 		type ColumnDef,
 		type SortingState,
 		type TableOptions,
-		type Table,
-		flexRender,
+		type Table
 	} from '@tanstack/table-core';
 	import * as TablePrimitives from '$lib/components/bits/table';
 	import { cn } from '$lib/components/utils.js';
@@ -38,7 +37,7 @@
 		paginate = false,
 		pageSize = 20,
 		header,
-		empty,
+		empty
 	}: Props = $props();
 
 	/** Current sorting state. */
@@ -46,6 +45,16 @@
 
 	/** Global filter value. */
 	let globalFilter: string = $state('');
+
+	/**
+	 * Minimal local replacement for TanStack's flexRender helper.
+	 * Handles plain strings, snippets/functions, and other primitive values.
+	 */
+	function flexRender<TContext>(renderer: unknown, context: TContext): unknown {
+		return typeof renderer === 'function'
+			? (renderer as (context: TContext) => unknown)(context)
+			: renderer;
+	}
 
 	/**
 	 * Create a reactive TanStack Table instance.
@@ -57,8 +66,9 @@
 			columns,
 			state: {
 				sorting,
-				globalFilter,
+				globalFilter
 			},
+			onStateChange: () => undefined,
 			onSortingChange: (updater) => {
 				sorting = typeof updater === 'function' ? updater(sorting) : updater;
 			},
@@ -68,16 +78,16 @@
 			getCoreRowModel: getCoreRowModel(),
 			getSortedRowModel: getSortedRowModel(),
 			getFilteredRowModel: getFilteredRowModel(),
-			...(paginate ? { getPaginationRowModel: getPaginationRowModel() } : {}),
+			...(paginate ? { getPaginationRowModel: getPaginationRowModel() } : {})
 		};
 
-		const t = createTable(options);
+		const t = createTable(options as any);
 
 		if (paginate) {
 			t.setPageSize(pageSize);
 		}
 
-		return t;
+		return t as Table<TData>;
 	});
 </script>
 
@@ -93,13 +103,14 @@
 					<TablePrimitives.TableRow>
 						{#each headerGroup.headers as headerCell}
 							<TablePrimitives.TableHead
-								class={cn(
-									headerCell.column.getCanSort() && 'cursor-pointer select-none',
-								)}
+								class={cn(headerCell.column.getCanSort() && 'cursor-pointer select-none')}
 								onclick={headerCell.column.getToggleSortingHandler()}
 							>
 								{#if !headerCell.isPlaceholder}
-									{@const rendered = flexRender(headerCell.column.columnDef.header, headerCell.getContext())}
+									{@const rendered = flexRender(
+										headerCell.column.columnDef.header,
+										headerCell.getContext()
+									)}
 									{#if typeof rendered === 'string'}
 										{rendered}
 									{:else if rendered?.toString}

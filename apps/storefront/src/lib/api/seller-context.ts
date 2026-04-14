@@ -52,6 +52,18 @@ const PRODUCT_SELLER_CHECK_QUERY = `
 	}
 `;
 
+/** Admin API query to check fulfillment-option ownership via Seller relation. */
+const FULFILLMENT_OPTION_SELLER_CHECK_QUERY = `
+	query FulfillmentOptionSellerCheck($id: ID!) {
+		fulfillmentOption(id: $id, includeDeleted: true) {
+			id
+			seller {
+				id
+			}
+		}
+	}
+`;
+
 export interface SellerContext {
 	/** Numeric seller ID — matches Product.customFields.sellerId (int). */
 	sellerId: number;
@@ -123,7 +135,7 @@ export async function requireSellerContext(): Promise<SellerContext> {
 	return {
 		sellerId: Number(seller.id),
 		sellerSlug: slug,
-		channelToken,
+		channelToken
 	};
 }
 
@@ -136,7 +148,7 @@ export async function requireSellerContext(): Promise<SellerContext> {
  */
 export async function assertProductOwnedBySeller(
 	productId: string,
-	sellerId: number,
+	sellerId: number
 ): Promise<void> {
 	const data = await adminQuery<{
 		product: { id: string; customFields: { sellerId: number | null } } | null;
@@ -148,5 +160,29 @@ export async function assertProductOwnedBySeller(
 
 	if (data.product.customFields.sellerId !== sellerId) {
 		throw error(403, 'Product does not belong to this seller');
+	}
+}
+
+/**
+ * Assert that a fulfillment option is owned by the given seller.
+ * Queries the custom FulfillmentOption entity via Admin API and checks the seller relation.
+ *
+ * @throws 403 if the fulfillment option doesn't belong to the seller
+ * @throws 404 if the fulfillment option doesn't exist
+ */
+export async function assertFulfillmentOptionOwnedBySeller(
+	fulfillmentOptionId: string,
+	sellerId: number
+): Promise<void> {
+	const data = await adminQuery<{
+		fulfillmentOption: { id: string; seller: { id: string } } | null;
+	}>(FULFILLMENT_OPTION_SELLER_CHECK_QUERY, { id: fulfillmentOptionId });
+
+	if (!data.fulfillmentOption) {
+		throw error(404, 'Fulfillment option not found');
+	}
+
+	if (Number(data.fulfillmentOption.seller.id) !== sellerId) {
+		throw error(403, 'Fulfillment option does not belong to this seller');
 	}
 }

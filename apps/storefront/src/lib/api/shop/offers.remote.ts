@@ -23,7 +23,6 @@ const ACTIVE_OFFERS_QUERY = graphql(`
 				name
 				type
 				description
-				active
 				recurrence
 				fulfillmentStartDate
 				fulfillmentEndDate
