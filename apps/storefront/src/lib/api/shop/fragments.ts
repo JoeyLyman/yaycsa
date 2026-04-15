@@ -12,6 +12,7 @@ export const ActiveCustomerFields = graphql(`
 				name
 				customFields {
 					slug
+					timezone
 				}
 			}
 		}
@@ -24,13 +25,13 @@ export const FulfillmentOptionFields = graphql(`
 		code
 		name
 		type
-		description
+		notes
 		sortOrder
-		recurrence
-		fulfillmentStartDate
-		fulfillmentEndDate
-		fulfillmentTimeDescription
-		deadlineOffsetHours
+		fulfillmentWeekday
+		fulfillmentTimeWindowStart
+		fulfillmentTimeWindowEnd
+		orderDeadlineWeekday
+		orderDeadlineTime
 	}
 `);
 

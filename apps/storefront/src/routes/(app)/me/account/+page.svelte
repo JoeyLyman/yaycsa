@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { updateBusinessTimezone } from '$lib/api/admin/fulfillment-options.remote';
 	import { requestUpdateEmail, updatePassword, logout } from '$lib/api/shop/auth.remote';
-	import * as Card from '$lib/components/bits/card';
 	import { Button } from '$lib/components/bits/button';
+	import * as Card from '$lib/components/bits/card';
 	import { Input } from '$lib/components/bits/input';
+	import * as Select from '$lib/components/bits/select';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	import {
+		buildBusinessTimezoneOptions,
+		getBusinessTimezoneDisplayName
+	} from '$lib/utils/business-timezone';
 	import Sun from '@lucide/svelte/icons/sun';
 	import Moon from '@lucide/svelte/icons/moon';
 	import { toggleMode, mode } from 'mode-watcher';
@@ -20,8 +26,49 @@
 			?.seller?.customFields?.slug ?? null
 	);
 
+	/** The logged-in seller relation, if this customer has already created a business profile. */
+	const seller = $derived(
+		(data.customer.customFields as {
+			seller?: { name: string; customFields?: { slug?: string | null; timezone?: string | null } } | null;
+		})?.seller ?? null
+	);
+
+	/** The timezone value currently stored on the seller business. Null falls back to UTC in the UI. */
+	const businessTimezoneValue = $derived(seller?.customFields?.timezone ?? 'UTC');
+
+	/** Friendly timezone label shown inside the business settings selector, e.g. Pacific Time. */
+	const businessTimezoneLabel = $derived(getBusinessTimezoneDisplayName(businessTimezoneValue));
+
+	/** Curated business timezone options, always including the seller's current stored timezone. */
+	const businessTimezoneOptions = $derived(
+		buildBusinessTimezoneOptions(seller?.customFields?.timezone ?? null)
+	);
+
+	/** Error shown in the business card when saving a timezone change fails. */
+	let businessTimezoneError = $state<string | null>(null);
+
+	/** True while the business timezone mutation is in flight. Disables the selector and shows a spinner. */
+	let savingBusinessTimezone = $state(false);
+
 	/** True while the logout request is in flight. Disables the logout button and shows a spinner. */
 	let loggingOut = $state(false);
+
+	async function handleBusinessTimezoneChange(nextTimezoneValue: string) {
+		if (!seller || nextTimezoneValue === businessTimezoneValue) return;
+
+		businessTimezoneError = null;
+		savingBusinessTimezone = true;
+		try {
+			await updateBusinessTimezone(nextTimezoneValue === 'UTC' ? '' : nextTimezoneValue);
+			await invalidateAll();
+		} catch (error) {
+			console.error('Failed to update business timezone:', error);
+			businessTimezoneError =
+				error instanceof Error && error.message ? error.message : 'Failed to update business timezone';
+		} finally {
+			savingBusinessTimezone = false;
+		}
+	}
 
 	async function handleLogout() {
 		loggingOut = true;
@@ -33,11 +80,67 @@
 <h1 class="text-2xl font-bold">Account</h1>
 
 <div class="mt-6 space-y-6">
-	{#if mySellerSlug}
-		<Button href="/{mySellerSlug}">See my sales page</Button>
-	{:else}
-		<Button href="/me" data-sveltekit-reload>Become a seller</Button>
-	{/if}
+	<Card.Root>
+		<Card.Header>
+			<Card.Title>Business</Card.Title>
+		</Card.Header>
+		<Card.Content>
+			<div class="space-y-4">
+				{#if mySellerSlug}
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div class="space-y-1">
+							<p class="text-sm font-medium">{seller?.name ?? 'Your business'}</p>
+							<p class="text-sm text-muted-foreground">
+								Manage business-wide settings that affect new fulfillment timing calculations.
+							</p>
+						</div>
+						<Button href="/{mySellerSlug}">See my sales page</Button>
+					</div>
+
+					<div class="space-y-2">
+						<Select.Root
+							type="single"
+							value={businessTimezoneValue}
+							items={businessTimezoneOptions}
+							onValueChange={handleBusinessTimezoneChange}
+							disabled={savingBusinessTimezone}
+						>
+							<Select.Trigger class="w-full justify-start text-left" data-testid="business-timezone-selector">
+								Business Timezone: {businessTimezoneLabel}
+								{#if savingBusinessTimezone}
+									<span class="ml-2 inline-flex align-middle">
+										<SpinnerSun class="size-3.5" />
+									</span>
+								{/if}
+							</Select.Trigger>
+							<Select.Content class="max-h-72 min-w-60">
+								{#each businessTimezoneOptions as option (option.value)}
+									<Select.Item value={option.value} label={option.label}>
+										{option.label}
+									</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+						<p class="text-xs text-muted-foreground">
+							Changing the business timezone updates only the seller timezone setting used for future
+							template interpretation. Existing orders, offers, and fulfillment options are not rewritten.
+						</p>
+						{#if businessTimezoneError}
+							<p class="text-xs text-destructive">{businessTimezoneError}</p>
+						{/if}
+					</div>
+				{:else}
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<p class="text-sm text-muted-foreground">
+							Create your business first to get a sales page and business timezone settings.
+						</p>
+						<Button href="/me" data-sveltekit-reload>Become a seller</Button>
+					</div>
+				{/if}
+			</div>
+		</Card.Content>
+	</Card.Root>
+
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Profile</Card.Title>

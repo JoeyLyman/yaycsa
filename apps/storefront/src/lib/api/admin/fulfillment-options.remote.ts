@@ -1,5 +1,5 @@
 /**
- * Fulfillment option management remote functions for sellers.
+ * Fulfillment option and business-timezone remote functions for sellers.
  *
  * All operations use the Admin API proxy in the default channel.
  * Seller identity comes from the authenticated shop session, and ownership is
@@ -17,15 +17,18 @@ import { command, query } from '$app/server';
 import { adminMutate, adminQuery } from '../vendure-admin.js';
 import { assertFulfillmentOptionOwnedBySeller, requireSellerContext } from '../seller-context.js';
 
-export type FulfillmentOptionType = 'pickup' | 'delivery';
-export type RecurrenceType =
-	| 'once'
-	| 'daily'
-	| 'weekly'
-	| 'every_2_weeks'
-	| 'every_4_weeks'
-	| 'every_8_weeks'
-	| 'every_12_weeks';
+export type FulfillmentOptionType =
+	| 'scheduled_pickup'
+	| 'scheduled_delivery'
+	| 'shipping';
+export type Weekday =
+	| 'monday'
+	| 'tuesday'
+	| 'wednesday'
+	| 'thursday'
+	| 'friday'
+	| 'saturday'
+	| 'sunday';
 
 /** Simplified fulfillment-option type returned to the UI. */
 export interface SellerFulfillmentOption {
@@ -33,10 +36,11 @@ export interface SellerFulfillmentOption {
 	name: string;
 	type: FulfillmentOptionType;
 	notes: string | null;
-	recurrence: RecurrenceType | null;
-	fulfillmentStartDate: string | null;
-	fulfillmentEndDate: string | null;
-	deadlineOffsetHours: number | null;
+	fulfillmentWeekday: Weekday | null;
+	fulfillmentTimeWindowStart: number | null;
+	fulfillmentTimeWindowEnd: number | null;
+	orderDeadlineWeekday: Weekday | null;
+	orderDeadlineTime: number | null;
 	deletedAt: string | null;
 }
 
@@ -47,11 +51,12 @@ const FULFILLMENT_OPTIONS_QUERY = `
 				id
 				name
 				type
-				description
-				recurrence
-				fulfillmentStartDate
-				fulfillmentEndDate
-				deadlineOffsetHours
+				notes
+				fulfillmentWeekday
+				fulfillmentTimeWindowStart
+				fulfillmentTimeWindowEnd
+				orderDeadlineWeekday
+				orderDeadlineTime
 				deletedAt
 			}
 		}
@@ -64,11 +69,12 @@ const CREATE_FULFILLMENT_OPTION_MUTATION = `
 			id
 			name
 			type
-			description
-			recurrence
-			fulfillmentStartDate
-			fulfillmentEndDate
-			deadlineOffsetHours
+			notes
+			fulfillmentWeekday
+			fulfillmentTimeWindowStart
+			fulfillmentTimeWindowEnd
+			orderDeadlineWeekday
+			orderDeadlineTime
 			deletedAt
 		}
 	}
@@ -80,11 +86,12 @@ const UPDATE_FULFILLMENT_OPTION_MUTATION = `
 			id
 			name
 			type
-			description
-			recurrence
-			fulfillmentStartDate
-			fulfillmentEndDate
-			deadlineOffsetHours
+			notes
+			fulfillmentWeekday
+			fulfillmentTimeWindowStart
+			fulfillmentTimeWindowEnd
+			orderDeadlineWeekday
+			orderDeadlineTime
 			deletedAt
 		}
 	}
@@ -105,12 +112,24 @@ const RESTORE_FULFILLMENT_OPTION_MUTATION = `
 			id
 			name
 			type
-			description
-			recurrence
-			fulfillmentStartDate
-			fulfillmentEndDate
-			deadlineOffsetHours
+			notes
+			fulfillmentWeekday
+			fulfillmentTimeWindowStart
+			fulfillmentTimeWindowEnd
+			orderDeadlineWeekday
+			orderDeadlineTime
 			deletedAt
+		}
+	}
+`;
+
+const UPDATE_BUSINESS_TIMEZONE_MUTATION = `
+	mutation UpdateBusinessTimezone($input: UpdateSellerInput!) {
+		updateSeller(input: $input) {
+			id
+			customFields {
+				timezone
+			}
 		}
 	}
 `;
@@ -119,11 +138,12 @@ interface AdminFulfillmentOption {
 	id: string;
 	name: string;
 	type: FulfillmentOptionType;
-	description: string | null;
-	recurrence: RecurrenceType | null;
-	fulfillmentStartDate: string | null;
-	fulfillmentEndDate: string | null;
-	deadlineOffsetHours: number | null;
+	notes: string | null;
+	fulfillmentWeekday: Weekday | null;
+	fulfillmentTimeWindowStart: number | null;
+	fulfillmentTimeWindowEnd: number | null;
+	orderDeadlineWeekday: Weekday | null;
+	orderDeadlineTime: number | null;
 	deletedAt: string | null;
 }
 
@@ -132,11 +152,12 @@ function toSellerFulfillmentOption(option: AdminFulfillmentOption): SellerFulfil
 		id: option.id,
 		name: option.name,
 		type: option.type,
-		notes: option.description,
-		recurrence: option.recurrence,
-		fulfillmentStartDate: option.fulfillmentStartDate,
-		fulfillmentEndDate: option.fulfillmentEndDate,
-		deadlineOffsetHours: option.deadlineOffsetHours,
+		notes: option.notes,
+		fulfillmentWeekday: option.fulfillmentWeekday,
+		fulfillmentTimeWindowStart: option.fulfillmentTimeWindowStart,
+		fulfillmentTimeWindowEnd: option.fulfillmentTimeWindowEnd,
+		orderDeadlineWeekday: option.orderDeadlineWeekday,
+		orderDeadlineTime: option.orderDeadlineTime,
 		deletedAt: option.deletedAt
 	};
 }
@@ -158,28 +179,34 @@ function normalizeOptionalInteger(value?: number | null): number | null | undefi
 	return Number.isFinite(value) ? Math.trunc(value) : null;
 }
 
-function normalizeOptionalDateTime(value?: string | null): string | null | undefined {
-	if (value === undefined) return undefined;
-	if (value === null) return null;
-	const trimmed = value.trim();
-	if (trimmed.length === 0) return null;
-
-	const parsedTime = Date.parse(trimmed);
-	if (Number.isNaN(parsedTime)) {
-		throw new Error('Invalid fulfillment date/time');
+function isValidIanaTimezone(value: string): boolean {
+	try {
+		Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+		return true;
+	} catch {
+		return false;
 	}
-
-	return new Date(parsedTime).toISOString();
 }
 
-const recurrenceValues = [
-	'once',
-	'daily',
-	'weekly',
-	'every_2_weeks',
-	'every_4_weeks',
-	'every_8_weeks',
-	'every_12_weeks'
+function normalizeBusinessTimezone(value: string): string | null {
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		return null;
+	}
+	if (!isValidIanaTimezone(trimmed)) {
+		throw new Error('Enter a valid IANA timezone like America/Los_Angeles');
+	}
+	return trimmed;
+}
+
+const weekdayValues = [
+	'monday',
+	'tuesday',
+	'wednesday',
+	'thursday',
+	'friday',
+	'saturday',
+	'sunday'
 ] as const;
 
 const fulfillmentOptionInputSchema = v.object({
@@ -189,12 +216,13 @@ const fulfillmentOptionInputSchema = v.object({
 		v.minLength(2, 'Name must be at least 2 characters'),
 		v.maxLength(120)
 	),
-	type: v.picklist(['pickup', 'delivery']),
+	type: v.picklist(['scheduled_pickup', 'scheduled_delivery', 'shipping']),
 	notes: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(1000)))),
-	recurrence: v.optional(v.nullable(v.picklist(recurrenceValues))),
-	fulfillmentStartDate: v.optional(v.nullable(v.string())),
-	fulfillmentEndDate: v.optional(v.nullable(v.string())),
-	deadlineOffsetHours: v.optional(v.nullable(v.number()))
+	fulfillmentWeekday: v.optional(v.nullable(v.picklist(weekdayValues))),
+	fulfillmentTimeWindowStart: v.optional(v.nullable(v.number())),
+	fulfillmentTimeWindowEnd: v.optional(v.nullable(v.number())),
+	orderDeadlineWeekday: v.optional(v.nullable(v.picklist(weekdayValues))),
+	orderDeadlineTime: v.optional(v.nullable(v.number()))
 });
 
 /** Fetch all fulfillment options owned by the current seller. */
@@ -227,10 +255,11 @@ export const createFulfillmentOption = command(
 				name: input.name.trim(),
 				type: input.type,
 				notes: normalizeOptionalText(input.notes),
-				recurrence: input.recurrence ?? null,
-				fulfillmentStartDate: normalizeOptionalDateTime(input.fulfillmentStartDate),
-				fulfillmentEndDate: normalizeOptionalDateTime(input.fulfillmentEndDate),
-				deadlineOffsetHours: normalizeOptionalInteger(input.deadlineOffsetHours)
+				fulfillmentWeekday: input.fulfillmentWeekday ?? null,
+				fulfillmentTimeWindowStart: normalizeOptionalInteger(input.fulfillmentTimeWindowStart),
+				fulfillmentTimeWindowEnd: normalizeOptionalInteger(input.fulfillmentTimeWindowEnd),
+				orderDeadlineWeekday: input.orderDeadlineWeekday ?? null,
+				orderDeadlineTime: normalizeOptionalInteger(input.orderDeadlineTime)
 			}
 		});
 
@@ -257,10 +286,11 @@ export const updateFulfillmentOption = command(
 				name: input.name.trim(),
 				type: input.type,
 				notes: normalizeOptionalText(input.notes),
-				recurrence: input.recurrence ?? null,
-				fulfillmentStartDate: normalizeOptionalDateTime(input.fulfillmentStartDate),
-				fulfillmentEndDate: normalizeOptionalDateTime(input.fulfillmentEndDate),
-				deadlineOffsetHours: normalizeOptionalInteger(input.deadlineOffsetHours)
+				fulfillmentWeekday: input.fulfillmentWeekday ?? null,
+				fulfillmentTimeWindowStart: normalizeOptionalInteger(input.fulfillmentTimeWindowStart),
+				fulfillmentTimeWindowEnd: normalizeOptionalInteger(input.fulfillmentTimeWindowEnd),
+				orderDeadlineWeekday: input.orderDeadlineWeekday ?? null,
+				orderDeadlineTime: normalizeOptionalInteger(input.orderDeadlineTime)
 			}
 		});
 
@@ -306,3 +336,22 @@ export const restoreFulfillmentOption = command(
 		return toSellerFulfillmentOption(data.restoreFulfillmentOption);
 	}
 );
+
+/** Update the seller business timezone used to interpret fulfillment schedule templates. */
+export const updateBusinessTimezone = command(v.string(), async (timezone): Promise<string | null> => {
+	const { sellerId } = await requireSellerContext();
+	const normalizedTimezone = normalizeBusinessTimezone(timezone);
+
+	const data = await adminMutate<{
+		updateSeller: { id: string; customFields: { timezone: string | null } | null };
+	}>(UPDATE_BUSINESS_TIMEZONE_MUTATION, {
+		input: {
+			id: sellerId,
+			customFields: {
+				timezone: normalizedTimezone
+			}
+		}
+	});
+
+	return data.updateSeller.customFields?.timezone ?? null;
+});

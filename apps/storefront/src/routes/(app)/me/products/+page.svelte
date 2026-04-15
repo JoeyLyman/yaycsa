@@ -243,23 +243,24 @@
 			...product.allergenWarnings.map((allergen) => allergen.id)
 		];
 
-		createProduct({
-			name: product.name,
-			sku: product.sku || undefined,
-			unitType: product.unitType || undefined,
-			facetValueIds: facetValueIds.length ? facetValueIds : undefined
-		})
-			.then((createdProduct) => {
+		void (async () => {
+			try {
+				const createdProduct = await createProduct({
+					name: product.name,
+					sku: product.sku || undefined,
+					unitType: product.unitType || undefined,
+					facetValueIds: facetValueIds.length ? facetValueIds : undefined
+				});
 				products = products.map((candidateProduct) =>
 					candidateProduct.id === tempId ? createdProduct : candidateProduct
 				);
 				pendingIds.delete(tempId);
-			})
-			.catch((error) => {
+			} catch (error) {
 				console.error('Failed to create product (retry):', error);
 				pendingIds.delete(tempId);
 				failedIds.set(tempId, getErrorMessage(error, 'Failed to create product'));
-			});
+			}
+		})();
 	}
 
 	/** Remove a failed optimistic create row from the table entirely. */

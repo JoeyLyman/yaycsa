@@ -12,29 +12,55 @@ import {
   UserInputError,
 } from "@vendure/core";
 
-import { FulfillmentOption } from "../entities/fulfillment-option.entity";
+import {
+  FulfillmentOption,
+  FulfillmentOptionType,
+  Weekday,
+} from "../entities/fulfillment-option.entity";
 import { Offer } from "../entities/offer.entity";
+
+const WEEKDAY_VALUES: Weekday[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 export interface CreateFulfillmentOptionInput {
   name: string;
-  type: "pickup" | "delivery";
+  type: FulfillmentOptionType;
   notes?: string | null;
-  recurrence?: string | null;
-  fulfillmentStartDate?: Date | null;
-  fulfillmentEndDate?: Date | null;
-  deadlineOffsetHours?: number | null;
+  fulfillmentWeekday?: Weekday | null;
+  fulfillmentTimeWindowStart?: number | null;
+  fulfillmentTimeWindowEnd?: number | null;
+  orderDeadlineWeekday?: Weekday | null;
+  orderDeadlineTime?: number | null;
 }
 
 export interface UpdateFulfillmentOptionInput {
   id: ID;
   name?: string;
-  type?: "pickup" | "delivery";
+  type?: FulfillmentOptionType;
   notes?: string | null;
-  recurrence?: string | null;
-  fulfillmentStartDate?: Date | null;
-  fulfillmentEndDate?: Date | null;
-  deadlineOffsetHours?: number | null;
+  fulfillmentWeekday?: Weekday | null;
+  fulfillmentTimeWindowStart?: number | null;
+  fulfillmentTimeWindowEnd?: number | null;
+  orderDeadlineWeekday?: Weekday | null;
+  orderDeadlineTime?: number | null;
 }
+
+type FulfillmentOptionValidationInput = {
+  name: string;
+  type: FulfillmentOptionType;
+  fulfillmentWeekday?: Weekday | null;
+  fulfillmentTimeWindowStart?: number | null;
+  fulfillmentTimeWindowEnd?: number | null;
+  orderDeadlineWeekday?: Weekday | null;
+  orderDeadlineTime?: number | null;
+};
 
 @Injectable()
 export class FulfillmentOptionService {
@@ -106,19 +132,36 @@ export class FulfillmentOptionService {
       throw new UserInputError("Cannot create fulfillment option without a seller context");
     }
 
-    this.validateOptionFields(input);
+    const normalizedInput = this.normalizeTypeSpecificFields({
+      type: input.type,
+      fulfillmentWeekday: input.fulfillmentWeekday ?? null,
+      fulfillmentTimeWindowStart: input.fulfillmentTimeWindowStart ?? null,
+      fulfillmentTimeWindowEnd: input.fulfillmentTimeWindowEnd ?? null,
+      orderDeadlineWeekday: input.orderDeadlineWeekday ?? null,
+      orderDeadlineTime: input.orderDeadlineTime ?? null,
+    });
+
+    this.validateOptionFields({
+      name: input.name,
+      type: normalizedInput.type,
+      fulfillmentWeekday: normalizedInput.fulfillmentWeekday,
+      fulfillmentTimeWindowStart: normalizedInput.fulfillmentTimeWindowStart,
+      fulfillmentTimeWindowEnd: normalizedInput.fulfillmentTimeWindowEnd,
+      orderDeadlineWeekday: normalizedInput.orderDeadlineWeekday,
+      orderDeadlineTime: normalizedInput.orderDeadlineTime,
+    });
 
     const option = new FulfillmentOption({
       code: await this.generateInternalCode(ctx, requestedSellerId),
       name: input.name.trim(),
-      type: input.type,
-      description: input.notes ?? null,
+      type: normalizedInput.type,
+      notes: input.notes ?? null,
       sortOrder: 0,
-      recurrence: (input.recurrence as FulfillmentOption["recurrence"]) ?? null,
-      fulfillmentStartDate: input.fulfillmentStartDate ?? null,
-      fulfillmentEndDate: input.fulfillmentEndDate ?? null,
-      fulfillmentTimeDescription: null,
-      deadlineOffsetHours: input.deadlineOffsetHours ?? null,
+      fulfillmentWeekday: normalizedInput.fulfillmentWeekday,
+      fulfillmentTimeWindowStart: normalizedInput.fulfillmentTimeWindowStart,
+      fulfillmentTimeWindowEnd: normalizedInput.fulfillmentTimeWindowEnd,
+      orderDeadlineWeekday: normalizedInput.orderDeadlineWeekday,
+      orderDeadlineTime: normalizedInput.orderDeadlineTime,
       deletedAt: null,
       sellerId: requestedSellerId,
     });
@@ -136,14 +179,23 @@ export class FulfillmentOptionService {
 
     if (input.name !== undefined) existing.name = input.name.trim();
     if (input.type !== undefined) existing.type = input.type;
-    if (input.notes !== undefined) existing.description = input.notes ?? null;
-    if (input.recurrence !== undefined) existing.recurrence = input.recurrence as FulfillmentOption["recurrence"];
-    if (input.fulfillmentStartDate !== undefined) existing.fulfillmentStartDate = input.fulfillmentStartDate;
-    if (input.fulfillmentEndDate !== undefined) existing.fulfillmentEndDate = input.fulfillmentEndDate;
-    if (input.deadlineOffsetHours !== undefined) existing.deadlineOffsetHours = input.deadlineOffsetHours;
+    if (input.notes !== undefined) existing.notes = input.notes ?? null;
+    if (input.fulfillmentWeekday !== undefined) existing.fulfillmentWeekday = input.fulfillmentWeekday;
+    if (input.fulfillmentTimeWindowStart !== undefined) {
+      existing.fulfillmentTimeWindowStart = input.fulfillmentTimeWindowStart;
+    }
+    if (input.fulfillmentTimeWindowEnd !== undefined) {
+      existing.fulfillmentTimeWindowEnd = input.fulfillmentTimeWindowEnd;
+    }
+    if (input.orderDeadlineWeekday !== undefined) {
+      existing.orderDeadlineWeekday = input.orderDeadlineWeekday;
+    }
+    if (input.orderDeadlineTime !== undefined) {
+      existing.orderDeadlineTime = input.orderDeadlineTime;
+    }
     existing.sortOrder = 0;
-    existing.fulfillmentTimeDescription = null;
 
+    this.normalizeTypeSpecificFields(existing);
     this.validateOptionFields(existing);
 
     return this.connection.getRepository(ctx, FulfillmentOption).save(existing);
@@ -248,36 +300,75 @@ export class FulfillmentOptionService {
     throw new UserInputError("Failed to generate a unique fulfillment option identifier");
   }
 
-  private validateOptionFields(option: {
-    name: string;
-    recurrence?: string | null;
-    fulfillmentStartDate?: Date | null;
-    fulfillmentEndDate?: Date | null;
-    deadlineOffsetHours?: number | null;
-  }): void {
+  private normalizeTypeSpecificFields<T extends {
+    type: FulfillmentOptionType;
+    fulfillmentWeekday?: Weekday | null;
+    fulfillmentTimeWindowStart?: number | null;
+    fulfillmentTimeWindowEnd?: number | null;
+    orderDeadlineWeekday?: Weekday | null;
+    orderDeadlineTime?: number | null;
+  }>(option: T): T {
+    if (option.type === "shipping") {
+      option.fulfillmentWeekday = null;
+      option.fulfillmentTimeWindowStart = null;
+      option.fulfillmentTimeWindowEnd = null;
+      option.orderDeadlineWeekday = null;
+      option.orderDeadlineTime = null;
+    }
+
+    return option;
+  }
+
+  private validateOptionFields(option: FulfillmentOptionValidationInput): void {
     if (option.name.trim().length === 0) {
       throw new UserInputError("Fulfillment option name is required");
     }
 
-    if (option.fulfillmentEndDate && !option.fulfillmentStartDate) {
-      throw new UserInputError("Fulfillment end date requires a fulfillment start date");
+    if (!this.isScheduledType(option.type)) {
+      return;
     }
+
+    if (!option.fulfillmentWeekday || !this.isWeekday(option.fulfillmentWeekday)) {
+      throw new UserInputError("Scheduled fulfillment options require a fulfillment weekday");
+    }
+
+    if (!option.orderDeadlineWeekday || !this.isWeekday(option.orderDeadlineWeekday)) {
+      throw new UserInputError("Scheduled fulfillment options require an order deadline weekday");
+    }
+
+    this.assertValidMinutes(option.fulfillmentTimeWindowStart, "Fulfillment window start");
+    this.assertValidMinutes(option.fulfillmentTimeWindowEnd, "Fulfillment window end");
+    this.assertValidMinutes(option.orderDeadlineTime, "Order deadline time");
 
     if (
-      option.fulfillmentStartDate &&
-      option.fulfillmentEndDate &&
-      option.fulfillmentEndDate < option.fulfillmentStartDate
+      option.fulfillmentTimeWindowStart == null ||
+      option.fulfillmentTimeWindowEnd == null ||
+      option.orderDeadlineTime == null
     ) {
-      throw new UserInputError("Fulfillment end date must be after the start date");
+      throw new UserInputError("Scheduled fulfillment options require fulfillment and deadline times");
     }
 
-    if (option.recurrence && !option.fulfillmentStartDate) {
-      throw new UserInputError("Recurrence requires a fulfillment start date");
+    if (option.fulfillmentTimeWindowEnd <= option.fulfillmentTimeWindowStart) {
+      throw new UserInputError("Fulfillment window end must be after the fulfillment window start");
+    }
+  }
+
+  private assertValidMinutes(value: number | null | undefined, label: string): void {
+    if (value == null) {
+      return;
     }
 
-    if (option.deadlineOffsetHours != null && option.deadlineOffsetHours < 0) {
-      throw new UserInputError("Deadline offset hours cannot be negative");
+    if (!Number.isInteger(value) || value < 0 || value > 1439) {
+      throw new UserInputError(`${label} must be a whole number of minutes from midnight (0-1439)`);
     }
+  }
+
+  private isScheduledType(type: FulfillmentOptionType): boolean {
+    return type === "scheduled_pickup" || type === "scheduled_delivery";
+  }
+
+  private isWeekday(value: string): value is Weekday {
+    return WEEKDAY_VALUES.includes(value as Weekday);
   }
 
   private async getOfferUsageSummary(

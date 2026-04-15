@@ -2,18 +2,19 @@ import gql from "graphql-tag";
 
 const commonTypes = gql`
   enum FulfillmentOptionType {
-    pickup
-    delivery
+    scheduled_pickup
+    scheduled_delivery
+    shipping
   }
 
-  enum RecurrenceType {
-    once
-    daily
-    weekly
-    every_2_weeks
-    every_4_weeks
-    every_8_weeks
-    every_12_weeks
+  enum Weekday {
+    monday
+    tuesday
+    wednesday
+    thursday
+    friday
+    saturday
+    sunday
   }
 
   enum OfferStatus {
@@ -55,13 +56,13 @@ const commonTypes = gql`
     code: String!
     name: String!
     type: FulfillmentOptionType!
-    description: String
+    notes: String
     sortOrder: Int!
-    recurrence: RecurrenceType
-    fulfillmentStartDate: DateTime
-    fulfillmentEndDate: DateTime
-    fulfillmentTimeDescription: String
-    deadlineOffsetHours: Int
+    fulfillmentWeekday: Weekday
+    fulfillmentTimeWindowStart: Int
+    fulfillmentTimeWindowEnd: Int
+    orderDeadlineWeekday: Weekday
+    orderDeadlineTime: Int
     deletedAt: DateTime
   }
 
@@ -118,10 +119,11 @@ export const adminApiExtensions = gql`
     name: String!
     type: FulfillmentOptionType!
     notes: String
-    recurrence: RecurrenceType
-    fulfillmentStartDate: DateTime
-    fulfillmentEndDate: DateTime
-    deadlineOffsetHours: Int
+    fulfillmentWeekday: Weekday
+    fulfillmentTimeWindowStart: Int
+    fulfillmentTimeWindowEnd: Int
+    orderDeadlineWeekday: Weekday
+    orderDeadlineTime: Int
   }
 
   input UpdateFulfillmentOptionInput {
@@ -129,10 +131,11 @@ export const adminApiExtensions = gql`
     name: String
     type: FulfillmentOptionType
     notes: String
-    recurrence: RecurrenceType
-    fulfillmentStartDate: DateTime
-    fulfillmentEndDate: DateTime
-    deadlineOffsetHours: Int
+    fulfillmentWeekday: Weekday
+    fulfillmentTimeWindowStart: Int
+    fulfillmentTimeWindowEnd: Int
+    orderDeadlineWeekday: Weekday
+    orderDeadlineTime: Int
   }
 
   input CreateOfferLineItemInput {

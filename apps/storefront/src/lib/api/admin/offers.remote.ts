@@ -11,8 +11,8 @@ import { adminQuery } from '../vendure-admin.js';
 import { requireSellerContext } from '../seller-context.js';
 import type {
 	FulfillmentOptionType,
-	RecurrenceType,
-	SellerFulfillmentOption
+	SellerFulfillmentOption,
+	Weekday
 } from './fulfillment-options.remote.js';
 
 export type OfferStatus = 'draft' | 'active' | 'paused' | 'expired';
@@ -38,6 +38,8 @@ export interface SellerFulfillmentOptionWorkspaceItem extends SellerFulfillmentO
 
 /** Summary and row data returned to the `/me/offers` workspace. */
 export interface SellerOffersWorkspaceData {
+	businessName: string;
+	businessTimezone: string | null;
 	activeOfferCount: number;
 	offerCount: number;
 	activeFulfillmentOptionCount: number;
@@ -60,11 +62,12 @@ interface AdminWorkspaceFulfillmentOption {
 	id: string;
 	name: string;
 	type: FulfillmentOptionType;
-	description: string | null;
-	recurrence: RecurrenceType | null;
-	fulfillmentStartDate: string | null;
-	fulfillmentEndDate: string | null;
-	deadlineOffsetHours: number | null;
+	notes: string | null;
+	fulfillmentWeekday: Weekday | null;
+	fulfillmentTimeWindowStart: number | null;
+	fulfillmentTimeWindowEnd: number | null;
+	orderDeadlineWeekday: Weekday | null;
+	orderDeadlineTime: number | null;
 	deletedAt: string | null;
 }
 
@@ -94,11 +97,12 @@ const OFFERS_WORKSPACE_QUERY = `
 				id
 				name
 				type
-				description
-				recurrence
-				fulfillmentStartDate
-				fulfillmentEndDate
-				deadlineOffsetHours
+				notes
+				fulfillmentWeekday
+				fulfillmentTimeWindowStart
+				fulfillmentTimeWindowEnd
+				orderDeadlineWeekday
+				orderDeadlineTime
 				deletedAt
 			}
 		}
@@ -123,7 +127,7 @@ function sortFulfillmentOptions(
 
 /** Fetch the seller's offers-workspace summary and fulfillment-option usage data. */
 export const myOffersWorkspace = query(async (): Promise<SellerOffersWorkspaceData> => {
-	const { sellerId } = await requireSellerContext();
+	const { sellerId, sellerName, sellerTimezone } = await requireSellerContext();
 	const data = await adminQuery<{
 		offers: { items: AdminWorkspaceOffer[] };
 		fulfillmentOptions: { items: AdminWorkspaceFulfillmentOption[] };
@@ -161,11 +165,12 @@ export const myOffersWorkspace = query(async (): Promise<SellerOffersWorkspaceDa
 			id: fulfillmentOption.id,
 			name: fulfillmentOption.name,
 			type: fulfillmentOption.type,
-			notes: fulfillmentOption.description,
-			recurrence: fulfillmentOption.recurrence,
-			fulfillmentStartDate: fulfillmentOption.fulfillmentStartDate,
-			fulfillmentEndDate: fulfillmentOption.fulfillmentEndDate,
-			deadlineOffsetHours: fulfillmentOption.deadlineOffsetHours,
+			notes: fulfillmentOption.notes,
+			fulfillmentWeekday: fulfillmentOption.fulfillmentWeekday,
+			fulfillmentTimeWindowStart: fulfillmentOption.fulfillmentTimeWindowStart,
+			fulfillmentTimeWindowEnd: fulfillmentOption.fulfillmentTimeWindowEnd,
+			orderDeadlineWeekday: fulfillmentOption.orderDeadlineWeekday,
+			orderDeadlineTime: fulfillmentOption.orderDeadlineTime,
 			deletedAt: fulfillmentOption.deletedAt,
 			activeOfferCount,
 			offerCount,
@@ -184,6 +189,8 @@ export const myOffersWorkspace = query(async (): Promise<SellerOffersWorkspaceDa
 	);
 
 	return {
+		businessName: sellerName,
+		businessTimezone: sellerTimezone,
 		activeOfferCount: offers.filter((offer) => offer.status === 'active').length,
 		offerCount: offers.length,
 		activeFulfillmentOptionCount: currentFulfillmentOptions.filter(

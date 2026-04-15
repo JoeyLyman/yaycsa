@@ -1,5 +1,23 @@
-import { Channel, ChannelAware, DeepPartial, EntityId, ID, Seller, VendureEntity } from "@vendure/core";
+import {
+  Channel,
+  ChannelAware,
+  DeepPartial,
+  EntityId,
+  ID,
+  Seller,
+  VendureEntity,
+} from "@vendure/core";
 import { Column, Entity, Index, JoinTable, ManyToMany, ManyToOne } from "typeorm";
+
+export type FulfillmentOptionType = "scheduled_pickup" | "scheduled_delivery" | "shipping";
+export type Weekday =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
 
 @Entity()
 export class FulfillmentOption extends VendureEntity implements ChannelAware {
@@ -24,37 +42,29 @@ export class FulfillmentOption extends VendureEntity implements ChannelAware {
   @Column()
   name: string;
 
-  @Column({ type: "varchar", default: "pickup" })
-  type: "pickup" | "delivery";
+  @Column({ type: "varchar", default: "scheduled_pickup" })
+  type: FulfillmentOptionType;
 
   @Column({ type: "text", nullable: true })
-  description: string | null;
+  notes: string | null;
 
   @Column({ type: "int", default: 0 })
   sortOrder: number;
 
   @Column({ type: "varchar", nullable: true })
-  recurrence:
-    | "once"
-    | "daily"
-    | "weekly"
-    | "every_2_weeks"
-    | "every_4_weeks"
-    | "every_8_weeks"
-    | "every_12_weeks"
-    | null;
-
-  @Column({ type: "timestamptz", nullable: true })
-  fulfillmentStartDate: Date | null;
-
-  @Column({ type: "timestamptz", nullable: true })
-  fulfillmentEndDate: Date | null;
-
-  @Column({ type: "text", nullable: true })
-  fulfillmentTimeDescription: string | null;
+  fulfillmentWeekday: Weekday | null;
 
   @Column({ type: "int", nullable: true })
-  deadlineOffsetHours: number | null;
+  fulfillmentTimeWindowStart: number | null;
+
+  @Column({ type: "int", nullable: true })
+  fulfillmentTimeWindowEnd: number | null;
+
+  @Column({ type: "varchar", nullable: true })
+  orderDeadlineWeekday: Weekday | null;
+
+  @Column({ type: "int", nullable: true })
+  orderDeadlineTime: number | null;
 
   @Column({ type: "timestamptz", nullable: true })
   deletedAt: Date | null;

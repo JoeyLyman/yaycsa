@@ -22,11 +22,12 @@ const ACTIVE_OFFERS_QUERY = graphql(`
 				code
 				name
 				type
-				description
-				recurrence
-				fulfillmentStartDate
-				fulfillmentEndDate
-				deadlineOffsetHours
+				notes
+				fulfillmentWeekday
+				fulfillmentTimeWindowStart
+				fulfillmentTimeWindowEnd
+				orderDeadlineWeekday
+				orderDeadlineTime
 			}
 			lineItems {
 				id

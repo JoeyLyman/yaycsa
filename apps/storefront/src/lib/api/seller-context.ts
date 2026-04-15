@@ -67,8 +67,12 @@ const FULFILLMENT_OPTION_SELLER_CHECK_QUERY = `
 export interface SellerContext {
 	/** Numeric seller ID — matches Product.customFields.sellerId (int). */
 	sellerId: number;
+	/** Seller business display name. */
+	sellerName: string;
 	/** Seller's URL slug. */
 	sellerSlug: string;
+	/** Seller business timezone stored on Seller.customFields.timezone. Null means UTC fallback. */
+	sellerTimezone: string | null;
 	/** Actual Vendure channel token (hex string) for vendure-token header. */
 	channelToken: string;
 }
@@ -134,7 +138,9 @@ export async function requireSellerContext(): Promise<SellerContext> {
 
 	return {
 		sellerId: Number(seller.id),
+		sellerName: seller.name,
 		sellerSlug: slug,
+		sellerTimezone: seller.customFields?.timezone ?? null,
 		channelToken
 	};
 }

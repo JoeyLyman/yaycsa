@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		myOffersWorkspace,
@@ -13,43 +13,66 @@
 		restoreFulfillmentOption,
 		updateFulfillmentOption,
 		type FulfillmentOptionType,
-		type RecurrenceType
+		type Weekday
 	} from '$lib/api/admin/fulfillment-options.remote';
 	import { Button } from '$lib/components/bits/button';
+	import { Checkbox } from '$lib/components/bits/checkbox';
+	import { HeaderCountFilter } from '$lib/components/bits/header-count-filter';
+	import { HeaderTabs } from '$lib/components/bits/header-tabs';
 	import { Input } from '$lib/components/bits/input';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { Textarea } from '$lib/components/bits/textarea';
+	import { getBusinessTimezoneDisplayName } from '$lib/utils/business-timezone';
+	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 	type OffersWorkspaceTab = 'offers' | 'fulfillment-options';
-	type FulfillmentOptionsVisibilityFilter = 'current' | 'deleted';
-	type EditorRecurrence = RecurrenceType | '';
+	type WorkspaceCountFilter = 'active' | 'total';
+	type EditorWeekday = Weekday | '';
 
 	interface FulfillmentOptionEditorRow {
 		id: string;
 		name: string;
 		type: FulfillmentOptionType;
 		notes: string;
-		recurrence: EditorRecurrence;
-		fulfillmentStartDate: string;
-		fulfillmentEndDate: string;
-		deadlineOffsetHours: string;
+		fulfillmentWeekday: EditorWeekday;
+		fulfillmentTimeWindowStart: string;
+		fulfillmentTimeWindowEnd: string;
+		orderDeadlineWeekday: EditorWeekday;
+		orderDeadlineTime: string;
 		activeOfferCount: number;
 		offerCount: number;
 		historicalOfferCount: number;
 		canPermanentlyDelete: boolean;
 	}
 
-	const recurrenceOptions: Array<{ value: EditorRecurrence; label: string }> = [
-		{ value: '', label: 'No recurrence' },
-		{ value: 'once', label: 'Once' },
-		{ value: 'daily', label: 'Daily' },
-		{ value: 'weekly', label: 'Weekly' },
-		{ value: 'every_2_weeks', label: 'Every 2 weeks' },
-		{ value: 'every_4_weeks', label: 'Every 4 weeks' },
-		{ value: 'every_8_weeks', label: 'Every 8 weeks' },
-		{ value: 'every_12_weeks', label: 'Every 12 weeks' }
+	interface ScheduleTemplateSummaryInput {
+		type: FulfillmentOptionType;
+		fulfillmentWeekday: Weekday | null;
+		fulfillmentTimeWindowStart: number | null;
+		fulfillmentTimeWindowEnd: number | null;
+		orderDeadlineWeekday: Weekday | null;
+		orderDeadlineTime: number | null;
+	}
+
+	const fulfillmentOptionTypeOptions: Array<{ value: FulfillmentOptionType; label: string }> = [
+		{ value: 'scheduled_pickup', label: 'Scheduled Pickup' },
+		{ value: 'scheduled_delivery', label: 'Scheduled Delivery' },
+		{ value: 'shipping', label: 'Shipping' }
 	];
+
+	const weekdayOptions: Array<{ value: Weekday; label: string; shortLabel: string }> = [
+		{ value: 'monday', label: 'Monday', shortLabel: 'Mon' },
+		{ value: 'tuesday', label: 'Tuesday', shortLabel: 'Tue' },
+		{ value: 'wednesday', label: 'Wednesday', shortLabel: 'Wed' },
+		{ value: 'thursday', label: 'Thursday', shortLabel: 'Thu' },
+		{ value: 'friday', label: 'Friday', shortLabel: 'Fri' },
+		{ value: 'saturday', label: 'Saturday', shortLabel: 'Sat' },
+		{ value: 'sunday', label: 'Sunday', shortLabel: 'Sun' }
+	];
+
+	const selectInputClasses =
+		'border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:ring-ring/50 focus-visible:ring-[3px]';
 
 	/** Full workspace payload used for the summary strip and both tab views. */
 	let workspaceData = $state<SellerOffersWorkspaceData | null>(null);
@@ -90,37 +113,103 @@
 	/** Deleted-row IDs that are showing the inline permanent-delete confirmation state. */
 	let confirmingDeletedPermanentRowIds = new SvelteSet<string>();
 
-	/** URL-driven selected workspace tab so refresh/back/deep-linking preserve context. */
-	let selectedWorkspaceTab = $derived.by(() => {
-		const rawTab = page.url.searchParams.get('tab');
-		return rawTab === 'fulfillment-options' ? 'fulfillment-options' : 'offers';
-	});
 
-	/** URL-driven deleted/current filter for the fulfillment-options workspace view. */
-	let selectedFulfillmentOptionsFilter = $derived.by(() => {
-		const rawFilter = page.url.searchParams.get('fulfillmentView');
-		return rawFilter === 'deleted' ? 'deleted' : 'current';
-	});
+	/** URL-synced selected workspace tab so refresh/back/deep-linking preserve context and clicks switch instantly. */
+	let selectedWorkspaceTab = $state<OffersWorkspaceTab>('offers');
 
-	/** Active-offer count shown in the summary strip at the top of the workspace. */
+	/** The offers-table count filter. Defaults to total so sellers see the full list first. */
+	let selectedOffersCountFilter = $state<WorkspaceCountFilter>('total');
+
+	/** The fulfillment-options count filter. Defaults to total so sellers see the full list first. */
+	let selectedFulfillmentCountFilter = $state<WorkspaceCountFilter>('total');
+
+	/** Whether scheduled pickup options are currently included in the fulfillment table filters. */
+	let showingScheduledPickupOptions = $state(true);
+
+	/** Whether scheduled delivery options are currently included in the fulfillment table filters. */
+	let showingScheduledDeliveryOptions = $state(true);
+
+	/** Whether shipping options are currently included in the fulfillment table filters. */
+	let showingShippingOptions = $state(true);
+
+	/** Whether deleted fulfillment options should be included below the current rows. */
+	let showingDeletedFulfillmentOptions = $state(false);
+
+	/** Active-offer count shown in the compact offers-tab count filter. */
 	let activeOfferCount = $derived(workspaceData?.activeOfferCount ?? 0);
 
-	/** Total non-deleted offer count shown in the summary strip. */
+	/** Total non-deleted offer count shown in the compact offers-tab count filter. */
 	let offerCount = $derived(workspaceData?.offerCount ?? 0);
 
-	/** Active current fulfillment-option count shown in the summary strip. */
+	/** Active current fulfillment-option count shown in the compact fulfillment count filter. */
 	let activeFulfillmentOptionCount = $derived(workspaceData?.activeFulfillmentOptionCount ?? 0);
 
-	/** Total current non-deleted fulfillment-option count shown in the summary strip. */
+	/** Total current non-deleted fulfillment-option count shown in the compact fulfillment count filter. */
 	let fulfillmentOptionCount = $derived(workspaceData?.fulfillmentOptionCount ?? 0);
 
-	/** Deleted fulfillment options shown when the deleted filter is active. */
+	/** Deleted fulfillment options available when the seller turns on the show-deleted filter. */
 	let deletedFulfillmentOptions = $derived(workspaceData?.deletedFulfillmentOptions ?? []);
 
-	/** Whether the fulfillment-options workspace is currently showing deleted rows. */
-	let showingDeletedFulfillmentOptions = $derived(selectedFulfillmentOptionsFilter === 'deleted');
+	/** Friendly human-readable timezone label shown anywhere schedule templates mention the business timezone. */
+	let resolvedBusinessTimezoneLabel = $derived(
+		getBusinessTimezoneDisplayName(workspaceData?.businessTimezone ?? 'UTC')
+	);
 
-	loadWorkspaceData();
+	/** The count filter currently visible in the header row, based on the selected workspace tab. */
+	let selectedWorkspaceCountFilter = $derived(
+		selectedWorkspaceTab === 'offers' ? selectedOffersCountFilter : selectedFulfillmentCountFilter
+	);
+
+	/** Offers visible in the offers table after applying the active/total count filter. */
+	let filteredOffers = $derived.by(() => {
+		const offers = workspaceData?.offers ?? [];
+		if (selectedOffersCountFilter === 'active') {
+			return offers.filter((offer) => offer.status === 'active');
+		}
+		return offers;
+	});
+
+	/** Current saved fulfillment options visible after type and active/total filtering. */
+	let filteredFulfillmentOptionRows = $derived.by(() =>
+		fulfillmentOptionRows.filter((row) => matchesFulfillmentOptionFilters(row, selectedFulfillmentCountFilter))
+	);
+
+	/** Deleted fulfillment options visible after type and active/total filtering when show deleted is on. */
+	let filteredDeletedFulfillmentOptions = $derived.by(() =>
+		deletedFulfillmentOptions.filter((row) =>
+			matchesFulfillmentOptionFilters(row, selectedFulfillmentCountFilter)
+		)
+	);
+
+	/** Whether the fulfillment area currently has no saved or draft rows matching the selected filters. */
+	let fulfillmentOptionsFilterIsEmpty = $derived(
+		filteredFulfillmentOptionRows.length === 0 &&
+		fulfillmentOptionDraftRows.length === 0 &&
+		(!showingDeletedFulfillmentOptions || filteredDeletedFulfillmentOptions.length === 0)
+	);
+
+	/** Header-level tab definitions rendered in the page title area. Each href preserves URL-driven workspace state. */
+	let workspaceHeaderTabs = $derived.by(() => [
+		{ value: 'offers', label: 'Offers', href: getWorkspaceTabHref('offers') },
+		{
+			value: 'fulfillment-options',
+			label: 'Fulfillment Options',
+			href: getWorkspaceTabHref('fulfillment-options')
+		}
+	]);
+
+	function getWorkspaceTabFromUrl(url: URL): OffersWorkspaceTab {
+		return url.searchParams.get('tab') === 'fulfillment-options' ? 'fulfillment-options' : 'offers';
+	}
+
+	onMount(() => {
+		selectedWorkspaceTab = getWorkspaceTabFromUrl(page.url);
+		void loadWorkspaceData();
+	});
+
+	afterNavigate(() => {
+		selectedWorkspaceTab = getWorkspaceTabFromUrl(page.url);
+	});
 
 	function getErrorMessage(error: unknown, fallbackMessage: string): string {
 		if (error instanceof Error && error.message) return error.message;
@@ -153,12 +242,90 @@
 		}).format(parsedDate);
 	}
 
-	function toDatetimeLocalInputValue(isoValue: string | null): string {
-		if (!isoValue) return '';
-		const parsedDate = new Date(isoValue);
-		if (Number.isNaN(parsedDate.getTime())) return '';
-		const localDate = new Date(parsedDate.getTime() - parsedDate.getTimezoneOffset() * 60_000);
-		return localDate.toISOString().slice(0, 16);
+	function getFulfillmentOptionTypeLabel(type: FulfillmentOptionType): string {
+		return fulfillmentOptionTypeOptions.find((option) => option.value === type)?.label ?? type;
+	}
+
+	function isScheduledFulfillmentOptionType(type: FulfillmentOptionType): boolean {
+		return type === 'scheduled_pickup' || type === 'scheduled_delivery';
+	}
+
+	function getWeekdayLabel(weekday: Weekday | null): string {
+		if (!weekday) return '—';
+		return weekdayOptions.find((option) => option.value === weekday)?.label ?? weekday;
+	}
+
+	function getWeekdayShortLabel(weekday: Weekday | null): string {
+		if (!weekday) return '—';
+		return weekdayOptions.find((option) => option.value === weekday)?.shortLabel ?? weekday;
+	}
+
+	function formatMinutesFromMidnight(value: number | null): string {
+		if (value == null || !Number.isInteger(value) || value < 0 || value > 1439) return '—';
+		const hours24 = Math.floor(value / 60);
+		const minutes = value % 60;
+		const meridiem = hours24 >= 12 ? 'PM' : 'AM';
+		const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+		return `${hours12}:${String(minutes).padStart(2, '0')} ${meridiem}`;
+	}
+
+	function minutesToTimeInputValue(value: number | null): string {
+		if (value == null || !Number.isInteger(value) || value < 0 || value > 1439) return '';
+		const hours = Math.floor(value / 60);
+		const minutes = value % 60;
+		return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+	}
+
+	function parseTimeInputValue(value: string): number | null | 'invalid' {
+		const trimmed = value.trim();
+		if (trimmed.length === 0) return null;
+		const match = /^(\d{2}):(\d{2})$/.exec(trimmed);
+		if (!match) return 'invalid';
+		const hours = Number.parseInt(match[1], 10);
+		const minutes = Number.parseInt(match[2], 10);
+		if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return 'invalid';
+		return hours * 60 + minutes;
+	}
+
+	function buildScheduleTemplateSummaryInput(
+		row: FulfillmentOptionEditorRow
+	): ScheduleTemplateSummaryInput {
+		const fulfillmentTimeWindowStart = parseTimeInputValue(row.fulfillmentTimeWindowStart);
+		const fulfillmentTimeWindowEnd = parseTimeInputValue(row.fulfillmentTimeWindowEnd);
+		const orderDeadlineTime = parseTimeInputValue(row.orderDeadlineTime);
+
+		return {
+			type: row.type,
+			fulfillmentWeekday: row.fulfillmentWeekday || null,
+			fulfillmentTimeWindowStart:
+				typeof fulfillmentTimeWindowStart === 'number' ? fulfillmentTimeWindowStart : null,
+			fulfillmentTimeWindowEnd:
+				typeof fulfillmentTimeWindowEnd === 'number' ? fulfillmentTimeWindowEnd : null,
+			orderDeadlineWeekday: row.orderDeadlineWeekday || null,
+			orderDeadlineTime: typeof orderDeadlineTime === 'number' ? orderDeadlineTime : null
+		};
+	}
+
+	function summarizeScheduleTemplate(input: ScheduleTemplateSummaryInput): string {
+		if (input.type === 'shipping') {
+			return 'Shipping · notes only for now';
+		}
+
+		if (
+			!input.fulfillmentWeekday ||
+			input.fulfillmentTimeWindowStart == null ||
+			input.fulfillmentTimeWindowEnd == null ||
+			!input.orderDeadlineWeekday ||
+			input.orderDeadlineTime == null
+		) {
+			return 'Scheduled template incomplete';
+		}
+
+		return `${getWeekdayShortLabel(input.fulfillmentWeekday)} ${formatMinutesFromMidnight(
+			input.fulfillmentTimeWindowStart
+		)}–${formatMinutesFromMidnight(input.fulfillmentTimeWindowEnd)} · order by ${getWeekdayShortLabel(
+			input.orderDeadlineWeekday
+		)} ${formatMinutesFromMidnight(input.orderDeadlineTime)}`;
 	}
 
 	function toEditorRow(
@@ -169,13 +336,13 @@
 			name: fulfillmentOption.name,
 			type: fulfillmentOption.type,
 			notes: fulfillmentOption.notes ?? '',
-			recurrence: fulfillmentOption.recurrence ?? '',
-			fulfillmentStartDate: toDatetimeLocalInputValue(fulfillmentOption.fulfillmentStartDate),
-			fulfillmentEndDate: toDatetimeLocalInputValue(fulfillmentOption.fulfillmentEndDate),
-			deadlineOffsetHours:
-				fulfillmentOption.deadlineOffsetHours == null
-					? ''
-					: String(fulfillmentOption.deadlineOffsetHours),
+			fulfillmentWeekday: fulfillmentOption.fulfillmentWeekday ?? '',
+			fulfillmentTimeWindowStart: minutesToTimeInputValue(
+				fulfillmentOption.fulfillmentTimeWindowStart
+			),
+			fulfillmentTimeWindowEnd: minutesToTimeInputValue(fulfillmentOption.fulfillmentTimeWindowEnd),
+			orderDeadlineWeekday: fulfillmentOption.orderDeadlineWeekday ?? '',
+			orderDeadlineTime: minutesToTimeInputValue(fulfillmentOption.orderDeadlineTime),
 			activeOfferCount: fulfillmentOption.activeOfferCount,
 			offerCount: fulfillmentOption.offerCount,
 			historicalOfferCount: fulfillmentOption.historicalOfferCount,
@@ -187,12 +354,13 @@
 		return {
 			id,
 			name: '',
-			type: 'pickup',
+			type: 'scheduled_pickup',
 			notes: '',
-			recurrence: '',
-			fulfillmentStartDate: '',
-			fulfillmentEndDate: '',
-			deadlineOffsetHours: '',
+			fulfillmentWeekday: '',
+			fulfillmentTimeWindowStart: '',
+			fulfillmentTimeWindowEnd: '',
+			orderDeadlineWeekday: '',
+			orderDeadlineTime: '',
 			activeOfferCount: 0,
 			offerCount: 0,
 			historicalOfferCount: 0,
@@ -242,52 +410,6 @@
 		return `Delete "${row.name}"? It is still referenced by ${summarizeFulfillmentOptionUsage(row)} and will move to the deleted view.`;
 	}
 
-	function getRecurrenceLabel(recurrence: EditorRecurrence): string {
-		return (
-			recurrenceOptions.find((option) => option.value === recurrence)?.label ?? 'No recurrence'
-		);
-	}
-
-	function summarizeWindow(row: {
-		fulfillmentStartDate: string;
-		fulfillmentEndDate: string;
-		recurrence: EditorRecurrence;
-	}): string {
-		if (!row.fulfillmentStartDate && !row.fulfillmentEndDate) {
-			return row.recurrence
-				? `${getRecurrenceLabel(row.recurrence)} · no window yet`
-				: 'No window set';
-		}
-
-		const startLabel = row.fulfillmentStartDate
-			? formatCompactDateTime(new Date(row.fulfillmentStartDate).toISOString())
-			: null;
-		const endLabel = row.fulfillmentEndDate
-			? formatCompactDateTime(new Date(row.fulfillmentEndDate).toISOString())
-			: null;
-
-		if (startLabel && endLabel) {
-			return row.recurrence
-				? `${getRecurrenceLabel(row.recurrence)} · ${startLabel}–${endLabel}`
-				: `${startLabel}–${endLabel}`;
-		}
-
-		if (startLabel) {
-			return row.recurrence
-				? `${getRecurrenceLabel(row.recurrence)} · starts ${startLabel}`
-				: `Starts ${startLabel}`;
-		}
-
-		return `Ends ${endLabel}`;
-	}
-
-	function summarizeDeadline(deadlineOffsetHours: string): string {
-		if (deadlineOffsetHours.trim().length === 0) return 'No deadline';
-		const value = Number.parseInt(deadlineOffsetHours, 10);
-		if (Number.isNaN(value)) return 'No deadline';
-		return value === 1 ? '1 hr deadline' : `${value} hrs deadline`;
-	}
-
 	function getSavedFulfillmentOptionSnapshot(rowId: string): FulfillmentOptionEditorRow | null {
 		return savedFulfillmentOptionRowSnapshots[rowId] ?? null;
 	}
@@ -298,16 +420,27 @@
 		return JSON.stringify(row) !== JSON.stringify(snapshot);
 	}
 
+	function buildTypePatch(nextType: FulfillmentOptionType): Partial<FulfillmentOptionEditorRow> {
+		if (nextType === 'shipping') {
+			return {
+				type: nextType,
+				fulfillmentWeekday: '',
+				fulfillmentTimeWindowStart: '',
+				fulfillmentTimeWindowEnd: '',
+				orderDeadlineWeekday: '',
+				orderDeadlineTime: ''
+			};
+		}
+
+		return { type: nextType };
+	}
+
 	function getRowValidationErrors(
 		row: FulfillmentOptionEditorRow,
 		otherRows: FulfillmentOptionEditorRow[]
 	): string[] {
 		const errors: string[] = [];
 		const trimmedName = row.name.trim();
-		const parsedDeadlineOffset =
-			row.deadlineOffsetHours.trim().length > 0
-				? Number.parseInt(row.deadlineOffsetHours, 10)
-				: null;
 
 		if (trimmedName.length < 2) {
 			errors.push('Name must be at least 2 characters.');
@@ -323,48 +456,62 @@
 			errors.push('Name must be unique within your fulfillment options.');
 		}
 
+		if (!isScheduledFulfillmentOptionType(row.type)) {
+			return errors;
+		}
+
+		const fulfillmentTimeWindowStart = parseTimeInputValue(row.fulfillmentTimeWindowStart);
+		const fulfillmentTimeWindowEnd = parseTimeInputValue(row.fulfillmentTimeWindowEnd);
+		const orderDeadlineTime = parseTimeInputValue(row.orderDeadlineTime);
+
+		if (!row.fulfillmentWeekday) {
+			errors.push('Scheduled options require a fulfillment weekday.');
+		}
+
+		if (!row.orderDeadlineWeekday) {
+			errors.push('Scheduled options require an order deadline weekday.');
+		}
+
+		if (fulfillmentTimeWindowStart === null) {
+			errors.push('Scheduled options require a fulfillment start time.');
+		} else if (fulfillmentTimeWindowStart === 'invalid') {
+			errors.push('Fulfillment start time must use HH:MM format.');
+		}
+
+		if (fulfillmentTimeWindowEnd === null) {
+			errors.push('Scheduled options require a fulfillment end time.');
+		} else if (fulfillmentTimeWindowEnd === 'invalid') {
+			errors.push('Fulfillment end time must use HH:MM format.');
+		}
+
+		if (orderDeadlineTime === null) {
+			errors.push('Scheduled options require an order deadline time.');
+		} else if (orderDeadlineTime === 'invalid') {
+			errors.push('Order deadline time must use HH:MM format.');
+		}
+
 		if (
-			parsedDeadlineOffset != null &&
-			(Number.isNaN(parsedDeadlineOffset) || parsedDeadlineOffset < 0)
+			typeof fulfillmentTimeWindowStart === 'number' &&
+			typeof fulfillmentTimeWindowEnd === 'number' &&
+			fulfillmentTimeWindowEnd <= fulfillmentTimeWindowStart
 		) {
-			errors.push('Deadline hours must be 0 or greater.');
-		}
-
-		if (row.fulfillmentEndDate && !row.fulfillmentStartDate) {
-			errors.push('Window end requires a window start.');
-		}
-
-		if (row.recurrence && !row.fulfillmentStartDate) {
-			errors.push('Recurrence requires a window start.');
-		}
-
-		if (row.fulfillmentStartDate && row.fulfillmentEndDate) {
-			const startTime = new Date(row.fulfillmentStartDate).getTime();
-			const endTime = new Date(row.fulfillmentEndDate).getTime();
-			if (!Number.isNaN(startTime) && !Number.isNaN(endTime) && endTime < startTime) {
-				errors.push('Window end must be after the window start.');
-			}
+			errors.push('Fulfillment end time must be after the fulfillment start time.');
 		}
 
 		return errors;
 	}
 
 	function rowToMutationInput(row: FulfillmentOptionEditorRow) {
+		const scheduleTemplate = buildScheduleTemplateSummaryInput(row);
 		return {
 			name: row.name.trim(),
 			type: row.type,
 			notes: row.notes.trim() || null,
-			recurrence: row.recurrence || null,
-			fulfillmentStartDate: row.fulfillmentStartDate
-				? new Date(row.fulfillmentStartDate).toISOString()
-				: null,
-			fulfillmentEndDate: row.fulfillmentEndDate
-				? new Date(row.fulfillmentEndDate).toISOString()
-				: null,
-			deadlineOffsetHours:
-				row.deadlineOffsetHours.trim().length > 0
-					? Number.parseInt(row.deadlineOffsetHours, 10)
-					: null
+			fulfillmentWeekday: scheduleTemplate.fulfillmentWeekday,
+			fulfillmentTimeWindowStart: scheduleTemplate.fulfillmentTimeWindowStart,
+			fulfillmentTimeWindowEnd: scheduleTemplate.fulfillmentTimeWindowEnd,
+			orderDeadlineWeekday: scheduleTemplate.orderDeadlineWeekday,
+			orderDeadlineTime: scheduleTemplate.orderDeadlineTime
 		};
 	}
 
@@ -387,7 +534,7 @@
 		}
 	}
 
-	function updateSearchParams(updates: Record<string, string | null>) {
+	function buildSearchParamsHref(updates: Record<string, string | null>): string {
 		const nextUrl = new URL(page.url);
 		for (const [key, value] of Object.entries(updates)) {
 			if (value == null) {
@@ -396,7 +543,11 @@
 				nextUrl.searchParams.set(key, value);
 			}
 		}
-		goto(`${nextUrl.pathname}${nextUrl.search}`, {
+		return `${nextUrl.pathname}${nextUrl.search}`;
+	}
+
+	function updateSearchParams(updates: Record<string, string | null>) {
+		goto(buildSearchParamsHref(updates), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -404,14 +555,46 @@
 	}
 
 	function selectWorkspaceTab(tab: OffersWorkspaceTab) {
+		selectedWorkspaceTab = tab;
 		updateSearchParams({ tab: tab === 'offers' ? null : tab });
 	}
 
-	function selectFulfillmentOptionsFilter(filter: FulfillmentOptionsVisibilityFilter) {
-		updateSearchParams({
-			tab: 'fulfillment-options',
-			fulfillmentView: filter === 'deleted' ? 'deleted' : null
-		});
+	function getWorkspaceTabHref(tab: OffersWorkspaceTab): string {
+		return buildSearchParamsHref({ tab: tab === 'offers' ? null : tab });
+	}
+
+	function handleWorkspaceHeaderTabSelect(value: string) {
+		if (value !== 'offers' && value !== 'fulfillment-options') return;
+		selectWorkspaceTab(value);
+	}
+
+	function handleWorkspaceCountFilterSelect(value: WorkspaceCountFilter) {
+		if (selectedWorkspaceTab === 'offers') {
+			selectedOffersCountFilter = value;
+			return;
+		}
+
+		selectedFulfillmentCountFilter = value;
+	}
+
+	function matchesFulfillmentOptionFilters(
+		row: {
+			type: FulfillmentOptionType;
+			activeOfferCount: number;
+		},
+		countFilter: WorkspaceCountFilter
+	): boolean {
+		const matchesType =
+			(row.type === 'scheduled_pickup' && showingScheduledPickupOptions) ||
+			(row.type === 'scheduled_delivery' && showingScheduledDeliveryOptions) ||
+			(row.type === 'shipping' && showingShippingOptions);
+		if (!matchesType) return false;
+
+		if (countFilter === 'active') {
+			return row.activeOfferCount > 0;
+		}
+
+		return true;
 	}
 
 	function updateFulfillmentOptionRow(rowId: string, patch: Partial<FulfillmentOptionEditorRow>) {
@@ -431,12 +614,20 @@
 		);
 	}
 
+	function expandFulfillmentOptionRow(rowId: string) {
+		expandedFulfillmentOptionRowIds.add(rowId);
+	}
+
 	function toggleFulfillmentOptionRowExpanded(rowId: string) {
 		if (expandedFulfillmentOptionRowIds.has(rowId)) {
 			expandedFulfillmentOptionRowIds.delete(rowId);
 			return;
 		}
-		expandedFulfillmentOptionRowIds.add(rowId);
+		expandFulfillmentOptionRow(rowId);
+	}
+
+	function expandFulfillmentOptionDraftRow(rowId: string) {
+		expandedFulfillmentOptionDraftRowIds.add(rowId);
 	}
 
 	function toggleFulfillmentOptionDraftExpanded(rowId: string) {
@@ -444,7 +635,7 @@
 			expandedFulfillmentOptionDraftRowIds.delete(rowId);
 			return;
 		}
-		expandedFulfillmentOptionDraftRowIds.add(rowId);
+		expandFulfillmentOptionDraftRow(rowId);
 	}
 
 	function addFulfillmentOptionDraftRow() {
@@ -453,7 +644,7 @@
 			...fulfillmentOptionDraftRows,
 			createBlankFulfillmentOptionEditorRow(draftId)
 		];
-		expandedFulfillmentOptionDraftRowIds.add(draftId);
+		expandFulfillmentOptionDraftRow(draftId);
 		rowErrors.delete(draftId);
 	}
 
@@ -500,8 +691,9 @@
 
 		try {
 			await updateFulfillmentOption({ id: row.id, ...rowToMutationInput(row) });
+			await invalidateAll();
 			await loadWorkspaceData();
-			expandedFulfillmentOptionRowIds.add(rowId);
+			expandFulfillmentOptionRow(rowId);
 		} catch (error) {
 			console.error('Failed to update fulfillment option:', error);
 			rowErrors.set(rowId, getErrorMessage(error, 'Failed to update fulfillment option'));
@@ -532,6 +724,7 @@
 				(candidateRow) => candidateRow.id !== rowId
 			);
 			expandedFulfillmentOptionDraftRowIds.delete(rowId);
+			await invalidateAll();
 			await loadWorkspaceData();
 		} catch (error) {
 			console.error('Failed to create fulfillment option:', error);
@@ -550,6 +743,7 @@
 
 		try {
 			await deleteFulfillmentOption({ id: row.id, permanently: row.canPermanentlyDelete });
+			await invalidateAll();
 			await loadWorkspaceData();
 			expandedFulfillmentOptionRowIds.delete(rowId);
 			confirmingDeleteRowIds.delete(rowId);
@@ -567,8 +761,8 @@
 
 		try {
 			await restoreFulfillmentOption(rowId);
+			await invalidateAll();
 			await loadWorkspaceData();
-			selectFulfillmentOptionsFilter('current');
 		} catch (error) {
 			console.error('Failed to restore fulfillment option:', error);
 			rowErrors.set(rowId, getErrorMessage(error, 'Failed to restore fulfillment option'));
@@ -585,6 +779,7 @@
 
 		try {
 			await deleteFulfillmentOption({ id: row.id, permanently: true });
+			await invalidateAll();
 			await loadWorkspaceData();
 			confirmingDeletedPermanentRowIds.delete(row.id);
 		} catch (error) {
@@ -614,6 +809,10 @@
 
 	function stopRowToggle(event: Event) {
 		event.stopPropagation();
+	}
+
+	function expandDraftRowFromCollapsedSummary(rowId: string) {
+		expandFulfillmentOptionDraftRow(rowId);
 	}
 
 	function handleExpandableRowKeydown(event: KeyboardEvent, rowId: string, draft = false) {
@@ -658,68 +857,40 @@
 	</div>
 {:else}
 	<div class="space-y-4 pb-10">
-		<div class="space-y-2">
-			<h1 class="text-2xl font-bold">Offers</h1>
-			<p class="text-sm text-muted-foreground">
-				Manage your reusable fulfillment options here now, and build into full product-offer tables
-				next. This workspace keeps both views together because offers reference fulfillment options
-				directly.
-			</p>
-		</div>
-
-		<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-			<div class="rounded-md border p-3">
-				<p class="text-xs tracking-wide text-muted-foreground uppercase">Active offers</p>
-				<p class="mt-1 text-2xl font-semibold">{activeOfferCount}</p>
-			</div>
-			<div class="rounded-md border p-3">
-				<p class="text-xs tracking-wide text-muted-foreground uppercase">Offers</p>
-				<p class="mt-1 text-2xl font-semibold">{offerCount}</p>
-			</div>
-			<div class="rounded-md border p-3">
-				<p class="text-xs tracking-wide text-muted-foreground uppercase">
-					Active fulfillment options
-				</p>
-				<p class="mt-1 text-2xl font-semibold">{activeFulfillmentOptionCount}</p>
-			</div>
-			<div class="rounded-md border p-3">
-				<p class="text-xs tracking-wide text-muted-foreground uppercase">Fulfillment options</p>
-				<p class="mt-1 text-2xl font-semibold">{fulfillmentOptionCount}</p>
-			</div>
-		</div>
-
-		<div class="inline-flex items-center gap-1 rounded-md bg-muted p-1">
-			<Button
-				variant={selectedWorkspaceTab === 'offers' ? 'secondary' : 'ghost'}
-				size="sm"
-				onclick={() => selectWorkspaceTab('offers')}
-			>
-				Offers
-			</Button>
-			<Button
-				variant={selectedWorkspaceTab === 'fulfillment-options' ? 'secondary' : 'ghost'}
-				size="sm"
-				onclick={() => selectWorkspaceTab('fulfillment-options')}
-			>
-				Fulfillment Options
-			</Button>
+		<div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+			<HeaderTabs
+				items={workspaceHeaderTabs}
+				selectedValue={selectedWorkspaceTab}
+				onselect={handleWorkspaceHeaderTabSelect}
+				ariaLabel="Offers workspace sections"
+				size="xl"
+			/>
+			<HeaderCountFilter
+				activeCount={selectedWorkspaceTab === 'offers' ? activeOfferCount : activeFulfillmentOptionCount}
+				totalCount={selectedWorkspaceTab === 'offers' ? offerCount : fulfillmentOptionCount}
+				selectedValue={selectedWorkspaceCountFilter}
+				onselect={handleWorkspaceCountFilterSelect}
+				ariaLabel={selectedWorkspaceTab === 'offers'
+					? 'Offers count filters'
+					: 'Fulfillment option count filters'}
+				class="shrink-0 md:justify-end"
+			/>
 		</div>
 
 		{#if selectedWorkspaceTab === 'offers'}
 			<div class="space-y-3">
 				<div class="rounded-md border">
-					<div
-						class="border-b px-3 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase"
-					>
-						Offers workspace
-					</div>
-					{#if (workspaceData?.offers.length ?? 0) === 0}
+					{#if filteredOffers.length === 0}
 						<div class="px-3 py-8 text-center text-sm text-muted-foreground">
-							No offers yet. The full seller offers table and editor are the next step.
+							{#if (workspaceData?.offers.length ?? 0) === 0}
+								No offers yet. The full seller offers table and editor are the next step.
+							{:else}
+								No offers match the current filter.
+							{/if}
 						</div>
 					{:else}
 						<div>
-							{#each workspaceData?.offers ?? [] as offer (offer.id)}
+							{#each filteredOffers as offer (offer.id)}
 								<div class="border-b px-3 py-3 last:border-b-0">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0 space-y-1">
@@ -754,141 +925,39 @@
 			</div>
 		{:else}
 			<div class="space-y-3">
-				<div class="flex flex-wrap items-center gap-2">
-					<div class="inline-flex items-center gap-1 rounded-md bg-muted p-1">
-						<Button
-							variant={selectedFulfillmentOptionsFilter === 'current' ? 'secondary' : 'ghost'}
-							size="sm"
-							onclick={() => selectFulfillmentOptionsFilter('current')}
-						>
-							Current
-						</Button>
-						<Button
-							variant={selectedFulfillmentOptionsFilter === 'deleted' ? 'secondary' : 'ghost'}
-							size="sm"
-							onclick={() => selectFulfillmentOptionsFilter('deleted')}
-						>
-							Deleted
-						</Button>
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<Checkbox id="scheduled-pickup-filter" bind:checked={showingScheduledPickupOptions} />
+						<label for="scheduled-pickup-filter">Scheduled Pickup</label>
 					</div>
-					<p class="text-sm text-muted-foreground">
-						{#if showingDeletedFulfillmentOptions}
-							Deleted fulfillment options stay searchable here and can be restored or permanently
-							deleted when safe.
-						{:else}
-							Current fulfillment options can be attached to future offers. Delete becomes a soft
-							delete when non-deleted offers still reference an option.
-						{/if}
-					</p>
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<Checkbox id="scheduled-delivery-filter" bind:checked={showingScheduledDeliveryOptions} />
+						<label for="scheduled-delivery-filter">Scheduled Delivery</label>
+					</div>
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<Checkbox id="shipping-filter" bind:checked={showingShippingOptions} />
+						<label for="shipping-filter">Shipping</label>
+					</div>
+					<span aria-hidden="true" class="text-border">|</span>
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<Checkbox id="show-deleted-filter" bind:checked={showingDeletedFulfillmentOptions} />
+						<label for="show-deleted-filter">Show deleted</label>
+					</div>
 				</div>
 
-				{#if showingDeletedFulfillmentOptions}
-					<div class="rounded-md border">
-						{#if deletedFulfillmentOptions.length === 0}
-							<div class="px-3 py-8 text-center text-sm text-muted-foreground">
-								No deleted fulfillment options found.
-							</div>
-						{:else}
-							{#each deletedFulfillmentOptions as fulfillmentOption (fulfillmentOption.id)}
-								<div class="border-b last:border-b-0">
-									<div class="flex items-start gap-3 px-3 py-3 md:px-4">
-										<div class="min-w-0 flex-1 space-y-1">
-											<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-												<p class="truncate text-[17px] leading-tight font-medium">
-													{fulfillmentOption.name}
-												</p>
-											</div>
-											<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-												<span class="capitalize">{fulfillmentOption.type}</span>
-												<span
-													>{summarizeWindow({
-														fulfillmentStartDate: toDatetimeLocalInputValue(
-															fulfillmentOption.fulfillmentStartDate
-														),
-														fulfillmentEndDate: toDatetimeLocalInputValue(
-															fulfillmentOption.fulfillmentEndDate
-														),
-														recurrence: fulfillmentOption.recurrence ?? ''
-													})}</span
-												>
-												<span>{summarizeFulfillmentOptionUsage(fulfillmentOption)}</span>
-												<span>Deleted {formatDeletedDate(fulfillmentOption.deletedAt)}</span>
-											</div>
-											{#if fulfillmentOption.notes}
-												<p class="text-sm text-muted-foreground">{fulfillmentOption.notes}</p>
-											{/if}
-											{#if rowErrors.get(fulfillmentOption.id)}
-												<p class="text-xs text-destructive">
-													{rowErrors.get(fulfillmentOption.id)}
-												</p>
-											{/if}
-										</div>
-										<div
-											class="shrink-0"
-											role="presentation"
-											onclick={stopRowToggle}
-											onkeydown={stopRowToggle}
-										>
-											<div class="flex flex-wrap items-center justify-end gap-1">
-												<Button
-													size="sm"
-													variant="outline"
-													onclick={() => restoreDeletedFulfillmentOptionRow(fulfillmentOption.id)}
-													disabled={pendingRowIds.has(fulfillmentOption.id)}
-												>
-													{#if pendingRowIds.has(fulfillmentOption.id)}
-														<SpinnerSun class="size-3.5" />
-													{:else}
-														Restore
-													{/if}
-												</Button>
-												{#if confirmingDeletedPermanentRowIds.has(fulfillmentOption.id)}
-													<Button
-														size="sm"
-														variant="destructive"
-														onclick={() =>
-															permanentlyDeleteDeletedFulfillmentOptionRow(fulfillmentOption)}
-														disabled={pendingRowIds.has(fulfillmentOption.id) ||
-															!fulfillmentOption.canPermanentlyDelete}
-													>
-														Permanently Delete
-													</Button>
-													<Button
-														size="sm"
-														variant="ghost"
-														onclick={() =>
-															confirmingDeletedPermanentRowIds.delete(fulfillmentOption.id)}
-													>
-														Cancel
-													</Button>
-												{:else}
-													<Button
-														size="sm"
-														variant="ghost"
-														onclick={() =>
-															confirmingDeletedPermanentRowIds.add(fulfillmentOption.id)}
-														disabled={!fulfillmentOption.canPermanentlyDelete}
-													>
-														Permanently Delete
-													</Button>
-												{/if}
-											</div>
-										</div>
-									</div>
-								</div>
-							{/each}
-						{/if}
-					</div>
-				{:else}
-					<div class="rounded-md border" data-testid="fulfillment-options-table">
-						{#if fulfillmentOptionRows.length === 0 && fulfillmentOptionDraftRows.length === 0}
-							<div class="px-3 py-8 text-center text-sm text-muted-foreground">
-								No fulfillment options yet. Add your first pickup, delivery, or shipping option
-								below.
-							</div>
-						{/if}
+				<div class="rounded-md border" data-testid="fulfillment-options-table">
+					{#if fulfillmentOptionsFilterIsEmpty}
+						<div class="px-3 py-8 text-center text-sm text-muted-foreground">
+							{#if fulfillmentOptionRows.length === 0 && deletedFulfillmentOptions.length === 0 && fulfillmentOptionDraftRows.length === 0}
+								No fulfillment options yet. Add your first scheduled pickup, scheduled delivery,
+								or shipping option below.
+							{:else}
+								No fulfillment options match the current filters.
+							{/if}
+						</div>
+					{/if}
 
-						{#each fulfillmentOptionRows as row (row.id)}
+					{#each filteredFulfillmentOptionRows as row (row.id)}
 							<div
 								class="cursor-pointer border-b last:border-b-0"
 								role="button"
@@ -902,9 +971,8 @@
 											<p class="truncate text-[17px] leading-tight font-medium">{row.name}</p>
 										</div>
 										<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-											<span class="capitalize">{row.type}</span>
-											<span>{summarizeWindow(row)}</span>
-											<span>{summarizeDeadline(row.deadlineOffsetHours)}</span>
+											<span>{getFulfillmentOptionTypeLabel(row.type)}</span>
+											<span>{summarizeScheduleTemplate(buildScheduleTemplateSummaryInput(row))}</span>
 											<span>{summarizeFulfillmentOptionUsage(row)}</span>
 										</div>
 										{#if row.notes.trim().length > 0}
@@ -974,7 +1042,7 @@
 								</div>
 
 								{#if expandedFulfillmentOptionRowIds.has(row.id)}
-									<div class="space-y-4 px-3 pb-3 md:px-4">
+									<div class="space-y-4 px-3 pb-3 md:px-4" onclickcapture={stopRowToggle} onkeydowncapture={stopRowToggle}>
 										<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
 											<div class="space-y-2 xl:col-span-2">
 												<label
@@ -989,107 +1057,142 @@
 															name: (event.currentTarget as HTMLInputElement).value
 														})}
 													onclick={stopRowToggle}
-													placeholder="Wednesday Portland Delivery"
+													placeholder="Tuesday Local Delivery"
 												/>
 											</div>
 
-											<div class="space-y-2">
+											<div class="space-y-2 xl:col-span-2">
 												<p class="text-xs font-medium text-muted-foreground">Type</p>
 												<div class="flex flex-wrap gap-1">
-													<Button
-														size="sm"
-														variant={row.type === 'pickup' ? 'secondary' : 'outline'}
-														onclick={() => updateFulfillmentOptionRow(row.id, { type: 'pickup' })}
-													>
-														Pickup
-													</Button>
-													<Button
-														size="sm"
-														variant={row.type === 'delivery' ? 'secondary' : 'outline'}
-														onclick={() => updateFulfillmentOptionRow(row.id, { type: 'delivery' })}
-													>
-														Delivery / Shipping
-													</Button>
-												</div>
-											</div>
-										</div>
-
-										<div class="space-y-2">
-											<p class="text-xs font-medium text-muted-foreground">Window</p>
-											<div class="grid gap-3 md:grid-cols-2">
-												<div class="space-y-2">
-													<label
-														for={`fulfillment-window-start-${row.id}`}
-														class="text-xs text-muted-foreground">Start</label
-													>
-													<Input
-														id={`fulfillment-window-start-${row.id}`}
-														type="datetime-local"
-														value={row.fulfillmentStartDate}
-														oninput={(event) =>
-															updateFulfillmentOptionRow(row.id, {
-																fulfillmentStartDate: (event.currentTarget as HTMLInputElement)
-																	.value
-															})}
-														onclick={stopRowToggle}
-													/>
-												</div>
-												<div class="space-y-2">
-													<label
-														for={`fulfillment-window-end-${row.id}`}
-														class="text-xs text-muted-foreground">End</label
-													>
-													<Input
-														id={`fulfillment-window-end-${row.id}`}
-														type="datetime-local"
-														value={row.fulfillmentEndDate}
-														oninput={(event) =>
-															updateFulfillmentOptionRow(row.id, {
-																fulfillmentEndDate: (event.currentTarget as HTMLInputElement).value
-															})}
-														onclick={stopRowToggle}
-													/>
-												</div>
-											</div>
-										</div>
-
-										<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-											<div class="space-y-2 xl:col-span-3">
-												<p class="text-xs font-medium text-muted-foreground">Recurrence</p>
-												<div class="flex flex-wrap gap-1">
-													{#each recurrenceOptions as option (option.value)}
+													{#each fulfillmentOptionTypeOptions as option (option.value)}
 														<Button
 															size="sm"
-															variant={row.recurrence === option.value ? 'secondary' : 'outline'}
-															onclick={() =>
-																updateFulfillmentOptionRow(row.id, { recurrence: option.value })}
+															variant={row.type === option.value ? 'secondary' : 'outline'}
+															onclick={() => updateFulfillmentOptionRow(row.id, buildTypePatch(option.value))}
 														>
 															{option.label}
 														</Button>
 													{/each}
 												</div>
 											</div>
-
-											<div class="space-y-2">
-												<label
-													for={`fulfillment-deadline-${row.id}`}
-													class="text-xs font-medium text-muted-foreground">Deadline hrs</label
-												>
-												<Input
-													id={`fulfillment-deadline-${row.id}`}
-													type="number"
-													min="0"
-													step="1"
-													value={row.deadlineOffsetHours}
-													oninput={(event) =>
-														updateFulfillmentOptionRow(row.id, {
-															deadlineOffsetHours: (event.currentTarget as HTMLInputElement).value
-														})}
-													onclick={stopRowToggle}
-													placeholder="48"
-												/>
-											</div>
 										</div>
+
+										{#if isScheduledFulfillmentOptionType(row.type)}
+											<div class="space-y-3 rounded-md border bg-muted/10 p-3">
+												<div class="space-y-1">
+													<p class="text-sm font-medium">Schedule template</p>
+													<p class="text-xs text-muted-foreground">
+														Times use {resolvedBusinessTimezoneLabel}. Change this in Account → Business.
+													</p>
+												</div>
+												<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+													<div class="space-y-2">
+														<label
+															for={`fulfillment-weekday-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Fulfillment weekday</label
+														>
+														<select
+															id={`fulfillment-weekday-${row.id}`}
+															class={selectInputClasses}
+															value={row.fulfillmentWeekday}
+															onchange={(event) =>
+																updateFulfillmentOptionRow(row.id, {
+																	fulfillmentWeekday: (event.currentTarget as HTMLSelectElement)
+																		.value as EditorWeekday
+																})}
+															onclick={stopRowToggle}
+														>
+															<option value="">Select weekday</option>
+															{#each weekdayOptions as option (option.value)}
+																<option value={option.value}>{option.label}</option>
+															{/each}
+														</select>
+													</div>
+
+													<div class="space-y-2">
+														<label
+															for={`fulfillment-time-start-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Window start</label
+														>
+														<Input
+															id={`fulfillment-time-start-${row.id}`}
+															type="time"
+															value={row.fulfillmentTimeWindowStart}
+															oninput={(event) =>
+																updateFulfillmentOptionRow(row.id, {
+																	fulfillmentTimeWindowStart: (event.currentTarget as HTMLInputElement)
+																		.value
+																})}
+															onclick={stopRowToggle}
+														/>
+													</div>
+
+													<div class="space-y-2">
+														<label
+															for={`fulfillment-time-end-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Window end</label
+														>
+														<Input
+															id={`fulfillment-time-end-${row.id}`}
+															type="time"
+															value={row.fulfillmentTimeWindowEnd}
+															oninput={(event) =>
+																updateFulfillmentOptionRow(row.id, {
+																	fulfillmentTimeWindowEnd: (event.currentTarget as HTMLInputElement).value
+																})}
+															onclick={stopRowToggle}
+														/>
+													</div>
+												</div>
+
+												<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+													<div class="space-y-2">
+														<label
+															for={`deadline-weekday-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Order deadline weekday</label
+														>
+														<select
+															id={`deadline-weekday-${row.id}`}
+															class={selectInputClasses}
+															value={row.orderDeadlineWeekday}
+															onchange={(event) =>
+																updateFulfillmentOptionRow(row.id, {
+																	orderDeadlineWeekday: (event.currentTarget as HTMLSelectElement)
+																		.value as EditorWeekday
+																})}
+															onclick={stopRowToggle}
+														>
+															<option value="">Select weekday</option>
+															{#each weekdayOptions as option (option.value)}
+																<option value={option.value}>{option.label}</option>
+															{/each}
+														</select>
+													</div>
+
+													<div class="space-y-2">
+														<label
+															for={`deadline-time-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Order deadline time</label
+														>
+														<Input
+															id={`deadline-time-${row.id}`}
+															type="time"
+															value={row.orderDeadlineTime}
+															oninput={(event) =>
+																updateFulfillmentOptionRow(row.id, {
+																	orderDeadlineTime: (event.currentTarget as HTMLInputElement).value
+																})}
+															onclick={stopRowToggle}
+														/>
+													</div>
+												</div>
+											</div>
+										{:else}
+											<div class="rounded-md border bg-muted/10 px-3 py-3 text-sm text-muted-foreground">
+												Shipping stays simple for now. Use notes for carrier, ETA, handling, or routing
+												guidance. Offer-specific shipping deadlines come later.
+											</div>
+										{/if}
 
 										<div class="grid gap-3 md:grid-cols-2">
 											<div class="space-y-2">
@@ -1105,7 +1208,7 @@
 															notes: (event.currentTarget as HTMLTextAreaElement).value
 														})}
 													onclick={stopRowToggle}
-													placeholder="Pickup instructions, address notes, handling details, or shipping context"
+													placeholder="Pickup instructions, delivery route notes, or shipping context"
 												/>
 											</div>
 
@@ -1149,12 +1252,12 @@
 													name: (event.currentTarget as HTMLInputElement).value
 												})}
 											onclick={stopRowToggle}
-											placeholder="Wednesday Portland Delivery"
+											onfocus={() => expandDraftRowFromCollapsedSummary(row.id)}
+											placeholder="Tuesday Local Delivery"
 										/>
 										<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-											<span class="capitalize">{row.type}</span>
-											<span>{summarizeWindow(row)}</span>
-											<span>{summarizeDeadline(row.deadlineOffsetHours)}</span>
+											<span>{getFulfillmentOptionTypeLabel(row.type)}</span>
+											<span>{summarizeScheduleTemplate(buildScheduleTemplateSummaryInput(row))}</span>
 											<span>New draft fulfillment option</span>
 										</div>
 										{#if rowErrors.get(row.id)}
@@ -1191,109 +1294,139 @@
 								</div>
 
 								{#if expandedFulfillmentOptionDraftRowIds.has(row.id)}
-									<div class="space-y-4 px-3 pb-3 md:px-4">
-										<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-											<div class="space-y-2">
-												<p class="text-xs font-medium text-muted-foreground">Type</p>
-												<div class="flex flex-wrap gap-1">
-													<Button
-														size="sm"
-														variant={row.type === 'pickup' ? 'secondary' : 'outline'}
-														onclick={() =>
-															updateFulfillmentOptionDraftRow(row.id, { type: 'pickup' })}
-													>
-														Pickup
-													</Button>
-													<Button
-														size="sm"
-														variant={row.type === 'delivery' ? 'secondary' : 'outline'}
-														onclick={() =>
-															updateFulfillmentOptionDraftRow(row.id, { type: 'delivery' })}
-													>
-														Delivery / Shipping
-													</Button>
-												</div>
-											</div>
-										</div>
-
+									<div class="space-y-4 px-3 pb-3 md:px-4" onclickcapture={stopRowToggle} onkeydowncapture={stopRowToggle}>
 										<div class="space-y-2">
-											<p class="text-xs font-medium text-muted-foreground">Window</p>
-											<div class="grid gap-3 md:grid-cols-2">
-												<div class="space-y-2">
-													<label
-														for={`fulfillment-draft-window-start-${row.id}`}
-														class="text-xs text-muted-foreground">Start</label
+											<p class="text-xs font-medium text-muted-foreground">Type</p>
+											<div class="flex flex-wrap gap-1">
+												{#each fulfillmentOptionTypeOptions as option (option.value)}
+													<Button
+														size="sm"
+														variant={row.type === option.value ? 'secondary' : 'outline'}
+														onclick={() =>
+															updateFulfillmentOptionDraftRow(row.id, buildTypePatch(option.value))}
 													>
-													<Input
-														id={`fulfillment-draft-window-start-${row.id}`}
-														type="datetime-local"
-														value={row.fulfillmentStartDate}
-														oninput={(event) =>
-															updateFulfillmentOptionDraftRow(row.id, {
-																fulfillmentStartDate: (event.currentTarget as HTMLInputElement)
-																	.value
-															})}
-														onclick={stopRowToggle}
-													/>
-												</div>
-												<div class="space-y-2">
-													<label
-														for={`fulfillment-draft-window-end-${row.id}`}
-														class="text-xs text-muted-foreground">End</label
-													>
-													<Input
-														id={`fulfillment-draft-window-end-${row.id}`}
-														type="datetime-local"
-														value={row.fulfillmentEndDate}
-														oninput={(event) =>
-															updateFulfillmentOptionDraftRow(row.id, {
-																fulfillmentEndDate: (event.currentTarget as HTMLInputElement).value
-															})}
-														onclick={stopRowToggle}
-													/>
-												</div>
+														{option.label}
+													</Button>
+												{/each}
 											</div>
 										</div>
 
-										<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-											<div class="space-y-2 xl:col-span-3">
-												<p class="text-xs font-medium text-muted-foreground">Recurrence</p>
-												<div class="flex flex-wrap gap-1">
-													{#each recurrenceOptions as option (option.value)}
-														<Button
-															size="sm"
-															variant={row.recurrence === option.value ? 'secondary' : 'outline'}
-															onclick={() =>
-																updateFulfillmentOptionDraftRow(row.id, {
-																	recurrence: option.value
-																})}
+										{#if isScheduledFulfillmentOptionType(row.type)}
+											<div class="space-y-3 rounded-md border bg-muted/10 p-3">
+												<div class="space-y-1">
+													<p class="text-sm font-medium">Schedule template</p>
+													<p class="text-xs text-muted-foreground">
+														Times use {resolvedBusinessTimezoneLabel}. Change this in Account → Business.
+													</p>
+												</div>
+												<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+													<div class="space-y-2">
+														<label
+															for={`draft-fulfillment-weekday-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Fulfillment weekday</label
 														>
-															{option.label}
-														</Button>
-													{/each}
+														<select
+															id={`draft-fulfillment-weekday-${row.id}`}
+															class={selectInputClasses}
+															value={row.fulfillmentWeekday}
+															onchange={(event) =>
+																updateFulfillmentOptionDraftRow(row.id, {
+																	fulfillmentWeekday: (event.currentTarget as HTMLSelectElement)
+																		.value as EditorWeekday
+																})}
+															onclick={stopRowToggle}
+														>
+															<option value="">Select weekday</option>
+															{#each weekdayOptions as option (option.value)}
+																<option value={option.value}>{option.label}</option>
+															{/each}
+														</select>
+													</div>
+
+													<div class="space-y-2">
+														<label
+															for={`draft-fulfillment-time-start-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Window start</label
+														>
+														<Input
+															id={`draft-fulfillment-time-start-${row.id}`}
+															type="time"
+															value={row.fulfillmentTimeWindowStart}
+															oninput={(event) =>
+																updateFulfillmentOptionDraftRow(row.id, {
+																	fulfillmentTimeWindowStart: (event.currentTarget as HTMLInputElement)
+																		.value
+																})}
+															onclick={stopRowToggle}
+														/>
+													</div>
+
+													<div class="space-y-2">
+														<label
+															for={`draft-fulfillment-time-end-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Window end</label
+														>
+														<Input
+															id={`draft-fulfillment-time-end-${row.id}`}
+															type="time"
+															value={row.fulfillmentTimeWindowEnd}
+															oninput={(event) =>
+																updateFulfillmentOptionDraftRow(row.id, {
+																	fulfillmentTimeWindowEnd: (event.currentTarget as HTMLInputElement).value
+																})}
+															onclick={stopRowToggle}
+														/>
+													</div>
+												</div>
+
+												<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+													<div class="space-y-2">
+														<label
+															for={`draft-deadline-weekday-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Order deadline weekday</label
+														>
+														<select
+															id={`draft-deadline-weekday-${row.id}`}
+															class={selectInputClasses}
+															value={row.orderDeadlineWeekday}
+															onchange={(event) =>
+																updateFulfillmentOptionDraftRow(row.id, {
+																	orderDeadlineWeekday: (event.currentTarget as HTMLSelectElement)
+																		.value as EditorWeekday
+																})}
+															onclick={stopRowToggle}
+														>
+															<option value="">Select weekday</option>
+															{#each weekdayOptions as option (option.value)}
+																<option value={option.value}>{option.label}</option>
+															{/each}
+														</select>
+													</div>
+
+													<div class="space-y-2">
+														<label
+															for={`draft-deadline-time-${row.id}`}
+															class="text-xs font-medium text-muted-foreground">Order deadline time</label
+														>
+														<Input
+															id={`draft-deadline-time-${row.id}`}
+															type="time"
+															value={row.orderDeadlineTime}
+															oninput={(event) =>
+																updateFulfillmentOptionDraftRow(row.id, {
+																	orderDeadlineTime: (event.currentTarget as HTMLInputElement).value
+																})}
+															onclick={stopRowToggle}
+														/>
+													</div>
 												</div>
 											</div>
-
-											<div class="space-y-2">
-												<label
-													for={`fulfillment-draft-deadline-${row.id}`}
-													class="text-xs font-medium text-muted-foreground">Deadline hrs</label
-												>
-												<Input
-													id={`fulfillment-draft-deadline-${row.id}`}
-													type="number"
-													min="0"
-													step="1"
-													value={row.deadlineOffsetHours}
-													oninput={(event) =>
-														updateFulfillmentOptionDraftRow(row.id, {
-															deadlineOffsetHours: (event.currentTarget as HTMLInputElement).value
-														})}
-													onclick={stopRowToggle}
-													placeholder="48"
-												/>
+										{:else}
+											<div class="rounded-md border bg-muted/10 px-3 py-3 text-sm text-muted-foreground">
+												Shipping stays simple for now. Use notes for carrier, ETA, handling, or routing
+												guidance. Offer-specific shipping deadlines come later.
 											</div>
-										</div>
+										{/if}
 
 										<div class="space-y-2">
 											<label
@@ -1308,13 +1441,104 @@
 														notes: (event.currentTarget as HTMLTextAreaElement).value
 													})}
 												onclick={stopRowToggle}
-												placeholder="Pickup instructions, address notes, handling details, or shipping context"
+												placeholder="Pickup instructions, delivery route notes, or shipping context"
 											/>
 										</div>
 									</div>
 								{/if}
 							</div>
 						{/each}
+
+						{#if showingDeletedFulfillmentOptions && filteredDeletedFulfillmentOptions.length > 0}
+							<div class="border-t bg-muted/10 px-3 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+								Deleted
+							</div>
+							{#each filteredDeletedFulfillmentOptions as fulfillmentOption (fulfillmentOption.id)}
+								<div class="border-b last:border-b-0">
+									<div class="flex items-start gap-3 px-3 py-3 md:px-4">
+										<div class="min-w-0 flex-1 space-y-1">
+											<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+												<p class="truncate text-[17px] leading-tight font-medium">
+													{fulfillmentOption.name}
+												</p>
+											</div>
+											<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+												<span>{getFulfillmentOptionTypeLabel(fulfillmentOption.type)}</span>
+												<span
+													>{summarizeScheduleTemplate({
+														type: fulfillmentOption.type,
+														fulfillmentWeekday: fulfillmentOption.fulfillmentWeekday,
+														fulfillmentTimeWindowStart:
+															fulfillmentOption.fulfillmentTimeWindowStart,
+														fulfillmentTimeWindowEnd: fulfillmentOption.fulfillmentTimeWindowEnd,
+														orderDeadlineWeekday: fulfillmentOption.orderDeadlineWeekday,
+														orderDeadlineTime: fulfillmentOption.orderDeadlineTime
+													})}</span
+												>
+												<span>{summarizeFulfillmentOptionUsage(fulfillmentOption)}</span>
+												<span>Deleted {formatDeletedDate(fulfillmentOption.deletedAt)}</span>
+											</div>
+											{#if fulfillmentOption.notes}
+												<p class="text-sm text-muted-foreground">{fulfillmentOption.notes}</p>
+											{/if}
+											{#if rowErrors.get(fulfillmentOption.id)}
+												<p class="text-xs text-destructive">
+													{rowErrors.get(fulfillmentOption.id)}
+												</p>
+											{/if}
+										</div>
+										<div
+											class="shrink-0"
+											role="presentation"
+											onclick={stopRowToggle}
+											onkeydown={stopRowToggle}
+										>
+											<div class="flex flex-wrap items-center justify-end gap-1">
+												<Button
+													size="sm"
+													variant="outline"
+													onclick={() => restoreDeletedFulfillmentOptionRow(fulfillmentOption.id)}
+													disabled={pendingRowIds.has(fulfillmentOption.id)}
+												>
+													{#if pendingRowIds.has(fulfillmentOption.id)}
+														<SpinnerSun class="size-3.5" />
+													{:else}
+														Restore
+													{/if}
+												</Button>
+												{#if confirmingDeletedPermanentRowIds.has(fulfillmentOption.id)}
+													<Button
+														size="sm"
+														variant="destructive"
+														onclick={() => permanentlyDeleteDeletedFulfillmentOptionRow(fulfillmentOption)}
+														disabled={pendingRowIds.has(fulfillmentOption.id) ||
+															!fulfillmentOption.canPermanentlyDelete}
+													>
+														Permanently Delete
+													</Button>
+													<Button
+														size="sm"
+														variant="ghost"
+														onclick={() => confirmingDeletedPermanentRowIds.delete(fulfillmentOption.id)}
+													>
+														Cancel
+													</Button>
+												{:else}
+													<Button
+														size="sm"
+														variant="ghost"
+														onclick={() => confirmingDeletedPermanentRowIds.add(fulfillmentOption.id)}
+														disabled={!fulfillmentOption.canPermanentlyDelete}
+													>
+														Permanently Delete
+													</Button>
+												{/if}
+											</div>
+										</div>
+									</div>
+								</div>
+							{/each}
+						{/if}
 					</div>
 
 					<Button
@@ -1325,7 +1549,6 @@
 					>
 						+ Add Fulfillment Option
 					</Button>
-				{/if}
 			</div>
 		{/if}
 	</div>

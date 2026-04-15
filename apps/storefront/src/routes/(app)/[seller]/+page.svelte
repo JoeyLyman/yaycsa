@@ -3,6 +3,13 @@
 	import { formatMoney } from '$lib/utils/money';
 
 	let { data } = $props();
+
+	function getFulfillmentOptionTypeLabel(type: string): string {
+		if (type === 'scheduled_pickup') return 'Scheduled Pickup';
+		if (type === 'scheduled_delivery') return 'Scheduled Delivery';
+		if (type === 'shipping') return 'Shipping';
+		return type;
+	}
 </script>
 
 <h1 class="text-2xl font-bold">{data.seller.name}</h1>
@@ -22,7 +29,7 @@
 						<div class="mt-2 flex flex-wrap gap-2">
 							{#each offer.fulfillmentOptions as opt (opt.id)}
 								<span class="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
-									{opt.name} ({opt.type})
+									{opt.name} ({getFulfillmentOptionTypeLabel(opt.type)})
 								</span>
 							{/each}
 						</div>
