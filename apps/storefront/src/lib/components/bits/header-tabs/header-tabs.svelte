@@ -19,7 +19,7 @@
 		onselect,
 		/** Accessible label announced for the whole tab group. */
 		ariaLabel = 'Header tabs',
-		/** Visual size variant. Use xl for page headers and lg for tighter brand-like contexts. */
+		/** Visual size variant. Use xl for page headers, lg for tighter brand-like contexts, sm for row-level selectors. */
 		size = 'xl',
 		/** Optional extra wrapper classes from the parent. */
 		class: className
@@ -28,7 +28,7 @@
 		selectedValue: HeaderTabValue;
 		onselect?: (value: HeaderTabValue) => void;
 		ariaLabel?: string;
-		size?: 'lg' | 'xl';
+		size?: 'sm' | 'lg' | 'xl';
 		class?: string;
 	} = $props();
 
@@ -37,7 +37,13 @@
 	}
 
 	function getTextSizeClasses(): string {
-		return size === 'lg' ? 'text-lg font-bold' : 'text-2xl font-bold';
+		if (size === 'sm') return 'text-sm font-semibold';
+		if (size === 'lg') return 'text-lg font-bold';
+		return 'text-2xl font-bold';
+	}
+
+	function getDotSpacing(): string {
+		return size === 'sm' ? 'mx-1.5' : 'mx-2';
 	}
 
 	function getItemClasses(item: HeaderTabItem): string {
@@ -56,7 +62,7 @@
 	}
 
 	function getDotClasses(): string {
-		return cn(getTextSizeClasses(), 'mx-2 text-foreground');
+		return cn(getTextSizeClasses(), getDotSpacing(), 'text-foreground');
 	}
 
 	function handleAnchorClick(event: MouseEvent, item: HeaderTabItem) {

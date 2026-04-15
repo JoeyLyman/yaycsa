@@ -312,8 +312,6 @@ export class FulfillmentOptionService {
       option.fulfillmentWeekday = null;
       option.fulfillmentTimeWindowStart = null;
       option.fulfillmentTimeWindowEnd = null;
-      option.orderDeadlineWeekday = null;
-      option.orderDeadlineTime = null;
     }
 
     return option;
@@ -325,6 +323,9 @@ export class FulfillmentOptionService {
     }
 
     if (!this.isScheduledType(option.type)) {
+      if (option.type === "shipping") {
+        this.validateShippingDeadline(option);
+      }
       return;
     }
 
@@ -348,8 +349,27 @@ export class FulfillmentOptionService {
       throw new UserInputError("Scheduled fulfillment options require fulfillment and deadline times");
     }
 
-    if (option.fulfillmentTimeWindowEnd <= option.fulfillmentTimeWindowStart) {
-      throw new UserInputError("Fulfillment window end must be after the fulfillment window start");
+    if (option.fulfillmentTimeWindowEnd < option.fulfillmentTimeWindowStart) {
+      throw new UserInputError("Fulfillment window end must be at or after the start");
+    }
+  }
+
+  private validateShippingDeadline(option: FulfillmentOptionValidationInput): void {
+    const hasWeekday = option.orderDeadlineWeekday != null;
+    const hasTime = option.orderDeadlineTime != null;
+
+    if (hasWeekday !== hasTime) {
+      throw new UserInputError(
+        "Shipping order deadline requires both a weekday and a time, or leave both blank",
+      );
+    }
+
+    if (hasWeekday && !this.isWeekday(option.orderDeadlineWeekday!)) {
+      throw new UserInputError("Shipping order deadline weekday is invalid");
+    }
+
+    if (hasTime) {
+      this.assertValidMinutes(option.orderDeadlineTime, "Order deadline time");
     }
   }
 
