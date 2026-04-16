@@ -14,6 +14,10 @@
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { Button } from '$lib/components/bits/button';
 	import { ProductList } from '$lib/components/bundles/product-list';
+	import {
+		TableEditModeToggle,
+		setTableEditModeContext
+	} from '$lib/components/blocks/table-edit-mode';
 	import { nextProductMetadataMode } from '$lib/components/bundles/product-list/product-list-metadata-mode';
 	import type {
 		ProductDraft,
@@ -114,6 +118,38 @@
 	 */
 	let failedIds = new SvelteMap<string, string>();
 
+	/** Whether the product table is currently in edit mode. */
+	let editMode = $state(false);
+
+	/** Bumped whenever edit mode exits via Discard so rows remount and drop local state. */
+	let editSessionId = $state(0);
+
+	/** IDs of saved rows that have pending (unsaved) edits, registered by the rows via context. */
+	let dirtyRowIds = new SvelteSet<string>();
+
+	/** Whether the table has any unsaved edits or open drafts. Drives the exit-confirm dialog. */
+	let hasUnsavedChanges = $derived(dirtyRowIds.size > 0 || productDrafts.length > 0);
+
+	setTableEditModeContext({
+		editMode: () => editMode,
+		registerDirty: (id, dirty) => {
+			if (dirty) dirtyRowIds.add(id);
+			else dirtyRowIds.delete(id);
+		},
+		unregisterDirty: (id) => dirtyRowIds.delete(id)
+	});
+
+	function handleEditModeChange(next: boolean) {
+		if (!next) {
+			productDrafts = [];
+			dirtyRowIds.clear();
+			editSessionId += 1;
+		} else {
+			metadataMode = 'expanded';
+		}
+		editMode = next;
+	}
+
 	loadAll();
 
 	async function loadAll() {
@@ -137,13 +173,6 @@
 			console.error('Failed to load products:', error);
 		}
 		loading = false;
-	}
-
-	/** Accessible label describing what the metadata toggle will do next. */
-	function getMetadataToggleActionLabel(currentMode: ProductMetadataMode): string {
-		if (currentMode === 'hidden') return 'Show metadata summary';
-		if (currentMode === 'summary') return 'Expand metadata';
-		return 'Hide metadata';
 	}
 
 	/** Append a new blank draft row to the bottom of the product table. */
@@ -323,83 +352,65 @@
 					size="sm"
 					variant="ghost"
 					class="h-7 gap-1 px-2 text-xs text-muted-foreground"
-					title={getMetadataToggleActionLabel(metadataMode)}
+					title={metadataMode === 'summary' ? 'Expand detail' : 'Collapse detail'}
 					onclick={() => (metadataMode = nextProductMetadataMode(metadataMode))}
 				>
-					<span>Metadata</span>
-					{#if metadataMode === 'hidden'}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
+					<span>Detail</span>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						{#if metadataMode === 'summary'}
 							<polyline points="6 9 12 15 18 9" />
-						</svg>
-					{:else if metadataMode === 'summary'}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<polyline points="7 8 12 13 17 8" />
-							<polyline points="7 13 12 18 17 13" />
-						</svg>
-					{:else}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<line x1="6" y1="6" x2="18" y2="18" />
-							<line x1="18" y1="6" x2="6" y2="18" />
-						</svg>
-					{/if}
+						{:else}
+							<polyline points="6 15 12 9 18 15" />
+						{/if}
+					</svg>
 				</Button>
 			{/if}
+
+			<div class="ml-auto">
+				<TableEditModeToggle
+					editMode={editMode}
+					hasUnsavedChanges={hasUnsavedChanges}
+					onchange={handleEditModeChange}
+				/>
+			</div>
 		</div>
 
-		<ProductList
-			{products}
-			{productDrafts}
-			{allBits}
-			{allProcesses}
-			{allAllergenWarnings}
-			{metadataMode}
-			{pendingIds}
-			{failedIds}
-			onsave={saveProductEdits}
-			ondelete={deleteProductRow}
-			onretry={retryPendingProductCreate}
-			ondismiss={dismissFailedProductCreate}
-			onupdateProductDraft={updateProductDraft}
-			onsaveProductDraft={saveProductDraft}
-			oncancelProductDraft={cancelProductDraft}
-			onCreateBit={handleCreateBit}
-		/>
+		{#key editSessionId}
+			<ProductList
+				{products}
+				{productDrafts}
+				{allBits}
+				{allProcesses}
+				{allAllergenWarnings}
+				{metadataMode}
+				{pendingIds}
+				{failedIds}
+				onsave={saveProductEdits}
+				ondelete={deleteProductRow}
+				onretry={retryPendingProductCreate}
+				ondismiss={dismissFailedProductCreate}
+				onupdateProductDraft={updateProductDraft}
+				onsaveProductDraft={saveProductDraft}
+				oncancelProductDraft={cancelProductDraft}
+				onCreateBit={handleCreateBit}
+			/>
+		{/key}
 
-		<Button variant="outline" class="w-full" onclick={addProductDraft} data-testid="add-product-button">
-			+ Add Product
-		</Button>
+		{#if editMode}
+			<Button variant="outline" class="w-full" onclick={addProductDraft} data-testid="add-product-button">
+				+ Add Product
+			</Button>
+		{/if}
 	</div>
 {/if}

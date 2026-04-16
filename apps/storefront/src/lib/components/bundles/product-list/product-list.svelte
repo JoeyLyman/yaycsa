@@ -2,8 +2,9 @@
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
 	import type { ProductDraft, ProductDraftPatch, ProductMetadataMode } from './product-list-types';
-	import DraftProductListRow from './draft-product-list-row.svelte';
+	import ProductListRowDraft from './product-list-row-draft.svelte';
 	import ProductListRow from './product-list-row.svelte';
+	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 
 	let {
 		/** The saved products currently shown in the seller table. */
@@ -65,6 +66,12 @@
 
 	/** Reference to the list wrapper for DOM-based keyboard navigation queries. */
 	let listEl: HTMLDivElement | null = $state(null);
+
+	/** Shared edit-mode context set by the parent route. Null when used standalone. */
+	const tableEditModeContext = getTableEditModeContext();
+
+	/** Whether the table is currently in edit mode. Defaults to true when no context is set. */
+	let editMode = $derived(tableEditModeContext ? tableEditModeContext.editMode() : true);
 
 	/**
 	 * Tier-1 column order for arrow key navigation.
@@ -368,8 +375,9 @@
 			/>
 		{/each}
 
-		{#each productDrafts as draftProduct, draftIndex (draftProduct.id)}
-			<DraftProductListRow
+		{#if editMode}
+			{#each productDrafts as draftProduct, draftIndex (draftProduct.id)}
+				<ProductListRowDraft
 				{draftProduct}
 				rowIndex={products.length + draftIndex}
 				{allBits}
@@ -381,7 +389,8 @@
 				oncancel={oncancelProductDraft}
 				onupdate={onupdateProductDraft}
 				{onCreateBit}
-			/>
-		{/each}
+				/>
+			{/each}
+		{/if}
 	</div>
 {/if}

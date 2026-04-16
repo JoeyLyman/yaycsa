@@ -5,8 +5,9 @@
 		SellerFulfillmentOptionWorkspaceItem,
 		SellerOfferWorkspaceItem
 	} from '$lib/api/admin/offers.remote';
-	import DraftFulfillmentOptionListRow from './draft-fulfillment-option-list-row.svelte';
+	import FulfillmentOptionListRowDraft from './fulfillment-option-list-row-draft.svelte';
 	import FulfillmentOptionListRow from './fulfillment-option-list-row.svelte';
+	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import {
 		deriveFulfillmentOptionUsage,
 		getFulfillmentOptionTypeLabel,
@@ -86,6 +87,12 @@
 		formatDeletedDate: (isoTimestamp: string | null) => string;
 	} = $props();
 
+	/** Shared edit-mode context set by the parent route. Null when the list is used standalone. */
+	const tableEditModeContext = getTableEditModeContext();
+
+	/** Whether the table is currently in edit mode. Defaults to true when no context is set. */
+	let editMode = $derived(tableEditModeContext ? tableEditModeContext.editMode() : true);
+
 	/** Usage map derived from offers — per fulfillment option id. */
 	let usageMap = $derived(deriveFulfillmentOptionUsage(offers));
 
@@ -116,16 +123,18 @@
 			/>
 		{/each}
 
-		{#each draftKeys as draftKey (draftKey)}
-			<DraftFulfillmentOptionListRow
-				{draftKey}
-				otherRows={otherRowsForValidation.filter((otherRow) => otherRow.id !== draftKey)}
-				isPending={pendingRowIds.has(draftKey)}
-				error={rowErrors.get(draftKey) ?? null}
-				oncreate={oncreateDraft}
-				oncancel={oncancelDraft}
-			/>
-		{/each}
+		{#if editMode}
+			{#each draftKeys as draftKey (draftKey)}
+				<FulfillmentOptionListRowDraft
+					{draftKey}
+					otherRows={otherRowsForValidation.filter((otherRow) => otherRow.id !== draftKey)}
+					isPending={pendingRowIds.has(draftKey)}
+					error={rowErrors.get(draftKey) ?? null}
+					oncreate={oncreateDraft}
+					oncancel={oncancelDraft}
+				/>
+			{/each}
+		{/if}
 
 		{#if showDeleted && deletedRows.length > 0}
 			<div
@@ -210,11 +219,13 @@
 	{/if}
 </div>
 
-<Button
-	variant="outline"
-	class="mt-3 w-full"
-	onclick={onadddraft}
-	data-testid="add-fulfillment-option-button"
->
-	+ Add Fulfillment Option
-</Button>
+{#if editMode}
+	<Button
+		variant="outline"
+		class="mt-3 w-full"
+		onclick={onadddraft}
+		data-testid="add-fulfillment-option-button"
+	>
+		+ Add Fulfillment Option
+	</Button>
+{/if}

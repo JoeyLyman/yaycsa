@@ -1,11 +1,10 @@
 /**
  * Global metadata visibility modes for the seller product table.
  *
- * - `hidden`   — hide both the metadata summary line and the expanded metadata block
- * - `summary`  — show only the collapsed summary line by default
- * - `expanded` — show the full metadata editor block by default
+ * - `summary`  — show the collapsed one-line summary below each product name
+ * - `expanded` — show the full metadata editor block below each product name
  */
-export type ProductMetadataMode = 'hidden' | 'summary' | 'expanded';
+export type ProductMetadataMode = 'summary' | 'expanded';
 
 /**
  * Unsaved inline product draft rendered at the bottom of the seller product list.

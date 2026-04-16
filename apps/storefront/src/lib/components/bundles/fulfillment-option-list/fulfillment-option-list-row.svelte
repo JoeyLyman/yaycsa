@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { Button } from '$lib/components/bits/button';
 	import { HeaderTabs } from '$lib/components/bits/header-tabs';
-	import { Input } from '$lib/components/bits/input';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
+	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import type { FulfillmentOptionType } from '$lib/api/admin/fulfillment-options.remote';
 	import FulfillmentOptionListRowMetadata from './fulfillment-option-list-row-metadata.svelte';
 	import {
@@ -66,17 +67,57 @@
 	/** Which meta-row inline editor is currently open (null = none). */
 	let activeField: MetaField | null = $state(null);
 
+	/** Whether the row name is currently in input-editing mode. Only enters true in edit mode. */
+	let editingName = $state(false);
+
+	/** Reference to the name input so we can focus it when the seller opens the editor. */
+	let nameInputEl: HTMLInputElement | null = $state(null);
+
+	/** Shared edit-mode context from the parent list. Null when rendered standalone. */
+	const tableEditModeContext = getTableEditModeContext();
+
+	/** Whether the table is currently in edit mode. Defaults to true when no context is set. */
+	let editMode = $derived(tableEditModeContext ? tableEditModeContext.editMode() : true);
+
 	/** Reset the working row when the server-provided snapshot changes identity. */
 	$effect(() => {
 		if (snapshot.id !== lastSnapshotId) {
 			workingRow = $state.snapshot(snapshot) as FulfillmentOptionEditorRow;
 			activeField = null;
+			editingName = false;
 			lastSnapshotId = snapshot.id;
 		}
 	});
 
 	/** Whether the working row has pending edits vs the snapshot. */
 	let dirty = $derived(isRowDirty(workingRow, snapshot));
+
+	/** Register/unregister this row's dirty state with the shared edit-mode context. */
+	$effect(() => {
+		if (!tableEditModeContext) return;
+		tableEditModeContext.registerDirty(snapshot.id, dirty);
+		return () => tableEditModeContext.unregisterDirty(snapshot.id);
+	});
+
+	/** Close the name editor when edit mode is turned off mid-edit. */
+	$effect(() => {
+		if (!editMode) {
+			editingName = false;
+			activeField = null;
+		}
+	});
+
+	/** Open the name input and focus it after the DOM updates. */
+	function openNameEditor() {
+		if (!editMode) return;
+		editingName = true;
+		tick().then(() => nameInputEl?.focus());
+	}
+
+	/** Close the name input without discarding edits. */
+	function closeNameEditor() {
+		editingName = false;
+	}
 
 	/** Client-side validation errors on the current working row. */
 	let validationErrors = $derived(getRowValidationErrors(workingRow, otherRows));
@@ -106,6 +147,7 @@
 	function handleCancel() {
 		workingRow = $state.snapshot(snapshot) as FulfillmentOptionEditorRow;
 		activeField = null;
+		editingName = false;
 	}
 
 	/** Submit the accumulated edits via the parent save callback. */
@@ -124,12 +166,21 @@
 		class="flex min-h-11 flex-wrap items-start gap-2 px-3 pt-3 pb-2 md:gap-3 md:px-4 md:pt-4 md:pb-3"
 	>
 		<div class="flex min-w-0 flex-1 flex-col gap-3">
-			<Input
-				class="h-8 w-full min-w-0 text-[17px] font-medium leading-tight"
+			<TableRowHeader
+				bind:ref={nameInputEl}
 				value={workingRow.name}
+				editing={editingName}
 				disabled={isPending}
+				onopenedit={editMode ? openNameEditor : undefined}
 				oninput={(event) =>
 					patchWorkingRow({ name: (event.currentTarget as HTMLInputElement).value })}
+				onblur={closeNameEditor}
+				onkeydown={(event) => {
+					if (event.key === 'Enter' || event.key === 'Escape') {
+						event.preventDefault();
+						closeNameEditor();
+					}
+				}}
 			/>
 			<HeaderTabs
 				size="sm"
@@ -140,7 +191,7 @@
 					label: option.label,
 					disabled: isPending
 				}))}
-				onselect={handleTypeSelect}
+				onselect={editMode ? handleTypeSelect : undefined}
 			/>
 		</div>
 
@@ -177,7 +228,7 @@
 						Cancel
 					</Button>
 				</div>
-			{:else}
+			{:else if editMode}
 				<Button
 					size="sm"
 					variant="ghost"
@@ -198,6 +249,7 @@
 		row={workingRow}
 		{activeField}
 		disabled={isPending}
+		{editMode}
 		onToggleField={handleToggleField}
 		onPatch={patchWorkingRow}
 	/>

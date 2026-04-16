@@ -18,6 +18,8 @@
 		activeField,
 		/** Whether the whole row is in a read-only/pending state. */
 		disabled = false,
+		/** Whether the parent table is in edit mode. Gates click-to-open affordances. */
+		editMode = true,
 		/** Open or close the notes meta-row editor. */
 		onToggleField,
 		/** Patch the editor row with field-level changes. */
@@ -26,6 +28,7 @@
 		row: FulfillmentOptionEditorRow;
 		activeField: MetaField | null;
 		disabled?: boolean;
+		editMode?: boolean;
 		onToggleField: (field: MetaField) => void;
 		onPatch: (patch: Partial<FulfillmentOptionEditorRow>) => void;
 	} = $props();
@@ -73,6 +76,7 @@
 				value={row.fulfillmentWeekday}
 				placeholder="day"
 				{disabled}
+				interactive={editMode}
 				required
 				class="w-24"
 				onchange={(nextValue) =>
@@ -85,6 +89,7 @@
 				value={row.fulfillmentTimeWindowStart}
 				placeholder="start time"
 				{disabled}
+				interactive={editMode}
 				required
 				class="w-24"
 				onchange={(nextValue) => onPatch({ fulfillmentTimeWindowStart: nextValue })}
@@ -95,6 +100,7 @@
 				value={row.fulfillmentTimeWindowEnd}
 				placeholder="end time"
 				{disabled}
+				interactive={editMode}
 				required
 				class="w-24"
 				onchange={(nextValue) => onPatch({ fulfillmentTimeWindowEnd: nextValue })}
@@ -111,6 +117,7 @@
 			value={row.orderDeadlineWeekday}
 			placeholder="day"
 			{disabled}
+			interactive={editMode}
 			required={isScheduled}
 			class="w-24"
 			onchange={handleOrderDeadlineWeekdayChange}
@@ -120,6 +127,7 @@
 			value={row.orderDeadlineTime}
 			placeholder="time"
 			{disabled}
+			interactive={editMode}
 			required={isScheduled}
 			class="w-24"
 			onchange={(nextValue) => onPatch({ orderDeadlineTime: nextValue })}
@@ -131,7 +139,7 @@
 		summary={notesSummary}
 		open={activeField === 'notes'}
 		{disabled}
-		ontoggle={() => onToggleField('notes')}
+		ontoggle={editMode ? () => onToggleField('notes') : undefined}
 	>
 		{#snippet editor()}
 			<div class="max-w-md py-2">

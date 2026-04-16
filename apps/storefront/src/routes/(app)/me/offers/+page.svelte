@@ -28,6 +28,10 @@
 		type FulfillmentOptionEditorRow,
 		type FulfillmentOptionMutationInput
 	} from '$lib/components/bundles/fulfillment-option-list';
+	import {
+		TableEditModeToggle,
+		setTableEditModeContext
+	} from '$lib/components/blocks/table-edit-mode';
 	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -63,6 +67,38 @@
 
 	/** Deleted-row IDs currently showing the inline permanent-delete confirmation state. */
 	let confirmingDeletedPermanentRowIds = new SvelteSet<string>();
+
+	/** Whether the fulfillment-options table is currently in edit mode. */
+	let fulfillmentEditMode = $state(false);
+
+	/** Bumped whenever edit mode exits via Discard so rows remount and drop local state. */
+	let fulfillmentEditSessionId = $state(0);
+
+	/** Saved-row IDs with pending edits, registered by rows via shared context. */
+	let fulfillmentDirtyRowIds = new SvelteSet<string>();
+
+	/** Whether the fulfillment table has any unsaved edits or open draft slots. */
+	let fulfillmentHasUnsavedChanges = $derived(
+		fulfillmentDirtyRowIds.size > 0 || fulfillmentOptionDraftKeys.length > 0
+	);
+
+	setTableEditModeContext({
+		editMode: () => fulfillmentEditMode,
+		registerDirty: (id, dirty) => {
+			if (dirty) fulfillmentDirtyRowIds.add(id);
+			else fulfillmentDirtyRowIds.delete(id);
+		},
+		unregisterDirty: (id) => fulfillmentDirtyRowIds.delete(id)
+	});
+
+	function handleFulfillmentEditModeChange(next: boolean) {
+		if (!next) {
+			fulfillmentOptionDraftKeys = [];
+			fulfillmentDirtyRowIds.clear();
+			fulfillmentEditSessionId += 1;
+		}
+		fulfillmentEditMode = next;
+	}
 
 	/** URL-synced selected workspace tab so refresh/back/deep-linking preserve context. */
 	let selectedWorkspaceTab = $state<OffersWorkspaceTab>('offers');
@@ -490,6 +526,14 @@
 			</div>
 		{:else}
 			<div class="space-y-3" data-testid="fulfillment-options-table">
+				<div class="flex justify-end">
+					<TableEditModeToggle
+						editMode={fulfillmentEditMode}
+						hasUnsavedChanges={fulfillmentHasUnsavedChanges}
+						onchange={handleFulfillmentEditModeChange}
+					/>
+				</div>
+
 				<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 					<div class="flex items-center gap-2 text-sm text-muted-foreground">
 						<Checkbox id="scheduled-pickup-filter" bind:checked={showingScheduledPickupOptions} />
@@ -510,7 +554,8 @@
 					</div>
 				</div>
 
-				<FulfillmentOptionList
+				{#key fulfillmentEditSessionId}
+					<FulfillmentOptionList
 					rows={filteredFulfillmentOptionRows}
 					draftKeys={fulfillmentOptionDraftKeys}
 					deletedRows={filteredDeletedFulfillmentOptions}
@@ -533,6 +578,7 @@
 					onconfirmpermanentdelete={permanentlyDeleteDeletedFulfillmentOptionRow}
 					{formatDeletedDate}
 				/>
+				{/key}
 			</div>
 		{/if}
 	</div>

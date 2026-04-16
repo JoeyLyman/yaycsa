@@ -7,7 +7,7 @@
 	import { nextProductMetadataMode } from './product-list-metadata-mode';
 	import type { ProductDraft, ProductDraftPatch, ProductMetadataMode } from './product-list-types';
 	import { computeMetadataSummary } from './product-list-row-metadata-summary';
-	import DraftProductListRowMetadata from './draft-product-list-row-metadata.svelte';
+	import ProductListRowDraftMetadata from './product-list-row-draft-metadata.svelte';
 
 	let {
 		/** The unsaved draft data for this inline row. */
@@ -132,13 +132,6 @@
 	let showMetadataSummary = $derived(effectiveMetadataMode === 'summary');
 
 	/**
-	 * Whether this draft row is currently rendering any secondary metadata content below tier 1.
-	 * When false, the top row needs extra bottom padding so the name/button block has
-	 * symmetrical breathing room even with metadata fully hidden.
-	 */
-	let hasMetadataBelow = $derived(showMetadata || showMetadataSummary);
-
-	/**
 	 * Whether the Save button should be enabled for this draft row.
 	 * A draft can save only when the name is long enough and not duplicated.
 	 */
@@ -213,7 +206,7 @@
 	onfocusout={handleRowFocusOut}
 	onclick={handleRowClick}
 >
-	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] {hasMetadataBelow ? 'pb-1' : 'pb-[8px]'} md:gap-3 md:px-4 md:pt-[10px] {hasMetadataBelow ? 'md:pb-1.5' : 'md:pb-[10px]'}">
+	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5">
 		<div class="min-w-0 flex-1" data-col="name">
 			{#if activeField === 'name'}
 				<ProductListRowFieldsName
@@ -286,7 +279,7 @@
 	{/if}
 
 	{#if showMetadata}
-		<DraftProductListRowMetadata
+		<ProductListRowDraftMetadata
 			{draftProduct}
 			{rowIndex}
 			{allBits}

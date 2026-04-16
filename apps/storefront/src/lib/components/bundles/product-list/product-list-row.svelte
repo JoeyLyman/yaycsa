@@ -3,7 +3,8 @@
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { Button } from '$lib/components/bits/button';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
-	import { ProductListRowFieldsName } from '$lib/components/blocks/product-list-row-fields';
+	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
+	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
 	import { hasDuplicateProductName } from '$lib/utils/product-name.js';
 	import { nextProductMetadataMode } from './product-list-metadata-mode';
@@ -72,6 +73,12 @@
 		ondismiss: (productId: string) => void;
 		onCreateBit: (name: string) => Promise<InputSelectItem | null>;
 	} = $props();
+
+	/** Shared edit-mode context from the parent list. Null when used standalone. */
+	const tableEditModeContext = getTableEditModeContext();
+
+	/** Whether the table is currently in edit mode. Defaults to true when no context is set. */
+	let editMode = $derived(tableEditModeContext ? tableEditModeContext.editMode() : true);
 
 	/** Accumulated edits for this row. null when not editing. */
 	let editState = $state<EditState | null>(null);
@@ -147,6 +154,20 @@
 	 */
 	let canSave = $derived(isEditing && hasValidEditedName && !nameError);
 
+	/** Register this row's dirty flag with the shared edit-mode context. */
+	$effect(() => {
+		if (!tableEditModeContext) return;
+		tableEditModeContext.registerDirty(product.id, isEditing);
+		return () => tableEditModeContext.unregisterDirty(product.id);
+	});
+
+	/** When edit mode turns off mid-edit, close any open field editor. */
+	$effect(() => {
+		if (!editMode) {
+			activeField = null;
+		}
+	});
+
 	/** Display name shown in the row while edits are pending. */
 	let displayName = $derived(editState?.name ?? product.name);
 
@@ -214,13 +235,6 @@
 	let metadataSummary = $derived(
 		computeMetadataSummary(displayBits, displayProcesses, displayAllergens)
 	);
-
-	/**
-	 * Whether this row is currently rendering any secondary metadata content below tier 1.
-	 * When false, the top row needs extra bottom padding so the name/button block has
-	 * symmetrical breathing room even with metadata fully hidden.
-	 */
-	let hasMetadataBelow = $derived(showMetadata || showMetadataSummary);
 
 	/**
 	 * When focus leaves this row and no real edits remain, close the row editor state.
@@ -363,6 +377,7 @@
 	 * Buttons and inputs keep their own behavior and never trigger row collapse.
 	 */
 	function handleRowClick(event: MouseEvent) {
+		if (!editMode) return;
 		const target = event.target as HTMLElement;
 		if (target.closest('button') || target.closest('input')) {
 			return;
@@ -378,7 +393,7 @@
 <div
 	data-product-row
 	data-row={rowIndex}
-	class="cursor-pointer border-b last:border-b-0 {isPending
+	class="border-b last:border-b-0 {editMode ? 'cursor-pointer' : ''} {isPending
 		? 'opacity-50'
 		: isFailed
 			? 'bg-destructive/5'
@@ -386,7 +401,7 @@
 	onfocusout={handleRowFocusOut}
 	onclick={handleRowClick}
 >
-	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] {hasMetadataBelow ? 'pb-1' : 'pb-[8px]'} md:gap-3 md:px-4 md:pt-[10px] {hasMetadataBelow ? 'md:pb-1.5' : 'md:pb-[10px]'}">
+	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5">
 		<div class="min-w-0 shrink" data-col="name">
 			{#if isPending}
 				<span class="inline-flex min-h-8 items-center gap-2 text-[17px] font-medium leading-tight">
@@ -395,12 +410,14 @@
 				</span>
 			{:else if isFailed}
 				<span class="inline-flex min-h-8 items-center truncate text-[17px] font-medium leading-tight text-destructive">{product.name}</span>
-			{:else if activeField === 'name'}
-				<ProductListRowFieldsName
-					value={editState?.name ?? product.name}
+			{:else}
+				<TableRowHeader
+					value={displayName}
 					error={nameError}
+					editing={activeField === 'name'}
 					dataFocusable={true}
 					disabled={saving}
+					onopenedit={editMode ? () => openEditor('name') : undefined}
 					oninput={(event) => {
 						if (!editState) editState = {};
 						editState.name = (event.currentTarget as HTMLInputElement).value;
@@ -417,19 +434,6 @@
 						}
 					}}
 				/>
-			{:else}
-				<button
-					class="-ml-1 inline-flex min-h-8 items-center cursor-text truncate rounded px-1 py-0.5 text-left text-[17px] font-medium leading-tight outline-none hover:underline focus-visible:underline"
-					data-focusable
-					data-auto-open
-					onclick={() => openEditor('name')}
-				>
-					{displayName}
-				</button>
-
-				{#if nameError}
-					<p class="mt-0.5 text-xs text-destructive">{nameError}</p>
-				{/if}
 			{/if}
 		</div>
 
@@ -475,7 +479,7 @@
 						Cancel
 					</Button>
 				</div>
-			{:else}
+			{:else if editMode}
 				<button
 					class="flex size-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
 					data-focusable
@@ -525,6 +529,7 @@
 			{editState}
 			{isPending}
 			{isFailed}
+			{editMode}
 			onOpenEditor={openEditor}
 			onCloseEditorIfActive={closeEditorIfActive}
 			onBitsChange={(bitIds: string[]) => {

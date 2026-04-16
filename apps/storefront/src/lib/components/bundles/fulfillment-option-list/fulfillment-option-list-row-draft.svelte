@@ -6,6 +6,7 @@
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import type { FulfillmentOptionType } from '$lib/api/admin/fulfillment-options.remote';
 	import FulfillmentOptionListRowMetadata from './fulfillment-option-list-row-metadata.svelte';
+	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import {
 		buildTypePatch,
 		createBlankFulfillmentOptionEditorRow,
@@ -58,6 +59,15 @@
 		tick().then(() => {
 			nameInputElement?.focus();
 		});
+	});
+
+	/** Shared edit-mode context. Draft rows always count as dirty while mounted. */
+	const tableEditModeContext = getTableEditModeContext();
+
+	$effect(() => {
+		if (!tableEditModeContext) return;
+		tableEditModeContext.registerDirty(draftKey, true);
+		return () => tableEditModeContext.unregisterDirty(draftKey);
 	});
 
 	/** Client-side validation errors for this draft. */

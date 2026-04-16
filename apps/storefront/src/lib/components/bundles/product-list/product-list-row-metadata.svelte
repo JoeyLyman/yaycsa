@@ -26,6 +26,8 @@
 		isPending = false,
 		/** Whether this product failed to create. */
 		isFailed = false,
+		/** Whether the parent table is currently in edit mode. View mode disables click-to-open. */
+		editMode = true,
 		/** Callback to open an editor for a field. */
 		onOpenEditor,
 		/** Callback to close editor if the given field is active. */
@@ -52,6 +54,7 @@
 		} | null;
 		isPending?: boolean;
 		isFailed?: boolean;
+		editMode?: boolean;
 		onOpenEditor: (field: 'bits' | 'processes' | 'allergens') => void;
 		onCloseEditorIfActive: (field: 'bits' | 'processes' | 'allergens') => void;
 		onBitsChange: (values: string[]) => void;
@@ -106,13 +109,14 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="inline-flex w-fit cursor-pointer items-baseline py-1"
+				class="inline-flex w-fit items-baseline py-1 {editMode ? 'cursor-pointer' : ''}"
 				onclick={(event) => {
 					event.stopPropagation();
+					if (!editMode) return;
 					activeField === 'bits' ? onCloseEditorIfActive('bits') : onOpenEditor('bits');
 				}}
 				data-focusable
-				data-auto-open
+				data-auto-open={editMode ? true : undefined}
 			>
 				<span class="italic text-muted-foreground">Ingredients</span>
 				<span class="ml-2">{formatList(displayBits, '–')}</span>
@@ -147,15 +151,16 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="inline-flex w-fit cursor-pointer items-baseline py-1"
+				class="inline-flex w-fit items-baseline py-1 {editMode ? 'cursor-pointer' : ''}"
 				onclick={(event) => {
 					event.stopPropagation();
+					if (!editMode) return;
 					activeField === 'processes'
 						? onCloseEditorIfActive('processes')
 						: onOpenEditor('processes');
 				}}
 				data-focusable
-				data-auto-open
+				data-auto-open={editMode ? true : undefined}
 			>
 				<span class="italic text-muted-foreground">Processing</span>
 				<span class="ml-2">{formatList(displayProcesses, '–')}</span>
@@ -191,15 +196,16 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="inline-flex w-fit cursor-pointer items-baseline py-1"
+				class="inline-flex w-fit items-baseline py-1 {editMode ? 'cursor-pointer' : ''}"
 				onclick={(event) => {
 					event.stopPropagation();
+					if (!editMode) return;
 					activeField === 'allergens'
 						? onCloseEditorIfActive('allergens')
 						: onOpenEditor('allergens');
 				}}
 				data-focusable
-				data-auto-open
+				data-auto-open={editMode ? true : undefined}
 			>
 				<span class="italic text-muted-foreground">Allergens</span>
 				<span class="ml-2">{displayAllergens.length > 0

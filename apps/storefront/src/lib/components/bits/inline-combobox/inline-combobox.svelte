@@ -24,6 +24,12 @@
 		class: className = '',
 		/** When true, an empty value renders the placeholder in destructive color as a required-field cue. */
 		required = false,
+		/**
+		 * Whether the trigger responds to clicks and hover. Visuals (including the required cue) stay
+		 * identical when interactive=false so view-mode rows look the same as edit-mode rows — only
+		 * the click-to-open and hover color shift are suppressed.
+		 */
+		interactive = true,
 		/** Callback fired when the seller picks an option. */
 		onchange
 	}: {
@@ -33,6 +39,7 @@
 		disabled?: boolean;
 		class?: string;
 		required?: boolean;
+		interactive?: boolean;
 		onchange?: (nextValue: string) => void;
 	} = $props();
 
@@ -74,7 +81,7 @@
 	});
 
 	function openPopover() {
-		if (disabled) return;
+		if (disabled || !interactive) return;
 		open = true;
 		searchText = '';
 		highlightedIndex = Math.max(
@@ -132,13 +139,13 @@
 <Popover.Root bind:open onOpenChange={(nextOpen) => (nextOpen ? openPopover() : closePopover())}>
 	<Popover.Trigger
 		class={cn(
-			'cursor-pointer border-0 bg-transparent px-1 py-0 text-sm outline-none transition-colors',
-			'hover:text-primary',
+			'border-0 bg-transparent px-1 py-0 text-sm outline-none transition-colors',
+			interactive && 'cursor-pointer hover:text-primary',
 			disabled && 'cursor-not-allowed opacity-60',
 			!value && !open && (required ? 'text-destructive/80' : 'text-muted-foreground/70'),
 			className
 		)}
-		{disabled}
+		disabled={disabled || !interactive}
 	>
 		{#if open}
 			<!-- Unfocused placeholder in the trigger while the popover is open; the real search input lives in the content. -->
