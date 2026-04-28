@@ -1,17 +1,22 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/bits/button';
 	import { HeaderTabs } from '$lib/components/bits/header-tabs';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
+	import { TableRowActions } from '$lib/components/blocks/table-row-actions';
+	import { TableRowMetadataSummary } from '$lib/components/blocks/table-row-metadata-summary';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
+	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
 	import type { FulfillmentOptionType } from '$lib/api/admin/fulfillment-options.remote';
 	import FulfillmentOptionListRowMetadata from './fulfillment-option-list-row-metadata.svelte';
 	import {
 		buildTypePatch,
+		getFulfillmentOptionTypeLabel,
 		getRowValidationErrors,
 		isRowDirty,
-		rowToMutationInput
+		rowToMutationInput,
+		summarizeFulfillmentOptionMetadata
 	} from './fulfillment-option-list-helpers';
 	import {
 		fulfillmentOptionTypeOptions,
@@ -19,8 +24,6 @@
 		type FulfillmentOptionMutationInput,
 		type FulfillmentOptionUsage
 	} from './fulfillment-option-list-types';
-
-	type MetaField = 'notes';
 
 	let {
 		/** The saved fulfillment-option snapshot from the server. */
@@ -35,6 +38,8 @@
 		confirmingDelete = false,
 		/** Error message from the last mutation attempt. */
 		error,
+		/** Global metadata visibility mode. `summary` shows a single-line summary, `expanded` shows full editors. */
+		metadataMode = 'summary',
 		/** Save the row with a mutation payload. */
 		onsave,
 		/** Begin the delete confirmation flow. */
@@ -50,6 +55,7 @@
 		isPending?: boolean;
 		confirmingDelete?: boolean;
 		error?: string | null;
+		metadataMode?: TableDetailMode;
 		onsave: (id: string, payload: FulfillmentOptionMutationInput) => Promise<void>;
 		onbegindelete: (id: string) => void;
 		oncanceldelete: (id: string) => void;
@@ -64,15 +70,6 @@
 	/** The id of the last snapshot we reset from. Used to detect server refreshes. */
 	let lastSnapshotId = untrack(() => snapshot.id);
 
-	/** Which meta-row inline editor is currently open (null = none). */
-	let activeField: MetaField | null = $state(null);
-
-	/** Whether the row name is currently in input-editing mode. Only enters true in edit mode. */
-	let editingName = $state(false);
-
-	/** Reference to the name input so we can focus it when the seller opens the editor. */
-	let nameInputEl: HTMLInputElement | null = $state(null);
-
 	/** Shared edit-mode context from the parent list. Null when rendered standalone. */
 	const tableEditModeContext = getTableEditModeContext();
 
@@ -83,8 +80,6 @@
 	$effect(() => {
 		if (snapshot.id !== lastSnapshotId) {
 			workingRow = $state.snapshot(snapshot) as FulfillmentOptionEditorRow;
-			activeField = null;
-			editingName = false;
 			lastSnapshotId = snapshot.id;
 		}
 	});
@@ -99,26 +94,6 @@
 		return () => tableEditModeContext.unregisterDirty(snapshot.id);
 	});
 
-	/** Close the name editor when edit mode is turned off mid-edit. */
-	$effect(() => {
-		if (!editMode) {
-			editingName = false;
-			activeField = null;
-		}
-	});
-
-	/** Open the name input and focus it after the DOM updates. */
-	function openNameEditor() {
-		if (!editMode) return;
-		editingName = true;
-		tick().then(() => nameInputEl?.focus());
-	}
-
-	/** Close the name input without discarding edits. */
-	function closeNameEditor() {
-		editingName = false;
-	}
-
 	/** Client-side validation errors on the current working row. */
 	let validationErrors = $derived(getRowValidationErrors(workingRow, otherRows));
 
@@ -127,6 +102,15 @@
 
 	/** Whether the delete button should be labeled "Permanently Delete". */
 	let canPermanentlyDelete = $derived(usage.offerCount === 0);
+
+	/** Whether to show the full metadata block (schedule, deadline, notes). */
+	let showMetadata = $derived(metadataMode === 'expanded');
+
+	/** Whether to show the one-line summary instead of the full metadata block. */
+	let showMetadataSummary = $derived(metadataMode === 'summary');
+
+	/** One-line metadata summary for the collapsed view. */
+	let metadataSummary = $derived(summarizeFulfillmentOptionMetadata(workingRow));
 
 	/** Apply a patch to the working row. */
 	function patchWorkingRow(patch: Partial<FulfillmentOptionEditorRow>) {
@@ -138,16 +122,9 @@
 		patchWorkingRow(buildTypePatch(nextValue as FulfillmentOptionType));
 	}
 
-	/** Toggle a meta-row inline editor. */
-	function handleToggleField(field: MetaField) {
-		activeField = activeField === field ? null : field;
-	}
-
 	/** Discard all local edits and close open editors. */
 	function handleCancel() {
 		workingRow = $state.snapshot(snapshot) as FulfillmentOptionEditorRow;
-		activeField = null;
-		editingName = false;
 	}
 
 	/** Submit the accumulated edits via the parent save callback. */
@@ -163,36 +140,35 @@
 	class="border-b last:border-b-0 {isPending ? 'opacity-60' : ''}"
 >
 	<div
-		class="flex min-h-11 flex-wrap items-start gap-2 px-3 pt-3 pb-2 md:gap-3 md:px-4 md:pt-4 md:pb-3"
+		class="flex min-h-11 items-start gap-2 px-3 pt-1 pb-[11px] md:gap-3 md:px-4 md:pt-1.5 md:pb-[11px]"
 	>
-		<div class="flex min-w-0 flex-1 flex-col gap-3">
+		<div class="flex min-w-0 flex-1 flex-col gap-0">
 			<TableRowHeader
-				bind:ref={nameInputEl}
 				value={workingRow.name}
-				editing={editingName}
+				editing={editMode}
 				disabled={isPending}
-				onopenedit={editMode ? openNameEditor : undefined}
 				oninput={(event) =>
 					patchWorkingRow({ name: (event.currentTarget as HTMLInputElement).value })}
-				onblur={closeNameEditor}
-				onkeydown={(event) => {
-					if (event.key === 'Enter' || event.key === 'Escape') {
-						event.preventDefault();
-						closeNameEditor();
-					}
-				}}
 			/>
-			<HeaderTabs
-				size="sm"
-				ariaLabel="Fulfillment option type"
-				selectedValue={workingRow.type}
-				items={fulfillmentOptionTypeOptions.map((option) => ({
-					value: option.value,
-					label: option.label,
-					disabled: isPending
-				}))}
-				onselect={editMode ? handleTypeSelect : undefined}
-			/>
+			{#if editMode}
+				<div class="mt-2">
+					<HeaderTabs
+						size="sm"
+						ariaLabel="Fulfillment option type"
+						selectedValue={workingRow.type}
+						items={fulfillmentOptionTypeOptions.map((option) => ({
+							value: option.value,
+							label: option.label,
+							disabled: isPending
+						}))}
+						onselect={handleTypeSelect}
+					/>
+				</div>
+			{:else}
+				<span class="text-sm italic text-muted-foreground">
+					{getFulfillmentOptionTypeLabel(workingRow.type)}
+				</span>
+			{/if}
 		</div>
 
 		<div class="shrink-0">
@@ -205,12 +181,18 @@
 						Cancel
 					</Button>
 				</div>
-			{:else if confirmingDelete}
-				<div class="flex items-center gap-1">
+			{:else if editMode}
+				<TableRowActions
+					open={confirmingDelete}
+					disabled={isPending}
+					onchange={(next: boolean) =>
+						next ? onbegindelete(snapshot.id) : oncanceldelete(snapshot.id)}
+				>
 					<Button
 						size="sm"
 						variant="destructive"
 						disabled={isPending}
+						data-focusable
 						onclick={() => onconfirmdelete(snapshot.id)}
 					>
 						{#if isPending}
@@ -219,24 +201,7 @@
 							{canPermanentlyDelete ? 'Permanently Delete' : 'Delete'}
 						{/if}
 					</Button>
-					<Button
-						size="sm"
-						variant="ghost"
-						disabled={isPending}
-						onclick={() => oncanceldelete(snapshot.id)}
-					>
-						Cancel
-					</Button>
-				</div>
-			{:else if editMode}
-				<Button
-					size="sm"
-					variant="ghost"
-					disabled={isPending}
-					onclick={() => onbegindelete(snapshot.id)}
-				>
-					Delete
-				</Button>
+				</TableRowActions>
 			{/if}
 		</div>
 	</div>
@@ -245,12 +210,16 @@
 		<p class="px-3 pb-1 text-xs text-destructive md:px-4">{error}</p>
 	{/if}
 
-	<FulfillmentOptionListRowMetadata
-		row={workingRow}
-		{activeField}
-		disabled={isPending}
-		{editMode}
-		onToggleField={handleToggleField}
-		onPatch={patchWorkingRow}
-	/>
+	{#if showMetadataSummary}
+		<TableRowMetadataSummary segments={metadataSummary} />
+	{/if}
+
+	{#if showMetadata}
+		<FulfillmentOptionListRowMetadata
+			row={workingRow}
+			disabled={isPending}
+			{editMode}
+			onPatch={patchWorkingRow}
+		/>
+	{/if}
 </div>

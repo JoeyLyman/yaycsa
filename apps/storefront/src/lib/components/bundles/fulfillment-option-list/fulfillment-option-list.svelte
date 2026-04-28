@@ -8,6 +8,7 @@
 	import FulfillmentOptionListRowDraft from './fulfillment-option-list-row-draft.svelte';
 	import FulfillmentOptionListRow from './fulfillment-option-list-row.svelte';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
+	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
 	import {
 		deriveFulfillmentOptionUsage,
 		getFulfillmentOptionTypeLabel,
@@ -31,6 +32,8 @@
 		showDeleted = false,
 		/** Offers used to derive per-option usage counts. */
 		offers,
+		/** Global metadata visibility mode. Drives summary↔expanded for each saved row's metadata. */
+		metadataMode = 'summary',
 		/** IDs currently in the middle of a mutation. */
 		pendingRowIds,
 		/** Row-level error messages keyed by fulfillment option id or draft key. */
@@ -69,6 +72,7 @@
 		deletedRows?: SellerFulfillmentOptionWorkspaceItem[];
 		showDeleted?: boolean;
 		offers: SellerOfferWorkspaceItem[];
+		metadataMode?: TableDetailMode;
 		pendingRowIds: Set<string>;
 		rowErrors: Map<string, string>;
 		confirmingDeleteIds: Set<string>;
@@ -116,6 +120,7 @@
 				isPending={pendingRowIds.has(row.id)}
 				confirmingDelete={confirmingDeleteIds.has(row.id)}
 				error={rowErrors.get(row.id) ?? null}
+				{metadataMode}
 				onsave={onsaveRow}
 				{onbegindelete}
 				{oncanceldelete}

@@ -19,8 +19,6 @@
 		type FulfillmentOptionMutationInput
 	} from './fulfillment-option-list-types';
 
-	type MetaField = 'notes';
-
 	let {
 		/** Stable key used to track this draft slot across renders. */
 		draftKey,
@@ -50,9 +48,6 @@
 
 	/** Reference to the name input so we can autofocus on first render. */
 	let nameInputElement = $state<HTMLInputElement | null>(null);
-
-	/** Which meta-row editor is currently open. Only the notes editor has a toggle state now. */
-	let activeField: MetaField | null = $state(null);
 
 	/** Autofocus the name field when this draft first mounts. */
 	$effect(() => {
@@ -85,10 +80,6 @@
 
 	function handleTypeSelect(nextValue: string) {
 		patchWorkingRow(buildTypePatch(nextValue as FulfillmentOptionType));
-	}
-
-	function handleToggleField(field: MetaField) {
-		activeField = activeField === field ? null : field;
 	}
 
 	async function handleCreate() {
@@ -146,9 +137,8 @@
 
 	<FulfillmentOptionListRowMetadata
 		row={workingRow}
-		{activeField}
 		disabled={isPending}
-		onToggleField={handleToggleField}
+		editMode={true}
 		onPatch={patchWorkingRow}
 	/>
 </div>

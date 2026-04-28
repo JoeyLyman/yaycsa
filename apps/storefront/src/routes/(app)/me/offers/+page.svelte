@@ -32,6 +32,10 @@
 		TableEditModeToggle,
 		setTableEditModeContext
 	} from '$lib/components/blocks/table-edit-mode';
+	import {
+		TableDetailToggle,
+		type TableDetailMode
+	} from '$lib/components/blocks/table-detail-toggle';
 	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -71,6 +75,13 @@
 	/** Whether the fulfillment-options table is currently in edit mode. */
 	let fulfillmentEditMode = $state(false);
 
+	/**
+	 * Global metadata visibility mode for the fulfillment-options table.
+	 * Toggled via the Detail button between `summary` (one-line) and `expanded` (full editors).
+	 * Forced to `expanded` when entering edit mode so the disabled Detail button visually reflects the lock.
+	 */
+	let fulfillmentMetadataMode = $state<TableDetailMode>('summary');
+
 	/** Bumped whenever edit mode exits via Discard so rows remount and drop local state. */
 	let fulfillmentEditSessionId = $state(0);
 
@@ -96,6 +107,8 @@
 			fulfillmentOptionDraftKeys = [];
 			fulfillmentDirtyRowIds.clear();
 			fulfillmentEditSessionId += 1;
+		} else {
+			fulfillmentMetadataMode = 'expanded';
 		}
 		fulfillmentEditMode = next;
 	}
@@ -526,14 +539,6 @@
 			</div>
 		{:else}
 			<div class="space-y-3" data-testid="fulfillment-options-table">
-				<div class="flex justify-end">
-					<TableEditModeToggle
-						editMode={fulfillmentEditMode}
-						hasUnsavedChanges={fulfillmentHasUnsavedChanges}
-						onchange={handleFulfillmentEditModeChange}
-					/>
-				</div>
-
 				<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 					<div class="flex items-center gap-2 text-sm text-muted-foreground">
 						<Checkbox id="scheduled-pickup-filter" bind:checked={showingScheduledPickupOptions} />
@@ -552,6 +557,14 @@
 						<Checkbox id="show-deleted-filter" bind:checked={showingDeletedFulfillmentOptions} />
 						<label for="show-deleted-filter">Show deleted</label>
 					</div>
+					<div class="ml-auto flex items-center gap-2">
+						<TableDetailToggle bind:mode={fulfillmentMetadataMode} />
+						<TableEditModeToggle
+							editMode={fulfillmentEditMode}
+							hasUnsavedChanges={fulfillmentHasUnsavedChanges}
+							onchange={handleFulfillmentEditModeChange}
+						/>
+					</div>
 				</div>
 
 				{#key fulfillmentEditSessionId}
@@ -561,6 +574,7 @@
 					deletedRows={filteredDeletedFulfillmentOptions}
 					showDeleted={showingDeletedFulfillmentOptions}
 					offers={loadedOffers}
+					metadataMode={fulfillmentMetadataMode}
 					{pendingRowIds}
 					{rowErrors}
 					confirmingDeleteIds={confirmingDeleteRowIds}

@@ -18,20 +18,14 @@
 		allProcesses,
 		/** All available allergen warnings. */
 		allAllergenWarnings,
-		/** Which field editor is currently open (null if none). */
-		activeField,
 		/** Accumulated edit state from parent row. */
 		editState,
 		/** Whether this product is in a pending-create state. */
 		isPending = false,
 		/** Whether this product failed to create. */
 		isFailed = false,
-		/** Whether the parent table is currently in edit mode. View mode disables click-to-open. */
+		/** Whether the parent table is currently in edit mode. View mode is fully read-only. */
 		editMode = true,
-		/** Callback to open an editor for a field. */
-		onOpenEditor,
-		/** Callback to close editor if the given field is active. */
-		onCloseEditorIfActive,
 		/** Callback when bits selection changes. */
 		onBitsChange,
 		/** Callback when processes selection changes. */
@@ -46,7 +40,6 @@
 		allBits: InputSelectItem[];
 		allProcesses: InputSelectItem[];
 		allAllergenWarnings: InputSelectItem[];
-		activeField: 'name' | 'bits' | 'processes' | 'allergens' | null;
 		editState: {
 			bitIds?: string[];
 			processIds?: string[];
@@ -55,8 +48,6 @@
 		isPending?: boolean;
 		isFailed?: boolean;
 		editMode?: boolean;
-		onOpenEditor: (field: 'bits' | 'processes' | 'allergens') => void;
-		onCloseEditorIfActive: (field: 'bits' | 'processes' | 'allergens') => void;
 		onBitsChange: (values: string[]) => void;
 		onProcessesChange: (values: string[]) => void;
 		onAllergensChange: (values: string[]) => void;
@@ -67,6 +58,12 @@
 	function titleCase(text: string): string {
 		return text.replace(/\b\w/g, (character) => character.toUpperCase());
 	}
+
+	/**
+	 * Whether all field editors should render simultaneously.
+	 * True in edit mode so sellers see and tab between every editor at once.
+	 */
+	let allFieldsOpen = $derived(editMode);
 
 	/** Resolved bit items for display from edit state when present, otherwise product data. */
 	let displayBits = $derived(
@@ -106,31 +103,17 @@
 				<span class="ml-2">{product.bits.length > 0 ? product.bits.map((bit) => titleCase(bit.name)).join(', ') : '–'}</span>
 			</div>
 		{:else}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="inline-flex w-fit items-baseline py-1 {editMode ? 'cursor-pointer' : ''}"
-				onclick={(event) => {
-					event.stopPropagation();
-					if (!editMode) return;
-					activeField === 'bits' ? onCloseEditorIfActive('bits') : onOpenEditor('bits');
-				}}
-				data-focusable
-				data-auto-open={editMode ? true : undefined}
-			>
+			<div class="inline-flex w-fit items-baseline py-1">
 				<span class="italic text-muted-foreground">Ingredients</span>
 				<span class="ml-2">{formatList(displayBits, '–')}</span>
 			</div>
 
-			{#if activeField === 'bits'}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="max-w-xs pb-1" onclick={(event) => event.stopPropagation()}>
+			{#if allFieldsOpen}
+				<div class="max-w-xs pb-1">
 					<ProductListRowFieldsBits
 						items={allBits}
 						selectedValues={editState?.bitIds ?? product.bits.map((bit) => bit.id)}
 						onchange={onBitsChange}
-						onfocusleave={() => onCloseEditorIfActive('bits')}
 						onCreate={onCreateBit}
 						hidePills={true}
 					/>
@@ -148,33 +131,17 @@
 					: '–'}</span>
 			</div>
 		{:else}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="inline-flex w-fit items-baseline py-1 {editMode ? 'cursor-pointer' : ''}"
-				onclick={(event) => {
-					event.stopPropagation();
-					if (!editMode) return;
-					activeField === 'processes'
-						? onCloseEditorIfActive('processes')
-						: onOpenEditor('processes');
-				}}
-				data-focusable
-				data-auto-open={editMode ? true : undefined}
-			>
+			<div class="inline-flex w-fit items-baseline py-1">
 				<span class="italic text-muted-foreground">Processing</span>
 				<span class="ml-2">{formatList(displayProcesses, '–')}</span>
 			</div>
 
-			{#if activeField === 'processes'}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="max-w-xs pb-1" onclick={(event) => event.stopPropagation()}>
+			{#if allFieldsOpen}
+				<div class="max-w-xs pb-1">
 					<ProductListRowFieldsProcesses
 						items={allProcesses}
 						selectedValues={editState?.processIds ?? product.processes.map((processItem) => processItem.id)}
 						onchange={onProcessesChange}
-						onfocusleave={() => onCloseEditorIfActive('processes')}
 						hidePills={true}
 					/>
 				</div>
@@ -193,20 +160,7 @@
 					: '–'}</span>
 			</div>
 		{:else}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="inline-flex w-fit items-baseline py-1 {editMode ? 'cursor-pointer' : ''}"
-				onclick={(event) => {
-					event.stopPropagation();
-					if (!editMode) return;
-					activeField === 'allergens'
-						? onCloseEditorIfActive('allergens')
-						: onOpenEditor('allergens');
-				}}
-				data-focusable
-				data-auto-open={editMode ? true : undefined}
-			>
+			<div class="inline-flex w-fit items-baseline py-1">
 				<span class="italic text-muted-foreground">Allergens</span>
 				<span class="ml-2">{displayAllergens.length > 0
 					? displayAllergens
@@ -215,15 +169,12 @@
 					: '–'}</span>
 			</div>
 
-			{#if activeField === 'allergens'}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="max-w-xs pb-1" onclick={(event) => event.stopPropagation()}>
+			{#if allFieldsOpen}
+				<div class="max-w-xs pb-1">
 					<ProductListRowFieldsAllergenWarnings
 						items={allAllergenWarnings}
 						selectedValues={editState?.allergenIds ?? product.allergenWarnings.map((allergen) => allergen.id)}
 						onchange={onAllergensChange}
-						onfocusleave={() => onCloseEditorIfActive('allergens')}
 						hidePills={true}
 					/>
 				</div>

@@ -52,10 +52,13 @@ const PRODUCT_SELLER_CHECK_QUERY = `
 	}
 `;
 
-/** Admin API query to check fulfillment-option ownership via Seller relation. */
+/** Admin API query to check fulfillment-option ownership via Seller relation.
+ *  Passes sellerId so the resolver scopes the lookup by sellerId instead of falling
+ *  back to channel scoping — the proxy runs in the default channel, but fulfillment
+ *  options are only assigned to the seller channel. */
 const FULFILLMENT_OPTION_SELLER_CHECK_QUERY = `
-	query FulfillmentOptionSellerCheck($id: ID!) {
-		fulfillmentOption(id: $id, includeDeleted: true) {
+	query FulfillmentOptionSellerCheck($id: ID!, $sellerId: ID!) {
+		fulfillmentOption(id: $id, sellerId: $sellerId, includeDeleted: true) {
 			id
 			seller {
 				id
@@ -182,7 +185,7 @@ export async function assertFulfillmentOptionOwnedBySeller(
 ): Promise<void> {
 	const data = await adminQuery<{
 		fulfillmentOption: { id: string; seller: { id: string } } | null;
-	}>(FULFILLMENT_OPTION_SELLER_CHECK_QUERY, { id: fulfillmentOptionId });
+	}>(FULFILLMENT_OPTION_SELLER_CHECK_QUERY, { id: fulfillmentOptionId, sellerId });
 
 	if (!data.fulfillmentOption) {
 		throw error(404, 'Fulfillment option not found');

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
-	import type { ProductDraft, ProductDraftPatch, ProductMetadataMode } from './product-list-types';
+	import type { ProductDraft, ProductDraftPatch } from './product-list-types';
+	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
 	import ProductListRowDraft from './product-list-row-draft.svelte';
 	import ProductListRow from './product-list-row.svelte';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
@@ -45,7 +46,7 @@
 		allBits: InputSelectItem[];
 		allProcesses: InputSelectItem[];
 		allAllergenWarnings: InputSelectItem[];
-		metadataMode: ProductMetadataMode;
+		metadataMode: TableDetailMode;
 		pendingIds: Set<string>;
 		failedIds: Map<string, string>;
 		onsave: (
@@ -139,14 +140,8 @@
 
 		if (!focusableElement) return false;
 
-		if (focusableElement.hasAttribute('data-auto-open')) {
-			focusableElement.scrollIntoView({ block: 'nearest' });
-			focusableElement.click();
-		} else {
-			focusableElement.focus();
-			focusableElement.scrollIntoView({ block: 'nearest' });
-		}
-
+		focusableElement.focus();
+		focusableElement.scrollIntoView({ block: 'nearest' });
 		return true;
 	}
 
@@ -159,14 +154,8 @@
 
 		if (!focusableElement) return false;
 
-		if (focusableElement.hasAttribute('data-auto-open')) {
-			focusableElement.scrollIntoView({ block: 'nearest' });
-			focusableElement.click();
-		} else {
-			focusableElement.focus();
-			focusableElement.scrollIntoView({ block: 'nearest' });
-		}
-
+		focusableElement.focus();
+		focusableElement.scrollIntoView({ block: 'nearest' });
 		return true;
 	}
 
@@ -383,7 +372,6 @@
 				{allBits}
 				{allProcesses}
 				{allAllergenWarnings}
-				globalMetadataMode={metadataMode}
 				takenProductNames={getTakenProductNamesForDraftProduct(draftProduct.id)}
 				onsave={onsaveProductDraft}
 				oncancel={oncancelProductDraft}

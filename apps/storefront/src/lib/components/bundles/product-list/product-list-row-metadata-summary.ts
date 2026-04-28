@@ -1,14 +1,8 @@
-/**
- * A segment of the metadata summary.
- */
-export interface SummarySegment {
-	text: string;
-	italic: boolean;
-	/** Whether this segment should have left margin (value following a label). */
-	spaced: boolean;
-	/** Whether this segment starts a new section (larger left margin). */
-	section: boolean;
-}
+import {
+	metadataLabel,
+	metadataValue,
+	type MetadataSummarySegment
+} from '$lib/components/blocks/table-row-metadata-summary';
 
 /** Capitalize the first letter of each word. */
 function titleCase(s: string): string {
@@ -19,13 +13,13 @@ export function computeMetadataSummary(
 	bits: { label: string }[],
 	processes: { label: string }[],
 	allergens: { label: string }[]
-): SummarySegment[] {
-	const segments: SummarySegment[] = [];
+): MetadataSummarySegment[] {
+	const segments: MetadataSummarySegment[] = [];
 
 	// Ingredients
-	segments.push({ text: 'Ingredients', italic: true, spaced: false, section: false });
+	segments.push(metadataLabel('Ingredients'));
 	if (bits.length === 0) {
-		segments.push({ text: '–', italic: false, spaced: true, section: false });
+		segments.push(metadataValue('–'));
 	} else {
 		const names =
 			bits.length <= 2
@@ -34,15 +28,15 @@ export function computeMetadataSummary(
 						.slice(0, 2)
 						.map((b) => titleCase(b.label))
 						.join(', ')} +${bits.length - 2}`;
-		segments.push({ text: names, italic: false, spaced: true, section: false });
+		segments.push(metadataValue(names));
 	}
 
 	// Processing
-	segments.push({ text: 'Processing', italic: true, spaced: false, section: true });
+	segments.push(metadataLabel('Processing', { section: true }));
 	if (processes.length === 0) {
-		segments.push({ text: '–', italic: false, spaced: true, section: false });
+		segments.push(metadataValue('–'));
 	} else {
-		segments.push({ text: processes.map((p) => titleCase(p.label)).join(', '), italic: false, spaced: true, section: false });
+		segments.push(metadataValue(processes.map((p) => titleCase(p.label)).join(', ')));
 	}
 
 	// Allergens (only shown if present)
@@ -50,8 +44,8 @@ export function computeMetadataSummary(
 		const names = allergens
 			.map((a) => titleCase(a.label.replace(/^May contain /i, '')))
 			.join(', ');
-		segments.push({ text: 'Allergens', italic: true, spaced: false, section: true });
-		segments.push({ text: names, italic: false, spaced: true, section: false });
+		segments.push(metadataLabel('Allergens', { section: true }));
+		segments.push(metadataValue(names));
 	}
 
 	return segments;

@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { tick } from 'svelte';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { Button } from '$lib/components/bits/button';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
+	import { TableRowActions } from '$lib/components/blocks/table-row-actions';
+	import { TableRowMetadataSummary } from '$lib/components/blocks/table-row-metadata-summary';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
 	import { hasDuplicateProductName } from '$lib/utils/product-name.js';
-	import { nextProductMetadataMode } from './product-list-metadata-mode';
-	import type { ProductMetadataMode } from './product-list-types';
+	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
 	import ProductListRowMetadata from './product-list-row-metadata.svelte';
 	import { computeMetadataSummary } from './product-list-row-metadata-summary';
 
@@ -19,8 +19,6 @@
 		processIds?: string[];
 		allergenIds?: string[];
 	}
-
-	type EditField = 'name' | 'bits' | 'processes' | 'allergens';
 
 	let {
 		/** The product data for this row. */
@@ -39,7 +37,7 @@
 		isPending = false,
 		/** Whether this product failed to create. */
 		isFailed = false,
-		/** Global default metadata visibility mode for the whole product table. */
+		/** Global metadata visibility mode for the whole product table. */
 		globalMetadataMode = 'summary',
 		/** Callback to save accumulated edits. */
 		onsave,
@@ -60,7 +58,7 @@
 		takenProductNames?: string[];
 		isPending?: boolean;
 		isFailed?: boolean;
-		globalMetadataMode?: ProductMetadataMode;
+		globalMetadataMode?: TableDetailMode;
 		onsave: (
 			productId: string,
 			edits: {
@@ -82,9 +80,6 @@
 
 	/** Accumulated edits for this row. null when not editing. */
 	let editState = $state<EditState | null>(null);
-
-	/** Which field editor is currently open. null when no editor is active. */
-	let activeField: EditField | null = $state(null);
 
 	/** Whether this row is currently saving edits. */
 	let saving = $state(false);
@@ -161,10 +156,19 @@
 		return () => tableEditModeContext.unregisterDirty(product.id);
 	});
 
-	/** When edit mode turns off mid-edit, close any open field editor. */
+	/**
+	 * On entering edit mode, hydrate `editState` with the saved product values so every editor
+	 * renders pre-populated. Skipped when `editState` is already populated so we don't clobber
+	 * in-flight changes (e.g. mid-edit re-render after a sibling row saves).
+	 */
 	$effect(() => {
-		if (!editMode) {
-			activeField = null;
+		if (editMode && !editState) {
+			editState = {
+				name: product.name,
+				bitIds: product.bits.map((bit) => bit.id),
+				processIds: product.processes.map((processItem) => processItem.id),
+				allergenIds: product.allergenWarnings.map((allergen) => allergen.id)
+			};
 		}
 	});
 
@@ -194,145 +198,53 @@
 		)
 	);
 
-	/**
-	 * Per-row metadata mode override.
-	 * Null means "follow the current global metadata mode from the parent list".
-	 */
-	let metadataModeOverride: ProductMetadataMode | null = $state(null);
-
-	/**
-	 * Previous value of the global metadata mode.
-	 * Stored outside reactivity so we can detect real parent-toggle changes.
-	 */
-	let previousGlobalMetadataMode: ProductMetadataMode | undefined;
-
-	$effect(() => {
-		const currentGlobalMetadataMode = globalMetadataMode;
-		if (
-			previousGlobalMetadataMode !== undefined &&
-			currentGlobalMetadataMode !== previousGlobalMetadataMode
-		) {
-			metadataModeOverride = null;
-		}
-		previousGlobalMetadataMode = currentGlobalMetadataMode;
-	});
-
-	/** Effective metadata mode after combining the global mode with any per-row override. */
-	let effectiveMetadataMode = $derived(
-		(metadataModeOverride ?? globalMetadataMode) as ProductMetadataMode
-	);
-
 	/** Whether the metadata tier is currently visible for this row. */
-	let showMetadata = $derived(effectiveMetadataMode === 'expanded');
+	let showMetadata = $derived(globalMetadataMode === 'expanded');
 
 	/**
 	 * Whether the collapsed metadata summary line should be visible for this row.
 	 * Only the summary mode shows this line.
 	 */
-	let showMetadataSummary = $derived(effectiveMetadataMode === 'summary');
+	let showMetadataSummary = $derived(globalMetadataMode === 'summary');
 
 	/** Structured summary segments for the collapsed metadata line. */
 	let metadataSummary = $derived(
 		computeMetadataSummary(displayBits, displayProcesses, displayAllergens)
 	);
 
-	/**
-	 * When focus leaves this row and no real edits remain, close the row editor state.
-	 * Rows keep accumulated edits when changes exist so Save / Cancel stay available.
-	 */
-	function handleRowFocusOut(event: FocusEvent) {
-		const relatedTarget = event.relatedTarget as Node | null;
-		if (!relatedTarget) return;
-
-		const rowElement = event.currentTarget as HTMLElement;
-		if (rowElement.contains(relatedTarget)) return;
-
-		confirmingDelete = false;
-
-		if (!isEditing) {
-			activeField = null;
-			editState = null;
-		} else {
-			activeField = null;
-		}
-	}
-
-	/**
-	 * When an editor opens, wait for the DOM update and then focus the field's first input.
-	 * This keeps click and keyboard-open interactions consistent across row cells.
-	 */
-	$effect(() => {
-		if (activeField !== null) {
-			tick().then(() => {
-				const rowElement =
-					document
-						.querySelector(`[data-row="${rowIndex}"]`)
-						?.closest('[data-product-row]') ??
-					document.querySelector(`[data-product-row]:has([data-row="${rowIndex}"])`);
-				const cellElement = rowElement?.querySelector(`[data-col="${activeField}"]`);
-				const focusableElement = cellElement?.querySelector('[data-focusable]') as HTMLElement | null;
-				focusableElement?.focus();
-			});
-		}
-	});
-
-	/** Initialize edit state if needed, then open a field editor. */
-	function openEditor(field: EditField) {
-		if (!editState) {
-			editState = {};
-		}
-		const currentEditState = editState;
-		activeField = field;
-
-		if (field === 'bits' || field === 'processes' || field === 'allergens') {
-			metadataModeOverride = 'expanded';
-		}
-
-		if (field === 'name' && currentEditState.name === undefined) {
-			currentEditState.name = product.name;
-		} else if (field === 'bits' && currentEditState.bitIds === undefined) {
-			currentEditState.bitIds = product.bits.map((bit) => bit.id);
-		} else if (field === 'processes' && currentEditState.processIds === undefined) {
-			currentEditState.processIds = product.processes.map((processItem) => processItem.id);
-		} else if (field === 'allergens' && currentEditState.allergenIds === undefined) {
-			currentEditState.allergenIds = product.allergenWarnings.map((allergen) => allergen.id);
-		}
-	}
-
-	/** Close the active editor. Clear edit state entirely if no real changes remain. */
-	function closeEditor() {
-		activeField = null;
-		if (!isEditing) {
-			editState = null;
-		}
-	}
-
-	/** Close a specific metadata editor when its InputSelect fully loses focus. */
-	function closeEditorIfActive(field: 'bits' | 'processes' | 'allergens') {
-		if (activeField === field) {
-			closeEditor();
-		}
-	}
-
-	/** Discard all pending edits for this row. */
+	/** Discard all pending edits for this row. The hydration effect will repopulate in edit mode. */
 	function cancelEdits() {
 		editState = null;
-		activeField = null;
 	}
 
 	/** Save all accumulated edits for this row. */
 	async function handleSave() {
 		if (!editState || !canSave) return;
 
-		const bitsChanged = editState.bitIds !== undefined;
-		const processChanged = editState.processIds !== undefined;
-		const allergensChanged = editState.allergenIds !== undefined;
+		// Compare actual values, not just `!== undefined`. The hydration $effect populates every
+		// field on entering edit mode, so "defined" no longer implies "changed."
+		const sortedIds = (ids: string[]) => [...ids].sort();
+		const sameSet = (left: string[] | undefined, right: string[]) =>
+			left !== undefined &&
+			JSON.stringify(sortedIds(left)) === JSON.stringify(sortedIds(right));
+
+		const bitsActuallyChanged =
+			editState.bitIds !== undefined &&
+			!sameSet(editState.bitIds, product.bits.map((bit) => bit.id));
+		const processesActuallyChanged =
+			editState.processIds !== undefined &&
+			!sameSet(editState.processIds, product.processes.map((processItem) => processItem.id));
+		const allergensActuallyChanged =
+			editState.allergenIds !== undefined &&
+			!sameSet(editState.allergenIds, product.allergenWarnings.map((allergen) => allergen.id));
 
 		let facetValueIds: string[] | undefined;
-		if (bitsChanged || processChanged || allergensChanged) {
+		if (bitsActuallyChanged || processesActuallyChanged || allergensActuallyChanged) {
 			const bitIds = editState.bitIds ?? product.bits.map((bit) => bit.id);
-			const processIds = editState.processIds ?? product.processes.map((processItem) => processItem.id);
-			const allergenIds = editState.allergenIds ?? product.allergenWarnings.map((allergen) => allergen.id);
+			const processIds =
+				editState.processIds ?? product.processes.map((processItem) => processItem.id);
+			const allergenIds =
+				editState.allergenIds ?? product.allergenWarnings.map((allergen) => allergen.id);
 			facetValueIds = [...bitIds, ...processIds, ...allergenIds];
 		}
 
@@ -345,7 +257,6 @@
 		}
 
 		saving = true;
-		activeField = null;
 
 		try {
 			await onsave(product.id, {
@@ -371,35 +282,16 @@
 		deleting = false;
 		confirmingDelete = false;
 	}
-
-	/**
-	 * Toggle the metadata section when the non-interactive part of the row is clicked.
-	 * Buttons and inputs keep their own behavior and never trigger row collapse.
-	 */
-	function handleRowClick(event: MouseEvent) {
-		if (!editMode) return;
-		const target = event.target as HTMLElement;
-		if (target.closest('button') || target.closest('input')) {
-			return;
-		}
-		activeField = null;
-		metadataModeOverride = nextProductMetadataMode(effectiveMetadataMode);
-	}
 </script>
 
-<!-- Row container: uses data-product-row for focusout and focus-on-edit. -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	data-product-row
 	data-row={rowIndex}
-	class="border-b last:border-b-0 {editMode ? 'cursor-pointer' : ''} {isPending
+	class="border-b last:border-b-0 {isPending
 		? 'opacity-50'
 		: isFailed
 			? 'bg-destructive/5'
 			: ''}"
-	onfocusout={handleRowFocusOut}
-	onclick={handleRowClick}
 >
 	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5">
 		<div class="min-w-0 shrink" data-col="name">
@@ -414,24 +306,12 @@
 				<TableRowHeader
 					value={displayName}
 					error={nameError}
-					editing={activeField === 'name'}
+					editing={editMode}
 					dataFocusable={true}
 					disabled={saving}
-					onopenedit={editMode ? () => openEditor('name') : undefined}
 					oninput={(event) => {
 						if (!editState) editState = {};
 						editState.name = (event.currentTarget as HTMLInputElement).value;
-					}}
-					onblur={closeEditor}
-					onkeydown={(event) => {
-						if (event.key === 'Enter') {
-							event.stopPropagation();
-							closeEditor();
-						}
-						if (event.key === 'Escape') {
-							event.stopPropagation();
-							cancelEdits();
-						}
 					}}
 				/>
 			{/if}
@@ -470,52 +350,18 @@
 						Cancel
 					</Button>
 				</div>
-			{:else if confirmingDelete}
-				<div class="flex items-center gap-1">
+			{:else if editMode}
+				<TableRowActions bind:open={confirmingDelete} disabled={deleting}>
 					<Button size="sm" variant="destructive" disabled={deleting} data-focusable onclick={handleDelete}>
 						{#if deleting}<SpinnerSun class="size-3.5" />{:else}Delete{/if}
 					</Button>
-					<Button size="sm" variant="ghost" data-focusable onclick={() => (confirmingDelete = false)}>
-						Cancel
-					</Button>
-				</div>
-			{:else if editMode}
-				<button
-					class="flex size-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-					data-focusable
-					onclick={() => (confirmingDelete = true)}
-					title="More actions"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<circle cx="12" cy="5" r="1" />
-						<circle cx="12" cy="12" r="1" />
-						<circle cx="12" cy="19" r="1" />
-					</svg>
-				</button>
+				</TableRowActions>
 			{/if}
 		</div>
 	</div>
 
 	{#if showMetadataSummary}
-		<div class="-mt-1 truncate px-3 pb-3 text-xs text-muted-foreground md:px-4">
-			{#each metadataSummary as segment}
-				{#if segment.italic}
-					<span class="{segment.section ? 'ml-4' : ''} italic">{segment.text}</span>
-				{:else}
-					<span class="{segment.spaced ? 'ml-2' : ''} text-foreground">{segment.text}</span>
-				{/if}
-			{/each}
-		</div>
+		<TableRowMetadataSummary segments={metadataSummary} />
 	{/if}
 
 	{#if showMetadata}
@@ -525,13 +371,10 @@
 			{allBits}
 			{allProcesses}
 			{allAllergenWarnings}
-			{activeField}
 			{editState}
 			{isPending}
 			{isFailed}
 			{editMode}
-			onOpenEditor={openEditor}
-			onCloseEditorIfActive={closeEditorIfActive}
 			onBitsChange={(bitIds: string[]) => {
 				if (!editState) editState = {};
 				editState.bitIds = bitIds;

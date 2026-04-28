@@ -9,27 +9,19 @@
 	} from './fulfillment-option-list-helpers';
 	import { weekdayOptions, type FulfillmentOptionEditorRow } from './fulfillment-option-list-types';
 
-	type MetaField = 'notes';
-
 	let {
 		/** The editor row being edited. */
 		row,
-		/** Which meta-row editor is currently open — only applies to the notes row. */
-		activeField,
 		/** Whether the whole row is in a read-only/pending state. */
 		disabled = false,
-		/** Whether the parent table is in edit mode. Gates click-to-open affordances. */
+		/** Whether the parent table is in edit mode. Drives whether editors are interactive and whether Notes is forced open. */
 		editMode = true,
-		/** Open or close the notes meta-row editor. */
-		onToggleField,
 		/** Patch the editor row with field-level changes. */
 		onPatch
 	}: {
 		row: FulfillmentOptionEditorRow;
-		activeField: MetaField | null;
 		disabled?: boolean;
 		editMode?: boolean;
-		onToggleField: (field: MetaField) => void;
 		onPatch: (patch: Partial<FulfillmentOptionEditorRow>) => void;
 	} = $props();
 
@@ -55,6 +47,9 @@
 
 	/** Human-readable summary for the notes meta row. */
 	let notesSummary = $derived(summarizeNotes(row.notes));
+
+	/** Whether to keep the Notes editor mounted regardless of toggle state. */
+	let notesAlwaysOpen = $derived(editMode);
 
 	/** Handle order-deadline weekday changes. For shipping, clearing the weekday also clears the time. */
 	function handleOrderDeadlineWeekdayChange(nextValue: string) {
@@ -110,7 +105,7 @@
 
 	<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-1">
 		<span class="italic text-muted-foreground">
-			Order deadline{row.type === 'shipping' ? ' (optional)' : ''}
+			Order Deadline{row.type === 'shipping' ? ' (optional)' : ''}
 		</span>
 		<InlineCombobox
 			items={weekdayComboboxItems}
@@ -137,9 +132,8 @@
 	<TableMetaRow
 		label="Notes"
 		summary={notesSummary}
-		open={activeField === 'notes'}
-		{disabled}
-		ontoggle={editMode ? () => onToggleField('notes') : undefined}
+		open={notesAlwaysOpen}
+		disabled={disabled || notesAlwaysOpen}
 	>
 		{#snippet editor()}
 			<div class="max-w-md py-2">

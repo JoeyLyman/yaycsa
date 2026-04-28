@@ -18,11 +18,13 @@
 		TableEditModeToggle,
 		setTableEditModeContext
 	} from '$lib/components/blocks/table-edit-mode';
-	import { nextProductMetadataMode } from '$lib/components/bundles/product-list/product-list-metadata-mode';
+	import {
+		TableDetailToggle,
+		type TableDetailMode
+	} from '$lib/components/blocks/table-detail-toggle';
 	import type {
 		ProductDraft,
-		ProductDraftPatch,
-		ProductMetadataMode
+		ProductDraftPatch
 	} from '$lib/components/bundles/product-list/product-list-types';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
@@ -95,10 +97,11 @@
 	let allAllergenWarnings = $derived(rawAllergenWarnings.map(toItem));
 
 	/**
-	 * Global default metadata visibility mode for the product table.
-	 * Cycles in this order: summary → expanded → hidden → summary.
+	 * Global metadata visibility mode for the product table.
+	 * Toggled via the Detail button between `summary` (one-line) and `expanded` (full editors).
+	 * Forced to `expanded` when entering edit mode so the disabled Detail button visually reflects the lock.
 	 */
-	let metadataMode = $state<ProductMetadataMode>('summary');
+	let metadataMode = $state<TableDetailMode>('summary');
 
 	/** Counter for generating stable temporary IDs for optimistic pending products. */
 	let pendingProductIdCounter = 0;
@@ -347,37 +350,10 @@
 		<div class="flex items-center gap-2">
 			<h2 class="text-xl font-bold">Products</h2>
 
-			{#if products.length > 0 || productDrafts.length > 0}
-				<Button
-					size="sm"
-					variant="ghost"
-					class="h-7 gap-1 px-2 text-xs text-muted-foreground"
-					title={metadataMode === 'summary' ? 'Expand detail' : 'Collapse detail'}
-					onclick={() => (metadataMode = nextProductMetadataMode(metadataMode))}
-				>
-					<span>Detail</span>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						{#if metadataMode === 'summary'}
-							<polyline points="6 9 12 15 18 9" />
-						{:else}
-							<polyline points="6 15 12 9 18 15" />
-						{/if}
-					</svg>
-				</Button>
-			{/if}
-
-			<div class="ml-auto">
+			<div class="ml-auto flex items-center gap-2">
+				{#if products.length > 0 || productDrafts.length > 0}
+					<TableDetailToggle bind:mode={metadataMode} />
+				{/if}
 				<TableEditModeToggle
 					editMode={editMode}
 					hasUnsavedChanges={hasUnsavedChanges}

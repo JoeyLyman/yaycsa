@@ -7,6 +7,11 @@ import type {
 	SellerOfferWorkspaceItem
 } from '$lib/api/admin/offers.remote';
 import {
+	metadataLabel,
+	metadataValue,
+	type MetadataSummarySegment
+} from '$lib/components/blocks/table-row-metadata-summary';
+import {
 	fulfillmentOptionTypeOptions,
 	weekdayOptions,
 	type FulfillmentOptionEditorRow,
@@ -95,35 +100,61 @@ export function buildScheduleTemplateSummaryInput(
 	};
 }
 
-/** Fulfillment meta-row summary, e.g. "Tuesday · 3:00 PM–5:00 PM" or "—". */
-export function summarizeFulfillmentTiming(input: ScheduleTemplateSummaryInput): string {
-	if (
-		!input.fulfillmentWeekday ||
-		input.fulfillmentTimeWindowStart == null ||
-		input.fulfillmentTimeWindowEnd == null
-	) {
-		return '—';
-	}
-	return `${getWeekdayLabel(input.fulfillmentWeekday)} · ${formatMinutesFromMidnight(
-		input.fulfillmentTimeWindowStart
-	)}–${formatMinutesFromMidnight(input.fulfillmentTimeWindowEnd)}`;
-}
-
-/** Order-deadline meta-row summary, e.g. "Sunday · by 8:00 PM" or the no-override label for shipping. */
-export function summarizeOrderDeadline(input: ScheduleTemplateSummaryInput): string {
-	if (!input.orderDeadlineWeekday || input.orderDeadlineTime == null) {
-		if (input.type === 'shipping') return 'No deadline override';
-		return '—';
-	}
-	return `${getWeekdayLabel(input.orderDeadlineWeekday)} · by ${formatMinutesFromMidnight(
-		input.orderDeadlineTime
-	)}`;
-}
-
 /** Notes meta-row summary. Empty notes render as an em-dash. */
 export function summarizeNotes(notes: string): string {
 	const trimmed = notes.trim();
 	return trimmed.length > 0 ? trimmed : '—';
+}
+
+/**
+ * Metadata summary segments shown in `summary` mode for fulfillment-option rows.
+ * Each label/value pair becomes an italic muted label followed by a foreground value, matching
+ * the products-table summary line so both editable tables share the same visual rhythm.
+ *
+ * Sections (order):
+ *   - Pickup/Delivery Window: "<weekday> between <start>–<end>" (only for scheduled types)
+ *   - Order Deadline: "<weekday> by <time>"
+ *   - Notes: "1 line" or "N lines" (only when notes are non-empty)
+ */
+export function summarizeFulfillmentOptionMetadata(
+	row: FulfillmentOptionEditorRow
+): MetadataSummarySegment[] {
+	const scheduleTemplate = buildScheduleTemplateSummaryInput(row);
+	const segments: MetadataSummarySegment[] = [];
+
+	if (
+		isScheduledFulfillmentOptionType(row.type) &&
+		scheduleTemplate.fulfillmentWeekday &&
+		scheduleTemplate.fulfillmentTimeWindowStart != null &&
+		scheduleTemplate.fulfillmentTimeWindowEnd != null
+	) {
+		const label = row.type === 'scheduled_delivery' ? 'Delivery Window' : 'Pickup Window';
+		const weekday = getWeekdayLabel(scheduleTemplate.fulfillmentWeekday);
+		const start = formatMinutesFromMidnight(scheduleTemplate.fulfillmentTimeWindowStart);
+		const end = formatMinutesFromMidnight(scheduleTemplate.fulfillmentTimeWindowEnd);
+		segments.push(metadataLabel(label));
+		segments.push(metadataValue(`${weekday} between ${start}–${end}`));
+	}
+
+	if (scheduleTemplate.orderDeadlineWeekday && scheduleTemplate.orderDeadlineTime != null) {
+		const weekday = getWeekdayLabel(scheduleTemplate.orderDeadlineWeekday);
+		const time = formatMinutesFromMidnight(scheduleTemplate.orderDeadlineTime);
+		segments.push(metadataLabel('Order Deadline', { section: segments.length > 0 }));
+		segments.push(metadataValue(`${weekday} by ${time}`));
+	}
+
+	const trimmedNotes = row.notes.trim();
+	if (trimmedNotes.length > 0) {
+		const lineCount = trimmedNotes.split(/\n+/).filter((line) => line.length > 0).length;
+		segments.push(metadataLabel('Notes', { section: segments.length > 0 }));
+		segments.push(metadataValue(lineCount === 1 ? '1 line' : `${lineCount} lines`));
+	}
+
+	if (segments.length === 0) {
+		segments.push(metadataValue('—'));
+	}
+
+	return segments;
 }
 
 /** Short type-and-usage helper line shown under the row's name. */
@@ -209,17 +240,14 @@ export function getUsageForOption(
 	return usageMap.get(fulfillmentOptionId) ?? { offerCount: 0, activeOfferCount: 0 };
 }
 
-/** Returns a field patch that clears schedule fields when switching to shipping. */
+/**
+ * Returns a field patch for changing the fulfillment-option type.
+ * Schedule fields are preserved across type switches so toggling shipping ↔ scheduled does
+ * not destroy the seller's pickup/delivery weekday + time-window. The mutation builder
+ * (`rowToMutationInput`) clears those fields in the saved payload when type === shipping,
+ * so server-side data stays consistent.
+ */
 export function buildTypePatch(nextType: FulfillmentOptionType): Partial<FulfillmentOptionEditorRow> {
-	if (nextType === 'shipping') {
-		return {
-			type: nextType,
-			fulfillmentWeekday: '',
-			fulfillmentTimeWindowStart: '',
-			fulfillmentTimeWindowEnd: ''
-		};
-	}
-
 	return { type: nextType };
 }
 
@@ -304,13 +332,18 @@ export function getRowValidationErrors(
 
 export function rowToMutationInput(row: FulfillmentOptionEditorRow): FulfillmentOptionMutationInput {
 	const scheduleTemplate = buildScheduleTemplateSummaryInput(row);
+	const isScheduled = isScheduledFulfillmentOptionType(row.type);
 	return {
 		name: row.name.trim(),
 		type: row.type,
 		notes: row.notes.trim() || null,
-		fulfillmentWeekday: scheduleTemplate.fulfillmentWeekday,
-		fulfillmentTimeWindowStart: scheduleTemplate.fulfillmentTimeWindowStart,
-		fulfillmentTimeWindowEnd: scheduleTemplate.fulfillmentTimeWindowEnd,
+		// Pickup/delivery window only applies to scheduled types — clear in the saved payload
+		// even if the seller's local working state still holds preserved values.
+		fulfillmentWeekday: isScheduled ? scheduleTemplate.fulfillmentWeekday : null,
+		fulfillmentTimeWindowStart: isScheduled
+			? scheduleTemplate.fulfillmentTimeWindowStart
+			: null,
+		fulfillmentTimeWindowEnd: isScheduled ? scheduleTemplate.fulfillmentTimeWindowEnd : null,
 		orderDeadlineWeekday: scheduleTemplate.orderDeadlineWeekday,
 		orderDeadlineTime: scheduleTemplate.orderDeadlineTime
 	};
