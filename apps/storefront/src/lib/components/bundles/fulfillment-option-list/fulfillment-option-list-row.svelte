@@ -5,6 +5,7 @@
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
 	import { TableRowActions } from '$lib/components/blocks/table-row-actions';
+	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
 	import { TableRowMetadataSummary } from '$lib/components/blocks/table-row-metadata-summary';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
@@ -97,8 +98,23 @@
 	/** Client-side validation errors on the current working row. */
 	let validationErrors = $derived(getRowValidationErrors(workingRow, otherRows));
 
+	/**
+	 * Whether this row's save mutation is in flight.
+	 * Driven locally so the spinner flips synchronously the moment the seller clicks Save,
+	 * without waiting for parent reactivity to flush through `pendingRowIds`.
+	 */
+	let saving = $state(false);
+
+	/**
+	 * Whether to render the row as actively mutating.
+	 * Local `saving` covers the save flow synchronously. Parent-driven `isPending` only counts
+	 * when a delete is being confirmed — outside that window, `isPending` can lag for seconds
+	 * after the save resolves and would keep the row uselessly faded.
+	 */
+	let mutating = $derived(saving || (confirmingDelete && isPending));
+
 	/** Whether the Save button should be enabled. */
-	let canSave = $derived(dirty && validationErrors.length === 0 && !isPending);
+	let canSave = $derived(dirty && validationErrors.length === 0 && !mutating);
 
 	/** Whether the delete button should be labeled "Permanently Delete". */
 	let canPermanentlyDelete = $derived(usage.offerCount === 0);
@@ -130,14 +146,19 @@
 	/** Submit the accumulated edits via the parent save callback. */
 	async function handleSave() {
 		if (!canSave) return;
-		await onsave(snapshot.id, rowToMutationInput(workingRow));
+		saving = true;
+		try {
+			await onsave(snapshot.id, rowToMutationInput(workingRow));
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
 <div
 	data-fulfillment-option-row
 	data-row-id={snapshot.id}
-	class="border-b last:border-b-0 {isPending ? 'opacity-60' : ''}"
+	class="border-b last:border-b-0 {mutating ? 'opacity-60' : ''}"
 >
 	<div
 		class="flex min-h-11 items-start gap-2 px-3 pt-1 pb-[11px] md:gap-3 md:px-4 md:pt-1.5 md:pb-[11px]"
@@ -146,7 +167,7 @@
 			<TableRowHeader
 				value={workingRow.name}
 				editing={editMode}
-				disabled={isPending}
+				disabled={mutating}
 				oninput={(event) =>
 					patchWorkingRow({ name: (event.currentTarget as HTMLInputElement).value })}
 			/>
@@ -159,7 +180,7 @@
 						items={fulfillmentOptionTypeOptions.map((option) => ({
 							value: option.value,
 							label: option.label,
-							disabled: isPending
+							disabled: mutating
 						}))}
 						onselect={handleTypeSelect}
 					/>
@@ -172,15 +193,13 @@
 		</div>
 
 		<div class="shrink-0">
-			{#if dirty}
-				<div class="flex items-center gap-1">
-					<Button size="sm" disabled={!canSave} onclick={handleSave}>
-						{#if isPending}<SpinnerSun class="size-3.5" />{:else}Save{/if}
-					</Button>
-					<Button size="sm" variant="ghost" disabled={isPending} onclick={handleCancel}>
-						Cancel
-					</Button>
-				</div>
+			{#if (dirty || saving) && !confirmingDelete}
+				<TableRowEditActions
+					{saving}
+					{canSave}
+					onsave={handleSave}
+					oncancel={handleCancel}
+				/>
 			{:else if editMode}
 				<TableRowActions
 					open={confirmingDelete}
@@ -217,7 +236,7 @@
 	{#if showMetadata}
 		<FulfillmentOptionListRowMetadata
 			row={workingRow}
-			disabled={isPending}
+			disabled={mutating}
 			{editMode}
 			onPatch={patchWorkingRow}
 		/>

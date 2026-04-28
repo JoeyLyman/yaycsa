@@ -201,6 +201,7 @@
 									<Button
 										size="sm"
 										variant="ghost"
+										class="-mr-2"
 										onclick={() => oncancelpermanentdelete(fulfillmentOption.id)}
 									>
 										Cancel

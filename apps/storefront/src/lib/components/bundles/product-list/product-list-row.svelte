@@ -4,6 +4,7 @@
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
 	import { TableRowActions } from '$lib/components/blocks/table-row-actions';
+	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
 	import { TableRowMetadataSummary } from '$lib/components/blocks/table-row-metadata-summary';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
 	import type { SellerProduct } from '$lib/api/admin/products.remote';
@@ -338,18 +339,12 @@
 					</Button>
 				</div>
 			{:else if isEditing}
-				<div class="flex items-center gap-1">
-					<Button size="sm" disabled={saving || !canSave} data-focusable onclick={handleSave}>
-						{#if saving}
-							<SpinnerSun class="size-3.5" />
-						{:else}
-							Save
-						{/if}
-					</Button>
-					<Button size="sm" variant="ghost" disabled={saving} data-focusable onclick={cancelEdits}>
-						Cancel
-					</Button>
-				</div>
+				<TableRowEditActions
+					{saving}
+					{canSave}
+					onsave={handleSave}
+					oncancel={cancelEdits}
+				/>
 			{:else if editMode}
 				<TableRowActions bind:open={confirmingDelete} disabled={deleting}>
 					<Button size="sm" variant="destructive" disabled={deleting} data-focusable onclick={handleDelete}>

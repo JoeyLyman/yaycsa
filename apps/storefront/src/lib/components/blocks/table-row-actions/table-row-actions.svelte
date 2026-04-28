@@ -34,6 +34,7 @@
 		<Button
 			size="sm"
 			variant="ghost"
+			class="-mr-2"
 			data-focusable
 			{disabled}
 			onclick={() => setOpen(false)}

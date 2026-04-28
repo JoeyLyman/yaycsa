@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { Button } from '$lib/components/bits/button';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { ProductListRowFieldsName } from '$lib/components/blocks/product-list-row-fields';
+	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
 	import { hasDuplicateProductName } from '$lib/utils/product-name.js';
 	import type { ProductDraft, ProductDraftPatch } from './product-list-types';
 	import ProductListRowDraftMetadata from './product-list-row-draft-metadata.svelte';
@@ -108,14 +108,12 @@
 		</div>
 
 		<div class="shrink-0" data-col="actions">
-			<div class="flex items-center gap-1">
-				<Button size="sm" disabled={!canSaveDraft} data-focusable onclick={() => onsave(draftProduct.id)}>
-					Save New Product
-				</Button>
-				<Button size="sm" variant="ghost" data-focusable onclick={() => oncancel(draftProduct.id)}>
-					Cancel
-				</Button>
-			</div>
+			<TableRowEditActions
+				canSave={canSaveDraft}
+				saveLabel="Save New Product"
+				onsave={() => onsave(draftProduct.id)}
+				oncancel={() => oncancel(draftProduct.id)}
+			/>
 		</div>
 	</div>
 

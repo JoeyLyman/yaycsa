@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
-	import { Button } from '$lib/components/bits/button';
 	import { HeaderTabs } from '$lib/components/bits/header-tabs';
 	import { Input } from '$lib/components/bits/input';
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
 	import type { FulfillmentOptionType } from '$lib/api/admin/fulfillment-options.remote';
 	import FulfillmentOptionListRowMetadata from './fulfillment-option-list-row-metadata.svelte';
 	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
@@ -68,9 +67,18 @@
 	/** Client-side validation errors for this draft. */
 	let validationErrors = $derived(getRowValidationErrors(workingRow, otherRows));
 
+	/**
+	 * Whether this draft's create mutation is in flight.
+	 * Driven locally so the spinner flips synchronously the moment the seller clicks Save.
+	 */
+	let saving = $state(false);
+
+	/** Whether the draft row should render as actively mutating. */
+	let mutating = $derived(saving || isPending);
+
 	/** Whether the draft is minimally filled-in enough to allow a submit attempt. */
 	let canSave = $derived(
-		workingRow.name.trim().length >= 2 && validationErrors.length === 0 && !isPending
+		workingRow.name.trim().length >= 2 && validationErrors.length === 0 && !mutating
 	);
 
 	/** Apply a patch to the working draft row. */
@@ -84,14 +92,19 @@
 
 	async function handleCreate() {
 		if (!canSave) return;
-		await oncreate(draftKey, rowToMutationInput(workingRow));
+		saving = true;
+		try {
+			await oncreate(draftKey, rowToMutationInput(workingRow));
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
 <div
 	data-fulfillment-option-draft-row
 	data-row-id={draftKey}
-	class="border-b bg-muted/20 last:border-b-0 {isPending ? 'opacity-60' : ''}"
+	class="border-b bg-muted/20 last:border-b-0 {mutating ? 'opacity-60' : ''}"
 >
 	<div
 		class="flex min-h-11 flex-wrap items-start gap-2 px-3 pt-3 pb-2 md:gap-3 md:px-4 md:pt-4 md:pb-3"
@@ -102,7 +115,7 @@
 				class="h-8 w-full min-w-0 text-[17px] leading-tight font-medium"
 				placeholder="Fulfillment option name"
 				value={workingRow.name}
-				disabled={isPending}
+				disabled={mutating}
 				oninput={(event) =>
 					patchWorkingRow({ name: (event.currentTarget as HTMLInputElement).value })}
 			/>
@@ -120,14 +133,12 @@
 		</div>
 
 		<div class="shrink-0">
-			<div class="flex items-center gap-1">
-				<Button size="sm" disabled={!canSave} onclick={handleCreate}>
-					{#if isPending}<SpinnerSun class="size-3.5" />{:else}Save{/if}
-				</Button>
-				<Button size="sm" variant="ghost" disabled={isPending} onclick={() => oncancel(draftKey)}>
-					Cancel
-				</Button>
-			</div>
+			<TableRowEditActions
+				{saving}
+				{canSave}
+				onsave={handleCreate}
+				oncancel={() => oncancel(draftKey)}
+			/>
 		</div>
 	</div>
 
@@ -137,7 +148,7 @@
 
 	<FulfillmentOptionListRowMetadata
 		row={workingRow}
-		disabled={isPending}
+		disabled={mutating}
 		editMode={true}
 		onPatch={patchWorkingRow}
 	/>
