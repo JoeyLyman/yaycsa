@@ -23,7 +23,7 @@
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
 		"@internationalized/date": "^3.12.1",
-		"@lucide/svelte": "^1.8.0",
+		"@lucide/svelte": "^1.21.0",
 		"@playwright/test": "^1.49.0",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.57.1",

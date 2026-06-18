@@ -16,7 +16,6 @@
 	} from '$lib/api/admin/fulfillment-options.remote';
 	import { Button } from '$lib/components/bits/button';
 	import { Checkbox } from '$lib/components/bits/checkbox';
-	import { HeaderCountFilter } from '$lib/components/bits/header-count-filter';
 	import { HeaderTabs } from '$lib/components/bits/header-tabs';
 	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
 	import {
@@ -36,11 +35,14 @@
 		TableDetailToggle,
 		type TableDetailMode
 	} from '$lib/components/blocks/table-detail-toggle';
+	import {
+		TableStatusFilter,
+		type TableStatusFilterOption
+	} from '$lib/components/blocks/table-status-filter';
 	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
 	type OffersWorkspaceTab = 'offers' | 'fulfillment-options';
-	type WorkspaceCountFilter = 'active' | 'total';
 
 	/** Full workspace payload used for the summary strip and both tab views. */
 	let workspaceData = $state<SellerOffersWorkspaceData | null>(null);
@@ -116,11 +118,20 @@
 	/** URL-synced selected workspace tab so refresh/back/deep-linking preserve context. */
 	let selectedWorkspaceTab = $state<OffersWorkspaceTab>('offers');
 
-	/** The offers-table count filter. Defaults to total so sellers see the full list first. */
-	let selectedOffersCountFilter = $state<WorkspaceCountFilter>('total');
+	/**
+	 * Status values currently shown in the Offers table.
+	 * Defaults to both active and inactive so sellers see the full list first.
+	 * Offers have no soft-delete concept, so there is no 'deleted' value here.
+	 */
+	let offersStatusFilter = $state<string[]>(['active', 'inactive']);
 
-	/** The fulfillment-options count filter. Defaults to total so sellers see the full list first. */
-	let selectedFulfillmentCountFilter = $state<WorkspaceCountFilter>('total');
+	/**
+	 * Status values currently shown in the Fulfillment Options table.
+	 * Defaults to the current rows (active + inactive) with deleted hidden, matching
+	 * the prior "show all current, deleted off by default" behavior. Selecting
+	 * 'deleted' reveals the soft-deleted rows below the current ones.
+	 */
+	let fulfillmentStatusFilter = $state<string[]>(['active', 'inactive']);
 
 	/** Whether scheduled pickup options are currently included in the fulfillment table filters. */
 	let showingScheduledPickupOptions = $state(true);
@@ -131,8 +142,8 @@
 	/** Whether shipping options are currently included in the fulfillment table filters. */
 	let showingShippingOptions = $state(true);
 
-	/** Whether deleted fulfillment options should be included below the current rows. */
-	let showingDeletedFulfillmentOptions = $state(false);
+	/** Whether deleted fulfillment options should be shown, derived from the status filter. */
+	let showingDeletedFulfillmentOptions = $derived(fulfillmentStatusFilter.includes('deleted'));
 
 	/** Active-offer count shown in the compact offers-tab count filter. */
 	let activeOfferCount = $derived(workspaceData?.activeOfferCount ?? 0);
@@ -155,37 +166,48 @@
 	/** Per-option usage counts derived from the seller's loaded offers. */
 	let fulfillmentOptionUsageMap = $derived(deriveFulfillmentOptionUsage(loadedOffers));
 
-	/** The count filter currently visible in the header row, based on the selected workspace tab. */
-	let selectedWorkspaceCountFilter = $derived(
-		selectedWorkspaceTab === 'offers' ? selectedOffersCountFilter : selectedFulfillmentCountFilter
-	);
+	/** Status filter options for the Offers table, with live counts in each label. */
+	let offerStatusFilterOptions = $derived<TableStatusFilterOption[]>([
+		{ value: 'active', label: 'Active', count: activeOfferCount },
+		{ value: 'inactive', label: 'Inactive', count: Math.max(offerCount - activeOfferCount, 0) }
+	]);
 
-	/** Offers visible in the offers table after applying the active/total count filter. */
-	let filteredOffers = $derived.by(() => {
-		const offers = loadedOffers;
-		if (selectedOffersCountFilter === 'active') {
-			return offers.filter((offer) => offer.status === 'active');
-		}
-		return offers;
-	});
+	/** Status filter options for the Fulfillment Options table, with live counts in each label. */
+	let fulfillmentStatusFilterOptions = $derived<TableStatusFilterOption[]>([
+		{ value: 'active', label: 'Active', count: activeFulfillmentOptionCount },
+		{
+			value: 'inactive',
+			label: 'Inactive',
+			count: Math.max(fulfillmentOptionCount - activeFulfillmentOptionCount, 0)
+		},
+		{ value: 'deleted', label: 'Deleted', count: deletedFulfillmentOptions.length }
+	]);
 
-	/** Current saved fulfillment options visible after type and active/total filtering. */
-	let filteredFulfillmentOptionRows = $derived.by(() =>
-		fulfillmentOptionRows.filter((row) => {
-			const usage = getUsageForOption(fulfillmentOptionUsageMap, row.id);
-			return matchesFulfillmentOptionFilters(
-				row.type,
-				usage.activeOfferCount,
-				selectedFulfillmentCountFilter
-			);
+	/** Offers visible in the offers table after applying the active/inactive status filter. */
+	let filteredOffers = $derived.by(() =>
+		loadedOffers.filter((offer) => {
+			const statusValue = offer.status === 'active' ? 'active' : 'inactive';
+			return offersStatusFilter.includes(statusValue);
 		})
 	);
 
-	/** Deleted fulfillment options visible after type and active/total filtering when show deleted is on. */
+	/** Current saved fulfillment options visible after type and active/inactive status filtering. */
+	let filteredFulfillmentOptionRows = $derived.by(() =>
+		fulfillmentOptionRows.filter((row) => {
+			if (!matchesFulfillmentTypeFilter(row.type)) return false;
+			const usage = getUsageForOption(fulfillmentOptionUsageMap, row.id);
+			const statusValue = usage.activeOfferCount > 0 ? 'active' : 'inactive';
+			return fulfillmentStatusFilter.includes(statusValue);
+		})
+	);
+
+	/**
+	 * Deleted fulfillment options visible when 'deleted' is selected.
+	 * Deleted is its own status category, so these are filtered by type only —
+	 * the active/inactive selections apply to current rows, not deleted ones.
+	 */
 	let filteredDeletedFulfillmentOptions = $derived.by(() =>
-		deletedFulfillmentOptions.filter((row) =>
-			matchesFulfillmentOptionFilters(row.type, row.activeOfferCount, selectedFulfillmentCountFilter)
-		)
+		deletedFulfillmentOptions.filter((row) => matchesFulfillmentTypeFilter(row.type))
 	);
 
 	/** Header-level tab definitions rendered in the page title area. */
@@ -292,31 +314,13 @@
 		selectWorkspaceTab(value);
 	}
 
-	function handleWorkspaceCountFilterSelect(value: WorkspaceCountFilter) {
-		if (selectedWorkspaceTab === 'offers') {
-			selectedOffersCountFilter = value;
-			return;
-		}
-
-		selectedFulfillmentCountFilter = value;
-	}
-
-	function matchesFulfillmentOptionFilters(
-		type: FulfillmentOptionType,
-		activeOfferCount: number,
-		countFilter: WorkspaceCountFilter
-	): boolean {
-		const matchesType =
+	/** Whether a fulfillment option's type is currently included by the type checkboxes. */
+	function matchesFulfillmentTypeFilter(type: FulfillmentOptionType): boolean {
+		return (
 			(type === 'scheduled_pickup' && showingScheduledPickupOptions) ||
 			(type === 'scheduled_delivery' && showingScheduledDeliveryOptions) ||
-			(type === 'shipping' && showingShippingOptions);
-		if (!matchesType) return false;
-
-		if (countFilter === 'active') {
-			return activeOfferCount > 0;
-		}
-
-		return true;
+			(type === 'shipping' && showingShippingOptions)
+		);
 	}
 
 	function addFulfillmentOptionDraftRow() {
@@ -479,20 +483,17 @@
 				ariaLabel="Offers workspace sections"
 				size="xl"
 			/>
-			<HeaderCountFilter
-				activeCount={selectedWorkspaceTab === 'offers' ? activeOfferCount : activeFulfillmentOptionCount}
-				totalCount={selectedWorkspaceTab === 'offers' ? offerCount : fulfillmentOptionCount}
-				selectedValue={selectedWorkspaceCountFilter}
-				onselect={handleWorkspaceCountFilterSelect}
-				ariaLabel={selectedWorkspaceTab === 'offers'
-					? 'Offers count filters'
-					: 'Fulfillment option count filters'}
-				class="shrink-0 md:justify-end"
-			/>
 		</div>
 
 		{#if selectedWorkspaceTab === 'offers'}
 			<div class="space-y-3">
+				<div class="flex items-center justify-end">
+					<TableStatusFilter
+						options={offerStatusFilterOptions}
+						bind:selected={offersStatusFilter}
+						ariaLabel="Filter offers by status"
+					/>
+				</div>
 				<div class="rounded-md border">
 					{#if filteredOffers.length === 0}
 						<div class="px-3 py-8 text-center text-sm text-muted-foreground">
@@ -553,10 +554,11 @@
 						<label for="shipping-filter">Ship</label>
 					</div>
 					<span aria-hidden="true" class="text-border">|</span>
-					<div class="flex items-center gap-2 text-sm text-muted-foreground">
-						<Checkbox id="show-deleted-filter" bind:checked={showingDeletedFulfillmentOptions} />
-						<label for="show-deleted-filter">Show deleted</label>
-					</div>
+					<TableStatusFilter
+						options={fulfillmentStatusFilterOptions}
+						bind:selected={fulfillmentStatusFilter}
+						ariaLabel="Filter fulfillment options by status"
+					/>
 					<div class="ml-auto flex items-center gap-2">
 						<TableDetailToggle bind:mode={fulfillmentMetadataMode} />
 						<TableEditModeToggle
