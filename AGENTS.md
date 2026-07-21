@@ -167,6 +167,13 @@ The suite self-manages test users (creates via Admin API, deletes after). No cre
 
 The storefront runs at `http://localhost:5180` and the Vendure server at `http://localhost:3000`. Both must be running for Playwright tests (Joe starts them with `npm run dev`).
 
+### Tearing down test sellers (FK trap — read before deleting a seller)
+
+Deleting a seller you created via the `becomeSeller` flow is **not** just `deleteSeller`. `becomeSeller` creates a Seller + a Channel (`channel.sellerId` FK) + links `Customer.customFields.seller`. `deleteSeller` is a **hard** delete, so both FKs must be cleared first — and `deleteCustomer` is a **soft** delete that keeps the row (and its seller FK) AND makes the customer unreachable via the Admin API afterward. So deleting the customer first **permanently strands** the seller.
+
+- **To tear down a seller you just created:** use `teardownSeller()` in [`apps/storefront/tests/setup/seller-helpers.ts`](apps/storefront/tests/setup/seller-helpers.ts). It runs the FK-safe order (unlink customer → delete channel → delete seller → soft-delete customer). It's test/dev-only — nothing in the shipped app uses it. `auth.teardown.ts` calls it automatically when a spec records a `sellerId`.
+- **To purge sellers already stranded** (their customer was soft-deleted, so the Admin API can't reach them): run [`apps/storefront/tests/scripts/purge-test-sellers.sql`](apps/storefront/tests/scripts/purge-test-sellers.sql) against the dev DB (Supabase SQL editor or `psql`). It keeps a safelist (Default Seller id 1, GTF id 2) and is re-runnable.
+
 ## Agent Teams
 
 Agent teams are enabled. When a task would clearly benefit from parallel work, **suggest to the user** that they use agent teams. Good candidates:

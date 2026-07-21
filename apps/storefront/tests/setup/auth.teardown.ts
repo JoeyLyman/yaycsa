@@ -1,27 +1,10 @@
 import { test as teardown } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { getAdminToken } from './seller-helpers';
 
 const ADMIN_API = 'http://localhost:3000/admin-api';
 const testUserFile = resolve(import.meta.dirname, '../../.playwright/test-user.json');
-
-/** Authenticate with the Vendure Admin API and return a bearer token. */
-async function getAdminToken(): Promise<string> {
-	const res = await fetch(ADMIN_API, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			query: `mutation {
-				login(username: "superadmin", password: "superadmin", rememberMe: false) {
-					... on CurrentUser { id }
-				}
-			}`,
-		}),
-	});
-	const token = res.headers.get('vendure-auth-token');
-	if (!token) throw new Error('Failed to get admin token during teardown');
-	return token;
-}
 
 teardown('delete test user', async () => {
 	if (!existsSync(testUserFile)) {
@@ -29,8 +12,18 @@ teardown('delete test user', async () => {
 		return;
 	}
 
-	const { id } = JSON.parse(readFileSync(testUserFile, 'utf-8'));
+	const { id, sellerId } = JSON.parse(readFileSync(testUserFile, 'utf-8'));
 	const adminToken = await getAdminToken();
+
+	// If a test promoted this account to a seller, tear the seller down FIRST —
+	// in FK-safe order — while the customer is still live. See teardownSeller for
+	// why deleting the customer first would strand the seller. Current specs don't
+	// create sellers, so `sellerId` is usually absent and this is skipped.
+	if (sellerId) {
+		const { teardownSeller } = await import('./seller-helpers');
+		await teardownSeller(adminToken, { sellerId, customerId: id });
+		return;
+	}
 
 	const res = await fetch(ADMIN_API, {
 		method: 'POST',

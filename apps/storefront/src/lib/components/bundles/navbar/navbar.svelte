@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page, navigating } from '$app/state';
+	import { resolve } from '$app/paths';
 	import * as Avatar from '$lib/components/bits/avatar';
 	import * as Tooltip from '$lib/components/bits/tooltip';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
@@ -121,7 +122,9 @@
 	 * - /seller-slug when on a seller subpage
 	 * - /me on the home page or other non-seller pages (go to become-a-seller or own sales page)
 	 */
-	const navSuffixHref = $derived(isSellerPage ? `/${pathSegments[0]}` : '/me');
+	const navSuffixHref = $derived(
+		isSellerPage ? resolve('/(app)/[seller]', { seller: pathSegments[0] }) : resolve('/me')
+	);
 
 	/**
 	 * True when the suffix represents the current page context — meaning it should be
@@ -129,9 +132,12 @@
 	 * - auth pages (login, register, etc.) — shows "welcome"
 	 * - all /me/* pages (each has its own suffix like "my offers")
 	 * - a seller's root page (/gathering-together-farm)
+	 * - the home page (shows "csa") — the brand suffix is never a link, in ANY login
+	 *   state. Sellers reach their own page via the explicit "My Page" nav link;
+	 *   buyers and logged-out visitors have no reason to deep-link to /me from here.
 	 */
 	const isNavSuffixActive = $derived(
-		isAuthPage || isCartPage || isMe || (isSellerPage && pathSegments.length === 1)
+		isAuthPage || isCartPage || isMe || (isSellerPage && pathSegments.length === 1) || isHome
 	);
 
 	/** Nav links for the buyer side (visible to all authenticated users). */
@@ -145,6 +151,15 @@
 		{ href: '/me/offers', label: 'Offers' },
 		{ href: '/me/sales', label: 'Sales' }
 	];
+
+	/**
+	 * Link to the seller's own public sales page (e.g. /gathering-together-farm).
+	 * Shown to the right of "Sales" in the seller nav links. null when the
+	 * customer has no linked seller (buyer-only accounts don't see this).
+	 */
+	const myPageLink = $derived(
+		mySellerSlug ? { href: resolve('/(app)/[seller]', { seller: mySellerSlug }), label: 'My Page' } : null
+	);
 
 	/** Returns true if the current page is within the given nav link's path. */
 	function isNavActive(href: string) {
@@ -204,6 +219,16 @@
 								{label}
 							</a>
 						{/each}
+						{#if myPageLink}
+							<a
+								href={myPageLink.href}
+								class="text-sm transition-colors {isMySellerPage
+									? 'text-foreground font-medium cursor-default'
+									: 'text-muted-foreground/60 hover:text-muted-foreground'}"
+							>
+								{myPageLink.label}
+							</a>
+						{/if}
 					{/if}
 				</nav>
 				<a href="/me/account" class="ml-2 flex items-center {currentPathname.startsWith('/me/account') || currentPathname === '/me' ? 'cursor-default' : ''}">
