@@ -22,7 +22,7 @@ export default defineConfig({
 		// 2. Tests that don't require auth (login form, public pages, redirects)
 		{
 			name: 'public',
-			testMatch: ['**/auth.spec.ts', '**/seller-page.spec.ts'],
+			testMatch: ['**/auth.spec.ts', '**/seller-page.spec.ts', '**/offer-parity.spec.ts'],
 		},
 		// 3. Tests that require a logged-in user — wait for setup to finish first
 		{

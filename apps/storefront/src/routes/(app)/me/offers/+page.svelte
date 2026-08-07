@@ -3,10 +3,16 @@
 	import { page } from '$app/state';
 	import {
 		myOffersWorkspace,
-		type OfferStatus,
+		mySellerOffers,
 		type SellerFulfillmentOptionWorkspaceItem,
 		type SellerOffersWorkspaceData
 	} from '$lib/api/admin/offers.remote';
+	import { OfferList, type OfferListItem } from '$lib/components/bundles/offer-list';
+	import {
+		TableViewToggle,
+		setTableViewContext,
+		type TableAudience
+	} from '$lib/components/blocks/table-view-toggle';
 	import {
 		createFulfillmentOption,
 		deleteFulfillmentOption,
@@ -46,6 +52,19 @@
 
 	/** Full workspace payload used for the summary strip and both tab views. */
 	let workspaceData = $state<SellerOffersWorkspaceData | null>(null);
+
+	/** Full-detail seller offers rendered by the shared offer-list table. */
+	let sellerOffers = $state<OfferListItem[]>([]);
+
+	/**
+	 * Audience lens for the Offers table. Defaults to `admin` (the seller's own
+	 * view); toggling to `customer` previews exactly what buyers see on the public
+	 * seller page, since both render the same offer-list rows.
+	 */
+	let offersAudience = $state<TableAudience>('admin');
+
+	// Expose the audience to offer rows via shared context, mirroring edit mode.
+	setTableViewContext({ audience: () => offersAudience });
 
 	/** Whether the initial workspace load or a later refresh is still running. */
 	let loading = $state(true);
@@ -191,6 +210,14 @@
 		})
 	);
 
+	/** Full-detail seller offers after applying the active/inactive status filter. */
+	let filteredSellerOffers = $derived.by(() =>
+		sellerOffers.filter((offer) => {
+			const statusValue = offer.status === 'active' ? 'active' : 'inactive';
+			return offersStatusFilter.includes(statusValue);
+		})
+	);
+
 	/** Current saved fulfillment options visible after type and active/inactive status filtering. */
 	let filteredFulfillmentOptionRows = $derived.by(() =>
 		fulfillmentOptionRows.filter((row) => {
@@ -239,18 +266,6 @@
 		return fallbackMessage;
 	}
 
-	function formatCompactDateTime(isoValue: string | null): string {
-		if (!isoValue) return '—';
-		const parsedDate = new Date(isoValue);
-		if (Number.isNaN(parsedDate.getTime())) return '—';
-		return new Intl.DateTimeFormat(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
-		}).format(parsedDate);
-	}
-
 	function formatDeletedDate(isoValue: string | null): string {
 		if (!isoValue) return '—';
 		const parsedDate = new Date(isoValue);
@@ -268,7 +283,9 @@
 		loading = true;
 		loadError = null;
 		try {
-			workspaceData = await myOffersWorkspace();
+			const [workspace, offers] = await Promise.all([myOffersWorkspace(), mySellerOffers()]);
+			workspaceData = workspace;
+			sellerOffers = offers;
 			fulfillmentOptionRows = sortFulfillmentOptionEditorRows(
 				(workspaceData?.currentFulfillmentOptions ?? []).map(toEditorRow)
 			);
@@ -448,19 +465,6 @@
 		}
 	}
 
-	function getOfferStatusLabel(status: OfferStatus): string {
-		if (status === 'active') return 'Active';
-		if (status === 'draft') return 'Draft';
-		if (status === 'paused') return 'Paused';
-		return 'Expired';
-	}
-
-	function getOfferStatusClasses(status: OfferStatus): string {
-		if (status === 'active') return 'text-emerald-700';
-		if (status === 'draft') return 'text-amber-700';
-		if (status === 'paused') return 'text-slate-600';
-		return 'text-muted-foreground';
-	}
 </script>
 
 {#if loading}
@@ -487,54 +491,20 @@
 
 		{#if selectedWorkspaceTab === 'offers'}
 			<div class="space-y-3">
-				<div class="flex items-center justify-end">
+				<div class="flex items-center justify-end gap-2">
 					<TableStatusFilter
 						options={offerStatusFilterOptions}
 						bind:selected={offersStatusFilter}
 						ariaLabel="Filter offers by status"
 					/>
+					<TableViewToggle bind:audience={offersAudience} />
 				</div>
-				<div class="rounded-md border">
-					{#if filteredOffers.length === 0}
-						<div class="px-3 py-8 text-center text-sm text-muted-foreground">
-							{#if loadedOffers.length === 0}
-								No offers yet. The full seller offers table and editor are the next step.
-							{:else}
-								No offers match the current filter.
-							{/if}
-						</div>
-					{:else}
-						<div>
-							{#each filteredOffers as offer (offer.id)}
-								<div class="border-b px-3 py-3 last:border-b-0">
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0 space-y-1">
-											<p class="text-sm font-medium {getOfferStatusClasses(offer.status)}">
-												{getOfferStatusLabel(offer.status)}
-											</p>
-											<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-												<span>
-													{formatCompactDateTime(offer.validFrom)}
-													{#if offer.validUntil}
-														→ {formatCompactDateTime(offer.validUntil)}
-													{:else}
-														· no end date
-													{/if}
-												</span>
-												<span>{offer.lineItemCount} items</span>
-												{#if offer.fulfillmentOptionNames.length > 0}
-													<span>{offer.fulfillmentOptionNames.join(', ')}</span>
-												{:else}
-													<span>No fulfillment options</span>
-												{/if}
-											</div>
-										</div>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
+				<OfferList
+					offers={filteredSellerOffers}
+					emptyMessage={sellerOffers.length === 0
+						? 'No offers yet. The offer editor is the next step.'
+						: 'No offers match the current filter.'}
+				/>
 
 				<Button variant="outline" class="w-full" disabled>+ Add Offer (coming next)</Button>
 			</div>

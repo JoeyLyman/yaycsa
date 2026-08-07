@@ -28,6 +28,7 @@
 	} from '$lib/components/bundles/product-list/product-list-types';
 	import type { InputSelectItem } from '$lib/components/blocks/input-select';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
+	import { onMount } from 'svelte';
 
 	/** Convert a FacetValueInfo to the generic InputSelectItem format. */
 	function toItem(facetValue: FacetValueInfo): InputSelectItem {
@@ -153,7 +154,10 @@
 		editMode = next;
 	}
 
-	loadAll();
+	// Load client-side only. Calling this at script-init would run the remote
+	// query during SSR and trigger `hydratable_missing_but_required` on the
+	// client, blanking the page — onMount keeps it client-only.
+	onMount(loadAll);
 
 	async function loadAll() {
 		loading = true;

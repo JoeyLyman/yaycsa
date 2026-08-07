@@ -14,6 +14,11 @@ import type {
 	SellerFulfillmentOption,
 	Weekday
 } from './fulfillment-options.remote.js';
+import {
+	normalizeAdminOffer,
+	type RawOffer
+} from '$lib/components/bundles/offer-list/offer-list-helpers';
+import type { OfferListItem } from '$lib/components/bundles/offer-list/offer-list-types';
 
 export type OfferStatus = 'draft' | 'active' | 'paused' | 'expired';
 
@@ -201,4 +206,83 @@ export const myOffersWorkspace = query(async (): Promise<SellerOffersWorkspaceDa
 		currentFulfillmentOptions,
 		deletedFulfillmentOptions
 	};
+});
+
+/**
+ * Full-detail seller offers query for the shared `offer-list` table.
+ *
+ * Unlike {@link myOffersWorkspace} (a summary used for counts and fulfillment
+ * usage), this requests every field the offer table renders in either audience:
+ * full line items with pricing/quantity and full fulfillment-option timing. The
+ * offer plugin's admin schema already exposes all of these, so this is a plain
+ * field expansion — no server schema change. Admin-only fields (`status`,
+ * `internalNotes`, per-line `quantityOrdered`/`quantityLimit`/`autoConfirm`) are
+ * fetched here and masked in Customer view by the row components.
+ */
+const SELLER_OFFERS_QUERY = `
+	query SellerOffers($sellerId: ID!) {
+		offers(sellerId: $sellerId, options: { take: 500 }) {
+			items {
+				id
+				createdAt
+				updatedAt
+				seller {
+					id
+					name
+				}
+				status
+				validFrom
+				validUntil
+				allowLateOrders
+				notes
+				internalNotes
+				fulfillmentOptions {
+					id
+					name
+					type
+					notes
+					fulfillmentWeekday
+					fulfillmentTimeWindowStart
+					fulfillmentTimeWindowEnd
+					orderDeadlineWeekday
+					orderDeadlineTime
+				}
+				lineItems {
+					id
+					productVariant {
+						id
+						name
+						sku
+						customFields {
+							unitType
+						}
+					}
+					price
+					priceIncludesTax
+					pricingMode
+					priceTiers
+					quantityLimitMode
+					quantityLimit
+					quantityOrdered
+					quantityRemaining
+					autoConfirm
+					notes
+					sortOrder
+				}
+			}
+		}
+	}
+`;
+
+/**
+ * Fetch the authenticated seller's offers with full detail, normalized into the
+ * shared {@link OfferListItem} view-model for the `offer-list` table. Returns all
+ * statuses; the page filters/masks per audience.
+ */
+export const mySellerOffers = query(async (): Promise<OfferListItem[]> => {
+	const { sellerId } = await requireSellerContext();
+	const data = await adminQuery<{ offers: { items: RawOffer[] } }>(SELLER_OFFERS_QUERY, {
+		sellerId
+	});
+	return data.offers.items.map(normalizeAdminOffer);
 });
