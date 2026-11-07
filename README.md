@@ -69,7 +69,8 @@ Key locations:
 - `apps/docs/library/yaycsa/vision.md` — project vision + feature index
 - `apps/docs/library/yaycsa/features/` — feature specs
 - `apps/docs/library/yaycsa/plugins/` — plugin specs
-- `apps/docs/todos/yaycsa.md` — project todo / phase tracker
+- `apps/docs/library/yaycsa/todo.md` — project todo / phase tracker
+- `apps/docs/library/yaycsa/design/` — customer stories, sitemap, flows, sketches
 
 Push after updating docs:
 

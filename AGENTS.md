@@ -7,21 +7,26 @@
 
 ## Shared Docs & Todo (git submodule: `apps/docs/`)
 
-Architecture docs and the project todo are maintained in a shared git submodule (`apps/docs/`).
-This repo is shared with **Wally** — Joe's OpenClaw bot (runs on Opus 4.6, accessed via Discord). Joe does a lot of YAYCSA planning with Wally, and the results get distilled into the docs here. The docs in this submodule are the **single source of truth** for architecture and feature specs (not SPEC.md, which is outdated).
+Architecture docs and the project todo are maintained in a git submodule (`apps/docs/`). The docs in this submodule are the **single source of truth** for architecture and feature specs (not SPEC.md, which is outdated).
+
+<!--
+PAUSED 2026-11-06: Joe isn't using Wally right now and plans directly in Claude Code.
+The session-start pull is also blocked by the block-destructive hook. Uncomment if Wally comes back.
+
+This repo is shared with **Wally** — Joe's OpenClaw bot (runs on Opus 4.6, accessed via Discord). Joe does a lot of YAYCSA planning with Wally, and the results get distilled into the docs here.
 
 **On session start:** Pull latest shared docs:
 
-```bash
-cd apps/docs && git pull origin main && cd ../..
-```
+    cd apps/docs && git pull origin main && cd ../..
+-->
 
 **Key locations:**
 
 - `apps/docs/library/yaycsa/vision.md` — project vision + feature index
+- `apps/docs/library/yaycsa/todo.md` — project todo / phase tracker (moved from `todos/yaycsa.md` on 2026-11-06)
+- `apps/docs/library/yaycsa/design/` — product design: customer stories, sitemap, flows, sketches
 - `apps/docs/library/yaycsa/features/` — feature specs (unified accounts, pricing, etc.)
 - `apps/docs/library/yaycsa/plugins/` — plugin specs (offer-plugin, marketplace-plugin, inbox-manager)
-- `apps/docs/todos/yaycsa.md` — project todo / phase tracker
 
 Before implementing any feature, scan `apps/docs/library/yaycsa/features/` and `apps/docs/library/yaycsa/plugins/` for relevant docs and read them.
 
