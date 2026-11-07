@@ -39,17 +39,30 @@ Before implementing any feature, scan `apps/docs/library/yaycsa/features/` and `
 - **Seller Admin Proxy constraint:** Vendure's SuperAdmin is only authorized in the **default channel**. Using `vendure-token` to scope Admin API requests to a seller's channel causes FORBIDDEN. All proxy queries run in the default channel and filter by `sellerId` custom field instead. Channel assignment via `assignProductsToChannel` also fails for seller channels. See `apps/docs/library/yaycsa/features/seller-admin-proxy.md` for full details.
 - See `apps/docs/library/yaycsa/data-conventions.md` for full details.
 
-**If you update docs or the todo:** Do **not** commit or push. Leave all git actions to Joe.
+**If you update docs or the todo:** edit the files but do **not** commit in the `apps/docs` submodule. Docs commits are Joe's (see Git Workflow).
 
-```bash
-# Never run git add / commit / push unless Joe explicitly asks.
-```
+## Git Workflow
 
-## Git Safety Rule
+Claude works on feature branches. Joe owns `main`.
 
-- Never run `git add`, `git commit`, `git push`, `git pull --rebase`, or any other git history-changing command unless Joe explicitly asks for that exact git action in the current chat.
-- Default behavior: make file edits only and leave the repo/submodule uncommitted.
-- If a task would normally end with a commit or push, stop at "files updated locally" and let Joe handle git.
+**Claude may do this without asking:**
+
+- Create a branch off `main` for each chunk of work: `feat/…`, `fix/…`, `chore/…`, `docs/…`.
+- If the working tree already has uncommitted changes that aren't Claude's, ask Joe before branching, so his in-progress work doesn't get swept into Claude's commits.
+- Stage and commit on that branch in small, logical commits with clear messages, so Joe can review commit by commit and roll back any single step.
+
+**Claude may do this only when Joe asks in the current chat** (both always trigger a permission prompt):
+
+- Push the feature branch (`git push -u origin <branch>`).
+- Open a PR with `gh pr create`.
+
+**Joe only:**
+
+- Merging into `main` (locally or on GitHub), committing directly on `main`, pushing `main`.
+- Anything that rewrites history or throws away work: force-push, rebase, reset to another commit, `commit --amend`, deleting branches or tags, `git clean -f`, discarding uncommitted changes (`checkout -- …`, `restore`), dropping stashes.
+- Commits in the `apps/docs` submodule. Claude edits docs and leaves them uncommitted.
+
+**Enforcement:** `~/.claude/hooks/block-destructive.py` (a PreToolUse hook) blocks the Joe-only actions, and `.claude/settings.local.json` has the matching allow / ask / deny rules. If the hook blocks a command, stop and tell Joe. Don't look for a workaround.
 
 ## Plan Library
 
