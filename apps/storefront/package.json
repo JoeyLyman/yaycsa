@@ -51,7 +51,6 @@
 		"vite": "^8.0.12"
 	},
 	"dependencies": {
-		"@tanstack/table-core": "^8.21.3",
 		"clsx": "^2.1.1",
 		"gql.tada": "^1.11.5",
 		"graphql": "^16.15.0",
