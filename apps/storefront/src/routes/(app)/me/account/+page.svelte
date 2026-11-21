@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { updateBusinessTimezone } from '#lib/api/admin/fulfillment-options.remote.ts';
 	import { requestUpdateEmail, updatePassword, logout } from '#lib/api/shop/auth.remote.ts';
 	import { Button } from '#lib/components/bits/button/index.ts';
@@ -65,7 +65,7 @@
 		savingBusinessTimezone = true;
 		try {
 			await updateBusinessTimezone(nextTimezoneValue === 'UTC' ? '' : nextTimezoneValue);
-			await invalidateAll();
+			await refreshAll();
 		} catch (error) {
 			console.error('Failed to update business timezone:', error);
 			businessTimezoneError =

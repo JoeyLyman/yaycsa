@@ -24,9 +24,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		return { customer };
 	} catch (err) {
 		if (err instanceof VendureConnectionError) {
-			throw error(503, {
-				message: err.message
-			});
+			throw error(503, err.message);
 		}
 
 		throw err;

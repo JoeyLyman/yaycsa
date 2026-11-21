@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { becomeSeller } from '#lib/api/shop/sellers.remote.ts';
 	import * as Card from '#lib/components/bits/card/index.ts';
 	import { Button } from '#lib/components/bits/button/index.ts';
@@ -209,13 +209,13 @@
 						if (becomeSeller.result?.alreadySeller) {
 							// Customer is already a seller — refresh and go home
 							redirecting = true;
-							await invalidateAll();
+							await refreshAll();
 							goto('/');
 							return;
 						}
 						if (becomeSeller.result?.success) {
 							redirecting = true;
-							await invalidateAll();
+							await refreshAll();
 							goto(`/${becomeSeller.result.slug}`);
 						}
 					} catch (err) {

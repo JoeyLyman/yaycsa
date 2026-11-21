@@ -17,7 +17,7 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 	const seller = data.sellerBySlug;
 
 	if (!seller) {
-		error(404, { message: 'Seller not found' });
+		error(404, 'Seller not found');
 	}
 
 	return { seller };

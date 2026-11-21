@@ -11,18 +11,7 @@ export default defineConfig({
 			preprocess: vitePreprocess(),
 			compilerOptions: { runes: true, experimental: { async: true } },
 			adapter: adapter(),
-			experimental: { remoteFunctions: true },
-			alias: {
-				'@/*': './src/lib/*',
-				'@api/*': './src/lib/api',
-				'@bits/*': './src/lib/components/bits',
-				'@blocks/*': './src/lib/components/blocks',
-				'@bundles/*': './src/lib/components/bundles',
-				'@layouts/*': './src/lib/components/layouts',
-				'@stores/*': './src/lib/stores',
-				'@utils/*': './src/lib/utils',
-				'@components/*': './src/lib/components'
-			}
+			experimental: { remoteFunctions: true }
 		})
 	],
 	ssr: { noExternal: ['@lucide/svelte'] }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		myOffersWorkspace,
@@ -258,7 +258,7 @@
 		}
 	]);
 
-	function getWorkspaceTabFromUrl(url: URL): OffersWorkspaceTab {
+	function getWorkspaceTabFromUrl(url: typeof page.url): OffersWorkspaceTab {
 		return url.searchParams.get('tab') === 'fulfillment-options' ? 'fulfillment-options' : 'offers';
 	}
 
@@ -311,7 +311,7 @@
 	}
 
 	function buildSearchParamsHref(updates: Record<string, string | null>): string {
-		const nextUrl = new URL(page.url);
+		const nextUrl = new URL(page.url.href);
 		for (const [key, value] of Object.entries(updates)) {
 			if (value == null) {
 				nextUrl.searchParams.delete(key);
@@ -324,9 +324,8 @@
 
 	function updateSearchParams(updates: Record<string, string | null>) {
 		goto(buildSearchParamsHref(updates), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
+			replace: true,
+			reset: false
 		});
 	}
 
@@ -373,7 +372,7 @@
 
 		try {
 			await updateFulfillmentOption({ id: rowId, ...payload });
-			await invalidateAll();
+			await refreshAll();
 			await loadWorkspaceData();
 		} catch (error) {
 			console.error('Failed to update fulfillment option:', error);
@@ -393,7 +392,7 @@
 		try {
 			await createFulfillmentOption(payload);
 			fulfillmentOptionDraftKeys = fulfillmentOptionDraftKeys.filter((key) => key !== draftKey);
-			await invalidateAll();
+			await refreshAll();
 			await loadWorkspaceData();
 		} catch (error) {
 			console.error('Failed to create fulfillment option:', error);
@@ -421,7 +420,7 @@
 
 		try {
 			await deleteFulfillmentOption({ id: rowId, permanently: canPermanentlyDelete });
-			await invalidateAll();
+			await refreshAll();
 			await loadWorkspaceData();
 			confirmingDeleteRowIds.delete(rowId);
 		} catch (error) {
@@ -438,7 +437,7 @@
 
 		try {
 			await restoreFulfillmentOption(rowId);
-			await invalidateAll();
+			await refreshAll();
 			await loadWorkspaceData();
 		} catch (error) {
 			console.error('Failed to restore fulfillment option:', error);
@@ -464,7 +463,7 @@
 
 		try {
 			await deleteFulfillmentOption({ id: row.id, permanently: true });
-			await invalidateAll();
+			await refreshAll();
 			await loadWorkspaceData();
 			confirmingDeletedPermanentRowIds.delete(row.id);
 		} catch (error) {

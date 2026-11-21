@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { login, resendVerification } from '#lib/api/shop/auth.remote.ts';
 	import * as Card from '#lib/components/bits/card/index.ts';
 	import { Button } from '#lib/components/bits/button/index.ts';
@@ -49,7 +49,7 @@
 					await submit();
 					if (login.result?.success) {
 						redirecting = true;
-						await invalidateAll();
+						await refreshAll();
 						goto(login.result.returnTo);
 					}
 				} catch (err) {

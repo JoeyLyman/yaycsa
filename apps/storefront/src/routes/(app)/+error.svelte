@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { Button } from '#lib/components/bits/button/index.ts';
 
 	/** Whether the current route error is a storefront-to-Vendure connectivity problem. */
@@ -19,5 +19,5 @@
 			Expected backend: <code>http://localhost:3000</code>
 		</p>
 	{/if}
-	<Button class="mt-4" onclick={() => invalidateAll()}>Try again</Button>
+	<Button class="mt-4" onclick={() => refreshAll()}>Try again</Button>
 </div>
