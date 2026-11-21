@@ -1,5 +1,5 @@
 import type { Cookies } from '@sveltejs/kit';
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 
 const COOKIE_NAME = 'vendure_auth_token';
 
