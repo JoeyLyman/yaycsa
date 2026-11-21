@@ -9,7 +9,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { Popover } from 'bits-ui';
-	import { cn } from '#lib/components/utils.js';
+	import { cn } from '#lib/old/components/utils.js';
 
 	let {
 		/** All selectable options, rendered in order. The dropdown filters against `label`. */

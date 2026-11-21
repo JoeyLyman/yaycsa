@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	const { customer } = await parent();
 	const slug = customer.customFields?.seller?.customFields?.slug;
 	if (slug) {
-		redirect(303, `/${slug}`);
+		redirect(303, `/old/${slug}`);
 	}
 
 	// Load all existing seller slugs for client-side availability checking

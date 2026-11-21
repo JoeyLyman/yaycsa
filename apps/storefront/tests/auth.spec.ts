@@ -59,18 +59,18 @@ test.describe('register page', () => {
 });
 
 test.describe('auth guards', () => {
-	test('redirects unauthenticated user from /me/products to /login', async ({ page }) => {
-		await page.goto('/me/products');
+	test('redirects unauthenticated user from /old/me/products to /login', async ({ page }) => {
+		await page.goto('/old/me/products');
 		await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
 	});
 
-	test('redirects unauthenticated user from /me/account to /login', async ({ page }) => {
-		await page.goto('/me/account');
+	test('redirects unauthenticated user from /old/me/account to /login', async ({ page }) => {
+		await page.goto('/old/me/account');
 		await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
 	});
 
-	test('redirects unauthenticated user from /me/offers to /login', async ({ page }) => {
-		await page.goto('/me/offers');
+	test('redirects unauthenticated user from /old/me/offers to /login', async ({ page }) => {
+		await page.goto('/old/me/offers');
 		await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
 	});
 });

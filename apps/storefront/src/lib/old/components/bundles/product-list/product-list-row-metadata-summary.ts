@@ -2,7 +2,7 @@ import {
 	metadataLabel,
 	metadataValue,
 	type MetadataSummarySegment
-} from '#lib/components/blocks/table-row-metadata-summary/index.ts';
+} from '#lib/old/components/blocks/table-row-metadata-summary/index.ts';
 
 /** Capitalize the first letter of each word. */
 function titleCase(s: string): string {

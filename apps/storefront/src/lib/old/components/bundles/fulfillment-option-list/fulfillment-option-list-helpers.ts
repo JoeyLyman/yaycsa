@@ -7,7 +7,7 @@ import {
 	metadataLabel,
 	metadataValue,
 	type MetadataSummarySegment
-} from '#lib/components/blocks/table-row-metadata-summary/index.ts';
+} from '#lib/old/components/blocks/table-row-metadata-summary/index.ts';
 import {
 	fulfillmentOptionTypeOptions,
 	weekdayOptions,

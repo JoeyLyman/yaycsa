@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
+	import type { InputSelectItem } from '#lib/old/components/blocks/input-select/index.ts';
 	import {
 		ProductListRowFieldsAllergenWarnings,
 		ProductListRowFieldsBits,
 		ProductListRowFieldsProcesses
-	} from '#lib/components/blocks/product-list-row-fields/index.ts';
+	} from '#lib/old/components/blocks/product-list-row-fields/index.ts';
 	import type { ProductDraft } from './product-list-types';
 
 	let {

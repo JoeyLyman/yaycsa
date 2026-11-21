@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { cn } from '#lib/components/utils.js';
+	import { cn } from '#lib/old/components/utils.js';
 
 	type HeaderTabValue = string;
 

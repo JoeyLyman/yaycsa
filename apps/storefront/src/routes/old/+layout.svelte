@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Navbar } from '#lib/components/bundles/navbar/index.ts';
-	import { BottomNav } from '#lib/components/bundles/bottom-nav/index.ts';
-	import { Footer } from '#lib/components/bundles/footer/index.ts';
+	import { Navbar } from '#lib/old/components/bundles/navbar/index.ts';
+	import { BottomNav } from '#lib/old/components/bundles/bottom-nav/index.ts';
+	import { Footer } from '#lib/old/components/bundles/footer/index.ts';
 
 	let {
 		data,

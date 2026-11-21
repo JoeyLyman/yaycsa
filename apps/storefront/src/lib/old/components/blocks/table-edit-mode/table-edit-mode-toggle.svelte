@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import * as AlertDialog from '#lib/components/bits/alert-dialog/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import * as AlertDialog from '#lib/old/components/bits/alert-dialog/index.ts';
 
 	let {
 		/** Whether the table is currently in edit mode. */

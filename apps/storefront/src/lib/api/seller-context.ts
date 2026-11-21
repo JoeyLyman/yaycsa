@@ -129,7 +129,9 @@ export async function requireSellerContext(): Promise<SellerContext> {
 
 	const seller = customer.customFields?.seller;
 	if (!seller) {
-		throw redirect(302, '/me');
+		// Not a seller yet: send them to become-a-seller. That page is still the
+		// archived one at /old/me; point this at the new Sell flow once it exists.
+		throw redirect(302, '/old/me');
 	}
 
 	const slug = seller.customFields?.slug;

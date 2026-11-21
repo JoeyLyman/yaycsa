@@ -7,21 +7,21 @@ import { test, expect } from '@playwright/test';
 // like /me/products redirect non-sellers to /me via requireSellerContext().
 
 test.describe('non-seller authenticated user', () => {
-	test('/me/products redirects non-seller to /me', async ({ page }) => {
-		await page.goto('/me/products');
-		await expect(page).toHaveURL(/\/me$/, { timeout: 8000 });
+	test('/old/me/products redirects non-seller to /old/me', async ({ page }) => {
+		await page.goto('/old/me/products');
+		await expect(page).toHaveURL(/\/old\/me$/, { timeout: 8000 });
 	});
 });
 
 test.describe('seller account page (/me/account)', () => {
 	test('loads and shows profile section', async ({ page }) => {
-		await page.goto('/me/account');
+		await page.goto('/old/me/account');
 		await expect(page).toHaveURL(/\/me\/account/);
 		await expect(page.locator('text=Profile')).toBeVisible({ timeout: 8000 });
 	});
 
 	test('logout button is present', async ({ page }) => {
-		await page.goto('/me/account');
+		await page.goto('/old/me/account');
 		await expect(page.locator('[data-testid="logout-btn"]')).toBeVisible({ timeout: 8000 });
 	});
 });

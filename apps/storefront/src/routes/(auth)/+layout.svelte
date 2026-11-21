@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Navbar } from '#lib/components/bundles/navbar/index.ts';
-	import { BottomNav } from '#lib/components/bundles/bottom-nav/index.ts';
+	import { Navbar } from '#lib/old/components/bundles/navbar/index.ts';
+	import { BottomNav } from '#lib/old/components/bundles/bottom-nav/index.ts';
 
 	let { children } = $props();
 </script>

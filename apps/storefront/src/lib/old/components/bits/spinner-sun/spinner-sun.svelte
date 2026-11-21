@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Sun from '@lucide/svelte/icons/sun';
-	import { cn } from '#lib/components/utils.js';
+	import { cn } from '#lib/old/components/utils.js';
 	import type { ComponentProps } from 'svelte';
 
 	let { class: className, ...restProps }: ComponentProps<typeof Sun> = $props();

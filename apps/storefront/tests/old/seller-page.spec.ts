@@ -5,7 +5,7 @@ const SELLER_SLUG = process.env.TEST_SELLER_SLUG ?? 'gathering-together-farm';
 
 test.describe('public seller page', () => {
 	test('loads and shows seller name', async ({ page }) => {
-		await page.goto(`/${SELLER_SLUG}`);
+		await page.goto(`/old/${SELLER_SLUG}`);
 
 		// Seller name in h1
 		const heading = page.locator('h1');
@@ -14,7 +14,7 @@ test.describe('public seller page', () => {
 	});
 
 	test('shows offer table or empty state — not a crash', async ({ page }) => {
-		await page.goto(`/${SELLER_SLUG}`);
+		await page.goto(`/old/${SELLER_SLUG}`);
 
 		// Either the offer table or the "No active offers" message should appear
 		const table = page.locator('table').first();
@@ -29,7 +29,7 @@ test.describe('public seller page', () => {
 			if (msg.type() === 'error') errors.push(msg.text());
 		});
 
-		await page.goto(`/${SELLER_SLUG}`);
+		await page.goto(`/old/${SELLER_SLUG}`);
 		// Wait for async offer loading to settle
 		await page.waitForLoadState('networkidle');
 
@@ -37,7 +37,7 @@ test.describe('public seller page', () => {
 	});
 
 	test('unknown seller slug shows error page, not a blank screen', async ({ page }) => {
-		await page.goto('/this-seller-does-not-exist-xyz-404');
+		await page.goto('/old/this-seller-does-not-exist-xyz-404');
 
 		// Should render something (error boundary or error page), not be empty
 		const body = page.locator('body');

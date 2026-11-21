@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Input } from '#lib/components/bits/input/index.ts';
-	import { cn } from '#lib/components/utils.js';
+	import { Input } from '#lib/old/components/bits/input/index.ts';
+	import { cn } from '#lib/old/components/utils.js';
 
 	let {
 		/** Reference to the underlying input element, bound when the row is in editing mode. */

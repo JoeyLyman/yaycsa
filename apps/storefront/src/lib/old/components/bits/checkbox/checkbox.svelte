@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Checkbox as CheckboxPrimitive } from 'bits-ui';
-	import { cn, type WithoutChildrenOrChild } from '#lib/components/utils.js';
+	import { cn, type WithoutChildrenOrChild } from '#lib/old/components/utils.js';
 
 	let {
 		ref = $bindable(null),

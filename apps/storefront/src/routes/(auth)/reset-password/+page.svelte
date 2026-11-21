@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { resetPassword } from '#lib/api/shop/auth.remote.ts';
-	import * as Card from '#lib/components/bits/card/index.ts';
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import { Input } from '#lib/components/bits/input/index.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import * as Card from '#lib/old/components/bits/card/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import { Input } from '#lib/old/components/bits/input/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
 
 	let { data } = $props();
 

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page, navigating } from '$app/state';
 	import { resolve } from '$app/paths';
-	import * as Avatar from '#lib/components/bits/avatar/index.ts';
-	import * as Tooltip from '#lib/components/bits/tooltip/index.ts';
+	import * as Avatar from '#lib/old/components/bits/avatar/index.ts';
+	import * as Tooltip from '#lib/old/components/bits/tooltip/index.ts';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 
 	type Props = {
@@ -23,11 +23,30 @@
 	const mySellerSlug = $derived(customer?.customFields?.seller?.customFields?.slug ?? null);
 
 	/**
-	 * The pathname we're navigating TO (if mid-navigation) or currently on.
-	 * Uses the navigating target for instant visual feedback — the navbar
-	 * updates as soon as a link is clicked, not after the page loads.
+	 * URL prefix of the archived old design. Every old page lives under it
+	 * (e.g. /old/me/products); auth pages (/login, /register, …) do not.
 	 */
-	const currentPathname = $derived(navigating.to?.url.pathname ?? page.url.pathname);
+	const OLD_BASE = '/old';
+
+	/**
+	 * Strips the /old prefix so the route logic below can keep reasoning about
+	 * the original paths ("/", "/me/offers", "/<seller>"). Paths outside /old
+	 * (the auth pages) pass through unchanged.
+	 */
+	function withoutOldBase(pathname: string): string {
+		if (pathname === OLD_BASE) return '/';
+		return pathname.startsWith(`${OLD_BASE}/`) ? pathname.slice(OLD_BASE.length) : pathname;
+	}
+
+	/**
+	 * The pathname we're navigating TO (if mid-navigation) or currently on, with
+	 * the /old prefix removed. Uses the navigating target for instant visual
+	 * feedback — the navbar updates as soon as a link is clicked, not after the
+	 * page loads.
+	 */
+	const currentPathname = $derived(
+		withoutOldBase(navigating.to?.url.pathname ?? page.url.pathname)
+	);
 
 	/**
 	 * Paths that are NOT seller slugs. Any first URL segment not in this set
@@ -128,7 +147,7 @@
 	 * - /me on the home page or other non-seller pages (go to become-a-seller or own sales page)
 	 */
 	const navSuffixHref = $derived(
-		isSellerPage ? resolve('/(app)/[seller]', { seller: pathSegments[0] }) : resolve('me')
+		isSellerPage ? resolve('/old/[seller]', { seller: pathSegments[0] }) : resolve('old/me')
 	);
 
 	/**
@@ -145,7 +164,11 @@
 		isAuthPage || isCartPage || isMe || (isSellerPage && pathSegments.length === 1) || isHome
 	);
 
-	/** Nav links for the buyer side (visible to all authenticated users). */
+	/**
+	 * Nav links for the buyer side (visible to all authenticated users).
+	 * Hrefs here are relative to the old design's root (compared against the
+	 * stripped `currentPathname`); the /old prefix is added when rendering.
+	 */
 	const buyerLinks = [{ href: '/me/orders', label: 'Orders' }];
 
 	/** Nav links for the seller side (only visible when the user is a seller). */
@@ -162,7 +185,7 @@
 	 */
 	const myPageLink = $derived(
 		mySellerSlug
-			? { href: resolve('/(app)/[seller]', { seller: mySellerSlug }), label: 'My Page' }
+			? { href: resolve('/old/[seller]', { seller: mySellerSlug }), label: 'My Page' }
 			: null
 	);
 
@@ -184,7 +207,7 @@
 	<div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
 		<div class="flex min-w-0 items-center">
 			<a
-				href="/"
+				href={OLD_BASE}
 				class="shrink-0 text-lg font-bold transition-colors {isHome
 					? 'cursor-default text-foreground'
 					: 'text-muted-foreground/60 hover:text-muted-foreground'}"
@@ -224,7 +247,7 @@
 				<!-- Desktop-only nav links (hidden on mobile where bottom nav handles navigation) -->
 				<nav class="hidden items-center gap-4 md:flex">
 					<a
-						href="/cart"
+						href="{OLD_BASE}/cart"
 						class="mr-1 transition-colors {currentPathname.startsWith('/cart')
 							? 'cursor-default text-foreground'
 							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
@@ -233,7 +256,7 @@
 					</a>
 					{#each buyerLinks as { href, label } (href)}
 						<a
-							{href}
+							href="{OLD_BASE}{href}"
 							class="text-sm transition-colors {isNavActive(href)
 								? 'cursor-default font-medium text-foreground'
 								: 'text-muted-foreground/60 hover:text-muted-foreground'}"
@@ -245,7 +268,7 @@
 						<span class="text-border">|</span>
 						{#each sellerLinks as { href, label } (href)}
 							<a
-								{href}
+								href="{OLD_BASE}{href}"
 								class="text-sm transition-colors {isNavActive(href)
 									? 'cursor-default font-medium text-foreground'
 									: 'text-muted-foreground/60 hover:text-muted-foreground'}"
@@ -266,7 +289,7 @@
 					{/if}
 				</nav>
 				<a
-					href="/me/account"
+					href="{OLD_BASE}/me/account"
 					class="ml-2 flex items-center {currentPathname.startsWith('/me/account') ||
 					currentPathname === '/me'
 						? 'cursor-default'

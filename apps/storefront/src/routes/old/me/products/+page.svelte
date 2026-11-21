@@ -11,22 +11,22 @@
 		type SellerProduct,
 		type FacetValueInfo
 	} from '#lib/api/admin/products.remote.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import { ProductList } from '#lib/components/bundles/product-list/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import { ProductList } from '#lib/old/components/bundles/product-list/index.ts';
 	import {
 		TableEditModeToggle,
 		setTableEditModeContext
-	} from '#lib/components/blocks/table-edit-mode/index.ts';
+	} from '#lib/old/components/blocks/table-edit-mode/index.ts';
 	import {
 		TableDetailToggle,
 		type TableDetailMode
-	} from '#lib/components/blocks/table-detail-toggle/index.ts';
+	} from '#lib/old/components/blocks/table-detail-toggle/index.ts';
 	import type {
 		ProductDraft,
 		ProductDraftPatch
-	} from '#lib/components/bundles/product-list/product-list-types.ts';
-	import type { InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
+	} from '#lib/old/components/bundles/product-list/product-list-types.ts';
+	import type { InputSelectItem } from '#lib/old/components/blocks/input-select/index.ts';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 	import { onMount } from 'svelte';
 

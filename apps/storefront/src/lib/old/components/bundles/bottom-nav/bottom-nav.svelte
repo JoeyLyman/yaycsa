@@ -26,10 +26,28 @@
 	const mySellerSlug = $derived(customer?.customFields?.seller?.customFields?.slug ?? null);
 
 	/**
-	 * The pathname we're navigating TO (if mid-navigation) or currently on.
-	 * Matches the same pattern used in the top navbar for instant feedback.
+	 * URL prefix of the archived old design. Every old page lives under it
+	 * (e.g. /old/me/products); auth pages (/login, /register, …) do not.
 	 */
-	const currentPathname = $derived(navigating.to?.url.pathname ?? page.url.pathname);
+	const OLD_BASE = '/old';
+
+	/**
+	 * Strips the /old prefix so the route logic below can keep reasoning about
+	 * the original paths. Paths outside /old (the auth pages) pass through.
+	 */
+	function withoutOldBase(pathname: string): string {
+		if (pathname === OLD_BASE) return '/';
+		return pathname.startsWith(`${OLD_BASE}/`) ? pathname.slice(OLD_BASE.length) : pathname;
+	}
+
+	/**
+	 * The pathname we're navigating TO (if mid-navigation) or currently on, with
+	 * the /old prefix removed. Matches the same pattern used in the top navbar
+	 * for instant feedback.
+	 */
+	const currentPathname = $derived(
+		withoutOldBase(navigating.to?.url.pathname ?? page.url.pathname)
+	);
 
 	/**
 	 * Paths that are NOT seller slugs. Matches the same set in the top navbar.
@@ -83,7 +101,7 @@
 		{#if customer}
 			<!-- Buyer links: Browse, Cart, Orders -->
 			<a
-				href="/"
+				href="/old"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isBrowseActive
 					? 'text-foreground'
 					: 'text-muted-foreground/60'}"
@@ -92,7 +110,7 @@
 				<span class="text-[10px]">Browse</span>
 			</a>
 			<a
-				href="/cart"
+				href="/old/cart"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 					'/cart'
 				)
@@ -103,7 +121,7 @@
 				<span class="text-[10px]">Cart</span>
 			</a>
 			<a
-				href="/me/orders"
+				href="/old/me/orders"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 					'/me/orders'
 				)
@@ -119,7 +137,7 @@
 				<!-- Vertical separator between buyer and seller sections -->
 				<div class="my-2 w-px bg-border"></div>
 				<a
-					href="/me/products"
+					href="/old/me/products"
 					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 						'/me/products'
 					)
@@ -130,7 +148,7 @@
 					<span class="text-[10px]">Products</span>
 				</a>
 				<a
-					href="/me/offers"
+					href="/old/me/offers"
 					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 						'/me/offers'
 					)
@@ -141,7 +159,7 @@
 					<span class="text-[10px]">Offers</span>
 				</a>
 				<a
-					href="/me/sales"
+					href="/old/me/sales"
 					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 						'/me/sales'
 					)
@@ -153,7 +171,7 @@
 				</a>
 			{:else}
 				<a
-					href="/me"
+					href="/old/me"
 					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 						'/me',
 						true
@@ -168,7 +186,7 @@
 		{:else}
 			<!-- Logged out: Browse, Cart, Login -->
 			<a
-				href="/"
+				href="/old"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isBrowseActive
 					? 'text-foreground'
 					: 'text-muted-foreground/60'}"
@@ -177,7 +195,7 @@
 				<span class="text-[10px]">Browse</span>
 			</a>
 			<a
-				href="/cart"
+				href="/old/cart"
 				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
 					'/cart'
 				)

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto, refreshAll } from '$app/navigation';
 	import { login, resendVerification } from '#lib/api/shop/auth.remote.ts';
-	import * as Card from '#lib/components/bits/card/index.ts';
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import { Input } from '#lib/components/bits/input/index.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import * as Card from '#lib/old/components/bits/card/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import { Input } from '#lib/old/components/bits/input/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
 
 	/**
 	 * Tracks the state of the "resend verification email" button.

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
 
 	let {
 		/** Whether the save mutation is currently in flight. Disables both buttons and replaces the Save label with a spinner. */

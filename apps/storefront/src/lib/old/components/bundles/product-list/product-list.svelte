@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
+	import type { InputSelectItem } from '#lib/old/components/blocks/input-select/index.ts';
 	import type { SellerProduct } from '#lib/api/admin/products.remote.ts';
 	import type { ProductDraft, ProductDraftPatch } from './product-list-types';
-	import type { TableDetailMode } from '#lib/components/blocks/table-detail-toggle/index.ts';
+	import type { TableDetailMode } from '#lib/old/components/blocks/table-detail-toggle/index.ts';
 	import ProductListRowDraft from './product-list-row-draft.svelte';
 	import ProductListRow from './product-list-row.svelte';
-	import { getTableEditModeContext } from '#lib/components/blocks/table-edit-mode/index.ts';
+	import { getTableEditModeContext } from '#lib/old/components/blocks/table-edit-mode/index.ts';
 
 	let {
 		/** The saved products currently shown in the seller table. */

@@ -46,7 +46,7 @@
 				{#each sellerList as seller (seller.id)}
 					{#if seller.slug}
 						<a
-							href="/{seller.slug}"
+							href="/old/{seller.slug}"
 							class="flex items-center justify-between rounded-md border px-4 py-3 transition-colors hover:bg-accent"
 						>
 							<span class="font-medium">{seller.name}</span>

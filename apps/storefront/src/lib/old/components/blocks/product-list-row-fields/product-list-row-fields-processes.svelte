@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { InputSelect, type InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
+	import {
+		InputSelect,
+		type InputSelectItem
+	} from '#lib/old/components/blocks/input-select/index.ts';
 
 	let {
 		/** All available processing-type options. */

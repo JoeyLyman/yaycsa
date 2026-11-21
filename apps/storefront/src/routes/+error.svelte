@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { refreshAll } from '$app/navigation';
-	import { Button } from '#lib/components/bits/button/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
 
 	/** Whether the current route error is a storefront-to-Vendure connectivity problem. */
 	let isVendureUnavailable = $derived(

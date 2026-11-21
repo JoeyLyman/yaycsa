@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { SellerProduct } from '#lib/api/admin/products.remote.ts';
-	import type { InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
+	import type { InputSelectItem } from '#lib/old/components/blocks/input-select/index.ts';
 	import {
 		ProductListRowFieldsAllergenWarnings,
 		ProductListRowFieldsBits,
 		ProductListRowFieldsProcesses
-	} from '#lib/components/blocks/product-list-row-fields/index.ts';
+	} from '#lib/old/components/blocks/product-list-row-fields/index.ts';
 
 	let {
 		/** The product data for this row. */

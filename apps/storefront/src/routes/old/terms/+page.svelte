@@ -92,7 +92,7 @@
 			We may suspend or terminate accounts that violate these terms. You may delete your account at
 			any time. Please note that transaction records are retained as part of the marketplace's
 			shared commercial history, even after account deletion. See our
-			<a href="/privacy" class="underline hover:text-foreground">Privacy Policy</a> for details.
+			<a href="/old/privacy" class="underline hover:text-foreground">Privacy Policy</a> for details.
 		</p>
 	</section>
 

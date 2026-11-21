@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto, refreshAll } from '$app/navigation';
 	import { becomeSeller } from '#lib/api/shop/sellers.remote.ts';
-	import * as Card from '#lib/components/bits/card/index.ts';
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import { Input } from '#lib/components/bits/input/index.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import * as Card from '#lib/old/components/bits/card/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import { Input } from '#lib/old/components/bits/input/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
 
 	let { data } = $props();
 
@@ -210,13 +210,13 @@
 							// Customer is already a seller — refresh and go home
 							redirecting = true;
 							await refreshAll();
-							goto('/');
+							goto('/old');
 							return;
 						}
 						if (becomeSeller.result?.success) {
 							redirecting = true;
 							await refreshAll();
-							goto(`/${becomeSeller.result.slug}`);
+							goto(`/old/${becomeSeller.result.slug}`);
 						}
 					} catch (err) {
 						errorMessage = err instanceof Error ? err.message : 'Something went wrong';

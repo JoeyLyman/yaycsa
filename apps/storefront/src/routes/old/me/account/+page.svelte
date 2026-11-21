@@ -2,11 +2,11 @@
 	import { goto, refreshAll } from '$app/navigation';
 	import { updateBusinessTimezone } from '#lib/api/admin/fulfillment-options.remote.ts';
 	import { requestUpdateEmail, updatePassword, logout } from '#lib/api/shop/auth.remote.ts';
-	import { Button } from '#lib/components/bits/button/index.ts';
-	import * as Card from '#lib/components/bits/card/index.ts';
-	import { Input } from '#lib/components/bits/input/index.ts';
-	import * as Select from '#lib/components/bits/select/index.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
+	import * as Card from '#lib/old/components/bits/card/index.ts';
+	import { Input } from '#lib/old/components/bits/input/index.ts';
+	import * as Select from '#lib/old/components/bits/select/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
 	import {
 		buildBusinessTimezoneOptions,
 		getBusinessTimezoneDisplayName
@@ -101,7 +101,7 @@
 								Manage business-wide settings that affect new fulfillment timing calculations.
 							</p>
 						</div>
-						<Button href="/{mySellerSlug}">See my sales page</Button>
+						<Button href="/old/{mySellerSlug}">See my sales page</Button>
 					</div>
 
 					<div class="space-y-2">
@@ -145,7 +145,7 @@
 						<p class="text-sm text-muted-foreground">
 							Create your business first to get a sales page and business timezone settings.
 						</p>
-						<Button href="/me" data-sveltekit-reload>Become a seller</Button>
+						<Button href="/old/me" data-sveltekit-reload>Become a seller</Button>
 					</div>
 				{/if}
 			</div>

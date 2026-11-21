@@ -6,8 +6,8 @@
 		normalizeShopOffer,
 		type OfferListItem,
 		type RawOffer
-	} from '#lib/components/bundles/offer-list/index.ts';
-	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	} from '#lib/old/components/bundles/offer-list/index.ts';
+	import { SpinnerSun } from '#lib/old/components/bits/spinner-sun/index.ts';
 
 	let { data } = $props();
 

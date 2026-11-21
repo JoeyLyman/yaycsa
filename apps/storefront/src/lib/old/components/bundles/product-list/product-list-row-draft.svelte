@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
-	import { ProductListRowFieldsName } from '#lib/components/blocks/product-list-row-fields/index.ts';
-	import { TableRowEditActions } from '#lib/components/blocks/table-row-edit-actions/index.ts';
+	import type { InputSelectItem } from '#lib/old/components/blocks/input-select/index.ts';
+	import { ProductListRowFieldsName } from '#lib/old/components/blocks/product-list-row-fields/index.ts';
+	import { TableRowEditActions } from '#lib/old/components/blocks/table-row-edit-actions/index.ts';
 	import { hasDuplicateProductName } from '#lib/utils/product-name.js';
 	import type { ProductDraft, ProductDraftPatch } from './product-list-types';
 	import ProductListRowDraftMetadata from './product-list-row-draft-metadata.svelte';

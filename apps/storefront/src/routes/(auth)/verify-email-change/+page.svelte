@@ -1,6 +1,6 @@
 <script lang="ts">
-	import * as Card from '#lib/components/bits/card/index.ts';
-	import { Button } from '#lib/components/bits/button/index.ts';
+	import * as Card from '#lib/old/components/bits/card/index.ts';
+	import { Button } from '#lib/old/components/bits/button/index.ts';
 
 	let { data } = $props();
 </script>
@@ -12,7 +12,7 @@
 			<Card.Description>Your email address has been changed successfully.</Card.Description>
 		</Card.Header>
 		<Card.Footer>
-			<Button href="/me/account" class="w-full">Go to account</Button>
+			<Button href="/old/me/account" class="w-full">Go to account</Button>
 		</Card.Footer>
 	</Card.Root>
 {:else}
@@ -22,7 +22,7 @@
 			<Card.Description>{data.error}</Card.Description>
 		</Card.Header>
 		<Card.Footer>
-			<Button href="/me/account" variant="outline" class="w-full">Go to account</Button>
+			<Button href="/old/me/account" variant="outline" class="w-full">Go to account</Button>
 		</Card.Footer>
 	</Card.Root>
 {/if}
