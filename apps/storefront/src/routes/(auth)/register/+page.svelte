@@ -149,8 +149,10 @@
 			<p class="text-sm text-muted-foreground">
 				Already have an account? <a
 					href="/login"
-					class="font-medium text-foreground hover:underline">Log in</a
+					class="font-medium text-foreground hover:underline"
 				>
+					Log in
+				</a>
 			</p>
 		</Card.Footer>
 	</Card.Root>

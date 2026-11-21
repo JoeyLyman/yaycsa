@@ -10,9 +10,9 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title class="text-2xl">Check your email</Card.Title>
-			<Card.Description
-				>If an account exists for that email, we sent a password reset link.</Card.Description
-			>
+			<Card.Description>
+				If an account exists for that email, we sent a password reset link.
+			</Card.Description>
 		</Card.Header>
 		<Card.Footer>
 			<a href="/login" class="text-sm text-muted-foreground hover:underline">Back to login</a>

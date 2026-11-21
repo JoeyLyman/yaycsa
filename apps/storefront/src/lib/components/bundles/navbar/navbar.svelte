@@ -187,31 +187,37 @@
 				href="/"
 				class="shrink-0 text-lg font-bold transition-colors {isHome
 					? 'cursor-default text-foreground'
-					: 'text-muted-foreground/60 hover:text-muted-foreground'}">yay</a
+					: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 			>
+				yay
+			</a>
 
 			<span
 				class="mx-1 shrink-0 text-lg font-bold {isNavSuffixActive
 					? 'text-foreground'
-					: 'text-muted-foreground/60'}">·</span
+					: 'text-muted-foreground/60'}"
 			>
+				·
+			</span>
 
 			<Tooltip.Provider>
 				<Tooltip.Root delayDuration={0}>
 					{#if isNavSuffixActive}
 						<Tooltip.Trigger
 							class="max-w-64 cursor-default truncate text-lg font-bold text-foreground sm:max-w-96"
-							>{navSuffix}</Tooltip.Trigger
-						>{:else}<Tooltip.Trigger
-							>{#snippet child({ props })}<a
+						>
+							{navSuffix}
+						</Tooltip.Trigger>{:else}<Tooltip.Trigger>
+							{#snippet child({ props })}<a
 									{...props}
 									href={navSuffixHref}
 									class="max-w-64 truncate text-lg font-bold text-muted-foreground/60 transition-colors hover:text-muted-foreground sm:max-w-96"
-									>{navSuffix}</a
-								>{/snippet}</Tooltip.Trigger
-						>{/if}<Tooltip.Content>{navSuffix}</Tooltip.Content></Tooltip.Root
-				></Tooltip.Provider
-			>
+								>
+									{navSuffix}
+								</a>{/snippet}
+						</Tooltip.Trigger>{/if}<Tooltip.Content>{navSuffix}</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
 		</div>
 		<div class="flex items-center gap-4">
 			{#if customer}
@@ -281,14 +287,18 @@
 						href="/login"
 						class="text-sm transition-colors {isLoginActive
 							? 'cursor-default font-medium text-foreground'
-							: 'text-muted-foreground/60 hover:text-muted-foreground'}">Log in</a
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>
+						Log in
+					</a>
 					<a
 						href="/register"
 						class="text-sm transition-colors {isRegisterActive
 							? 'cursor-default font-medium text-foreground'
-							: 'text-muted-foreground/60 hover:text-muted-foreground'}">Register</a
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>
+						Register
+					</a>
 				</nav>
 			{/if}
 		</div>

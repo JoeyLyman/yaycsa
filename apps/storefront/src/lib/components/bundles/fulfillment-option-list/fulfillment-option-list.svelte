@@ -160,12 +160,12 @@
 								{#if fulfillmentOption.fulfillmentWeekday}
 									<span>{getWeekdayShortLabel(fulfillmentOption.fulfillmentWeekday)}</span>
 								{/if}
-								<span
-									>{summarizeFulfillmentOptionUsage({
+								<span>
+									{summarizeFulfillmentOptionUsage({
 										offerCount: fulfillmentOption.offerCount,
 										activeOfferCount: fulfillmentOption.activeOfferCount
-									})}</span
-								>
+									})}
+								</span>
 								<span>Deleted {formatDeletedDate(fulfillmentOption.deletedAt)}</span>
 							</div>
 							{#if fulfillmentOption.notes}

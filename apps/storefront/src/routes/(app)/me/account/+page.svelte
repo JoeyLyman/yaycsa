@@ -198,9 +198,9 @@
 			{:else}
 				<form {...requestUpdateEmail} class="space-y-4">
 					<div class="space-y-2">
-						<label for="currentPasswordEmail" class="text-sm leading-none font-medium"
-							>Current password</label
-						>
+						<label for="currentPasswordEmail" class="text-sm leading-none font-medium">
+							Current password
+						</label>
 						<Input
 							{...requestUpdateEmail.fields._currentPassword.as('password')}
 							id="currentPasswordEmail"
@@ -240,9 +240,9 @@
 			{:else}
 				<form {...updatePassword} class="space-y-4">
 					<div class="space-y-2">
-						<label for="currentPassword" class="text-sm leading-none font-medium"
-							>Current password</label
-						>
+						<label for="currentPassword" class="text-sm leading-none font-medium">
+							Current password
+						</label>
 						<Input
 							{...updatePassword.fields._currentPassword.as('password')}
 							id="currentPassword"
@@ -264,9 +264,9 @@
 						{/each}
 					</div>
 					<div class="space-y-2">
-						<label for="confirmPassword" class="text-sm leading-none font-medium"
-							>Confirm new password</label
-						>
+						<label for="confirmPassword" class="text-sm leading-none font-medium">
+							Confirm new password
+						</label>
 						<Input
 							{...updatePassword.fields._confirmPassword.as('password')}
 							id="confirmPassword"

@@ -112,13 +112,16 @@
 		</form>
 	</Card.Content>
 	<Card.Footer class="flex-col gap-2">
-		<a href="/forgot-password" class="text-sm text-muted-foreground hover:underline"
-			>Forgot password?</a
-		>
+		<a href="/forgot-password" class="text-sm text-muted-foreground hover:underline">
+			Forgot password?
+		</a>
 		<p class="text-sm text-muted-foreground">
-			Don't have an account? <a href="/register" class="font-medium text-foreground hover:underline"
-				>Register</a
+			Don't have an account? <a
+				href="/register"
+				class="font-medium text-foreground hover:underline"
 			>
+				Register
+			</a>
 		</p>
 	</Card.Footer>
 </Card.Root>

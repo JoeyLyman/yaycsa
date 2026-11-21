@@ -103,11 +103,11 @@
 		{#if isPending || isFailed}
 			<div class="inline-flex items-baseline py-1">
 				<span class="text-muted-foreground italic">Ingredients</span>
-				<span class="ml-2"
-					>{product.bits.length > 0
+				<span class="ml-2">
+					{product.bits.length > 0
 						? product.bits.map((bit) => titleCase(bit.name)).join(', ')
-						: '–'}</span
-				>
+						: '–'}
+				</span>
 			</div>
 		{:else}
 			<div class="inline-flex w-fit items-baseline py-1">
@@ -133,11 +133,11 @@
 		{#if isPending || isFailed}
 			<div class="inline-flex items-baseline py-1">
 				<span class="text-muted-foreground italic">Processing</span>
-				<span class="ml-2"
-					>{product.processes.length > 0
+				<span class="ml-2">
+					{product.processes.length > 0
 						? product.processes.map((processItem) => titleCase(processItem.name)).join(', ')
-						: '–'}</span
-				>
+						: '–'}
+				</span>
 			</div>
 		{:else}
 			<div class="inline-flex w-fit items-baseline py-1">
@@ -163,24 +163,24 @@
 		{#if isPending || isFailed}
 			<div class="inline-flex items-baseline py-1">
 				<span class="text-muted-foreground italic">Allergens</span>
-				<span class="ml-2"
-					>{product.allergenWarnings.length > 0
+				<span class="ml-2">
+					{product.allergenWarnings.length > 0
 						? product.allergenWarnings
 								.map((allergen) => titleCase(allergen.name.replace(/^May contain /i, '')))
 								.join(', ')
-						: '–'}</span
-				>
+						: '–'}
+				</span>
 			</div>
 		{:else}
 			<div class="inline-flex w-fit items-baseline py-1">
 				<span class="text-muted-foreground italic">Allergens</span>
-				<span class="ml-2"
-					>{displayAllergens.length > 0
+				<span class="ml-2">
+					{displayAllergens.length > 0
 						? displayAllergens
 								.map((allergen) => titleCase(allergen.label.replace(/^May contain /i, '')))
 								.join(', ')
-						: '–'}</span
-				>
+						: '–'}
+				</span>
 			</div>
 
 			{#if allFieldsOpen}

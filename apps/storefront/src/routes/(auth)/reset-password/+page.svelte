@@ -49,9 +49,9 @@
 					{/each}
 				</div>
 				<div class="space-y-2">
-					<label for="confirmPassword" class="text-sm leading-none font-medium"
-						>Confirm password</label
-					>
+					<label for="confirmPassword" class="text-sm leading-none font-medium">
+						Confirm password
+					</label>
 					<Input
 						{...resetPassword.fields._confirmPassword.as('password')}
 						id="confirmPassword"

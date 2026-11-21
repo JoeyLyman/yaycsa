@@ -244,8 +244,10 @@
 								onclick={() => {
 									customizingSlug = false;
 									syncSlugInput();
-								}}>Close</button
+								}}
 							>
+								Close
+							</button>
 						</div>
 						<Input
 							{...becomeSeller.fields.slug.as('text')}
@@ -261,16 +263,18 @@
 				{/if}
 				<div class="flex items-center justify-between">
 					<p class="text-sm text-muted-foreground">
-						Your page: yaycsa.com/<span class="font-medium text-foreground"
-							>{effectiveSlug || '...'}</span
-						>
+						Your page: yaycsa.com/<span class="font-medium text-foreground">
+							{effectiveSlug || '...'}
+						</span>
 					</p>
 					{#if !customizingSlug}
 						<button
 							type="button"
 							class="text-sm text-primary underline underline-offset-2"
-							onclick={() => (customizingSlug = true)}>Customize URL</button
+							onclick={() => (customizingSlug = true)}
 						>
+							Customize URL
+						</button>
 					{/if}
 				</div>
 				<Button type="submit" class="w-full" disabled={submitDisabled}>

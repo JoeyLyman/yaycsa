@@ -313,8 +313,9 @@
 			{:else if isFailed}
 				<span
 					class="inline-flex min-h-8 items-center truncate text-[17px] leading-tight font-medium text-destructive"
-					>{product.name}</span
 				>
+					{product.name}
+				</span>
 			{:else}
 				<TableRowHeader
 					value={displayName}
