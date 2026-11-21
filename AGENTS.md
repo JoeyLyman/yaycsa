@@ -7,7 +7,7 @@
 
 ## Shared Docs & Todo (git submodule: `apps/docs/`)
 
-Architecture docs and the project todo are maintained in a git submodule (`apps/docs/`). The docs in this submodule are the **single source of truth** for architecture and feature specs (not SPEC.md, which is outdated).
+Architecture docs and the project todo are maintained in a git submodule (`apps/docs/`). The docs in this submodule are the **single source of truth** for architecture and feature specs.
 
 <!--
 PAUSED 2026-11-06: Joe isn't using Wally right now and plans directly in Claude Code.
