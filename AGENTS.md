@@ -87,7 +87,7 @@ Examples:
 - `blocks/product-list-row-fields/product-list-row-fields.svelte` + `blocks/product-list-row-fields/index.ts`
 - `bundles/navbar/navbar.svelte` + `bundles/navbar/index.ts`
 
-Import via the directory (barrel): `import { Navbar } from '$lib/components/bundles/navbar'`
+Import via the barrel file: `import { Navbar } from '#lib/components/bundles/navbar/index.ts'`. Since SvelteKit 3, `$lib` is gone: `#lib` is a Node subpath import declared in `apps/storefront/package.json`, and imports must name the file with its extension (`index.ts`, `.svelte`, `.ts`).
 
 ### Category meanings
 

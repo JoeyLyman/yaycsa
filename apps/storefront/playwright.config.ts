@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { resolve } from 'path';
 
 // Load .env.test if present (TEST_SELLER_SLUG override; no credentials needed)
-dotenv.config({ path: resolve(import.meta.dirname, '.env.test') });
+dotenv.config({ path: resolve(import.meta.dirname, '.env.test'), quiet: true });
 
 export default defineConfig({
 	testDir: './tests',
