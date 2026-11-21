@@ -1,6 +1,6 @@
 <script lang="ts">
 	import OfferListRow from './offer-list-row.svelte';
-	import type { OfferListItem } from './offer-list-types';
+	import type { OfferListItem } from '#lib/api/offer-view-model.ts';
 
 	let {
 		/** Offers to render, already filtered/sorted by the parent page. */

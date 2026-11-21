@@ -18,7 +18,7 @@ import {
 	normalizeAdminOffer,
 	normalizeShopOffer,
 	type RawOffer
-} from '../src/lib/components/bundles/offer-list/offer-list-helpers';
+} from '../src/lib/api/offer-view-model';
 
 const SHOP_API = 'http://localhost:3000/shop-api';
 const ADMIN_API = 'http://localhost:3000/admin-api';

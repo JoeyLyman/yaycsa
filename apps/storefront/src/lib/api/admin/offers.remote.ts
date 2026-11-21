@@ -14,11 +14,7 @@ import type {
 	SellerFulfillmentOption,
 	Weekday
 } from './fulfillment-options.remote.js';
-import {
-	normalizeAdminOffer,
-	type RawOffer
-} from '#lib/components/bundles/offer-list/offer-list-helpers.ts';
-import type { OfferListItem } from '#lib/components/bundles/offer-list/offer-list-types.ts';
+import { normalizeAdminOffer, type OfferListItem, type RawOffer } from '../offer-view-model.js';
 
 export type OfferStatus = 'draft' | 'active' | 'paused' | 'expired';
 

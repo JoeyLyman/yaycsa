@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatMoney } from '#lib/utils/money.ts';
 	import { pricingModeLabel } from './offer-list-helpers';
-	import type { OfferLineItemView } from './offer-list-types';
+	import type { OfferLineItemView } from '#lib/api/offer-view-model.ts';
 	import type { TableAudience } from '#lib/components/blocks/table-view-toggle/index.ts';
 
 	let {

@@ -6,7 +6,7 @@
 		offerStatusClasses,
 		offerStatusLabel
 	} from './offer-list-helpers';
-	import type { OfferListItem } from './offer-list-types';
+	import type { OfferListItem } from '#lib/api/offer-view-model.ts';
 
 	let {
 		/** The offer to render. */
