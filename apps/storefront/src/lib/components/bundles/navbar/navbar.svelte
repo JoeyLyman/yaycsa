@@ -128,7 +128,7 @@
 	 * - /me on the home page or other non-seller pages (go to become-a-seller or own sales page)
 	 */
 	const navSuffixHref = $derived(
-		isSellerPage ? resolve('/(app)/[seller]', { seller: pathSegments[0] }) : resolve('/me')
+		isSellerPage ? resolve('/(app)/[seller]', { seller: pathSegments[0] }) : resolve('me')
 	);
 
 	/**
@@ -188,13 +188,18 @@
 				class="shrink-0 text-lg font-bold transition-colors {isHome
 					? 'cursor-default text-foreground'
 					: 'text-muted-foreground/60 hover:text-muted-foreground'}">yay</a
-			><span
+			>
+
+			<span
 				class="mx-1 shrink-0 text-lg font-bold {isNavSuffixActive
 					? 'text-foreground'
-					: 'text-muted-foreground/60'}">&middot;</span
-			><Tooltip.Provider
-				><Tooltip.Root delayDuration={0}
-					>{#if isNavSuffixActive}<Tooltip.Trigger
+					: 'text-muted-foreground/60'}">·</span
+			>
+
+			<Tooltip.Provider>
+				<Tooltip.Root delayDuration={0}>
+					{#if isNavSuffixActive}
+						<Tooltip.Trigger
 							class="max-w-64 cursor-default truncate text-lg font-bold text-foreground sm:max-w-96"
 							>{navSuffix}</Tooltip.Trigger
 						>{:else}<Tooltip.Trigger
