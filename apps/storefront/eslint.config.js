@@ -33,7 +33,12 @@ export default defineConfig(
 
 		languageOptions: {
 			parserOptions: {
-				projectService: true,
+				// Typed linting is off for Svelte files: since the TypeScript 6 / ESLint 10
+				// upgrade (2026-11-21), typescript-eslint's project service crashes on .svelte
+				// files without a <script> block ("Parsing error: Cannot read properties of
+				// undefined"). No enabled rule needs type information. Re-test with `true`
+				// after future typescript-eslint / svelte-eslint-parser updates.
+				projectService: false,
 				extraFileExtensions: ['.svelte'],
 				parser: ts.parser,
 				svelteConfig
