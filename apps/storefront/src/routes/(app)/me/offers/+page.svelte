@@ -13,6 +13,7 @@
 		setTableViewContext,
 		type TableAudience
 	} from '$lib/components/blocks/table-view-toggle';
+
 	import {
 		createFulfillmentOption,
 		deleteFulfillmentOption,
@@ -193,7 +194,12 @@
 
 	/** Status filter options for the Fulfillment Options table, with live counts in each label. */
 	let fulfillmentStatusFilterOptions = $derived<TableStatusFilterOption[]>([
-		{ value: 'active', label: 'Active', count: activeFulfillmentOptionCount },
+		{
+			value: 'active',
+			label: 'Active',
+			count: activeFulfillmentOptionCount
+		},
+
 		{
 			value: 'inactive',
 			label: 'Inactive',
@@ -239,7 +245,12 @@
 
 	/** Header-level tab definitions rendered in the page title area. */
 	let workspaceHeaderTabs = $derived.by(() => [
-		{ value: 'offers', label: 'Offers', href: getWorkspaceTabHref('offers') },
+		{
+			value: 'offers',
+			label: 'Offers',
+			href: getWorkspaceTabHref('offers')
+		},
+
 		{
 			value: 'fulfillment-options',
 			label: 'Fulfillment Options',
@@ -256,7 +267,9 @@
 		void loadWorkspaceData();
 	});
 
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
+
 		selectedWorkspaceTab = getWorkspaceTabFromUrl(page.url);
 	});
 
