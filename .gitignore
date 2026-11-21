@@ -38,3 +38,6 @@ apps/storefront/test-results/
 
 # Test emails
 apps/server/static/email/test-emails/
+
+# Vendure (machine-specific telemetry installation id)
+.vendure/

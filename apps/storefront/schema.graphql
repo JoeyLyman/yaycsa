@@ -1,240 +1,3 @@
-type Query {
-  """The active Channel"""
-  activeChannel: Channel!
-
-  """The active Customer"""
-  activeCustomer: Customer
-
-  """
-  The active Order. Will be `null` until an Order is created via `addItemToOrder`. Once an Order reaches the
-  state of `PaymentAuthorized` or `PaymentSettled`, then that Order is no longer considered "active" and this
-  query will once again return `null`.
-  """
-  activeOrder: Order
-
-  """An array of supported Countries"""
-  availableCountries: [Country!]!
-
-  """A list of Collections available to the shop"""
-  collections(options: CollectionListOptions): CollectionList!
-
-  """
-  Returns a Collection either by its id or slug. If neither 'id' nor 'slug' is specified, an error will result.
-  """
-  collection(id: ID, slug: String): Collection
-
-  """
-  Returns a list of eligible shipping methods based on the current active Order
-  """
-  eligibleShippingMethods: [ShippingMethodQuote!]!
-
-  """
-  Returns a list of payment methods and their eligibility based on the current active Order
-  """
-  eligiblePaymentMethods: [PaymentMethodQuote!]!
-
-  """A list of Facets available to the shop"""
-  facets(options: FacetListOptions): FacetList!
-
-  """Returns a Facet by its id"""
-  facet(id: ID!): Facet
-
-  """Returns information about the current authenticated User"""
-  me: CurrentUser
-
-  """
-  Returns the possible next states that the activeOrder can transition to
-  """
-  nextOrderStates: [String!]!
-
-  """
-  Returns an Order based on the id. Note that in the Shop API, only orders belonging to the
-  currently-authenticated User may be queried.
-  """
-  order(id: ID!): Order
-
-  """
-  Returns an Order based on the order `code`. For guest Orders (i.e. Orders placed by non-authenticated Customers)
-  this query will only return the Order within 2 hours of the Order being placed. This allows an Order confirmation
-  screen to be shown immediately after completion of a guest checkout, yet prevents security risks of allowing
-  general anonymous access to Order data.
-  """
-  orderByCode(code: String!): Order
-
-  """
-  Get a Product either by id or slug. If neither 'id' nor 'slug' is specified, an error will result.
-  """
-  product(id: ID, slug: String): Product
-
-  """Get a list of Products"""
-  products(options: ProductListOptions): ProductList!
-
-  """Search Products based on the criteria set by the `SearchInput`"""
-  search(input: SearchInput!): SearchResponse!
-
-  """Get active payment methods"""
-  activePaymentMethods: [PublicPaymentMethod]!
-
-  """Get active shipping methods"""
-  activeShippingMethods: [PublicShippingMethod]!
-  sellers(activeOffersOnly: Boolean): [ShopSeller!]!
-  sellerBySlug(slug: String!): ShopSeller
-  activeOffers(sellerId: ID): [Offer!]!
-  offerLineItem(id: ID!): OfferLineItem
-}
-
-type Mutation {
-  """
-  Adds an item to the Order. If custom fields are defined on the OrderLine entity, a third argument 'customFields' will be available.
-  """
-  addItemToOrder(productVariantId: ID!, quantity: Int!, customFields: OrderLineCustomFieldsInput = null): UpdateOrderItemsResult!
-
-  """
-  Adds mutliple items to the Order. Returns a list of errors for each item that failed to add. It will still add successful items.
-  """
-  addItemsToOrder(inputs: [AddItemInput!]!): UpdateMultipleOrderItemsResult!
-
-  """Remove an OrderLine from the Order"""
-  removeOrderLine(orderLineId: ID!): RemoveOrderItemsResult!
-
-  """Remove all OrderLine from the Order"""
-  removeAllOrderLines: RemoveOrderItemsResult!
-
-  """
-  Adjusts an OrderLine. If custom fields are defined on the OrderLine entity, a third argument 'customFields' of type `OrderLineCustomFieldsInput` will be available.
-  """
-  adjustOrderLine(orderLineId: ID!, quantity: Int!, customFields: OrderLineCustomFieldsInput = null): UpdateOrderItemsResult!
-
-  """Applies the given coupon code to the active Order"""
-  applyCouponCode(couponCode: String!): ApplyCouponCodeResult!
-
-  """Removes the given coupon code from the active Order"""
-  removeCouponCode(couponCode: String!): Order
-
-  """
-  Transitions an Order to a new state. Valid next states can be found by querying `nextOrderStates`
-  """
-  transitionOrderToState(state: String!): TransitionOrderToStateResult
-
-  """Sets the shipping address for the active Order"""
-  setOrderShippingAddress(input: CreateAddressInput!): ActiveOrderResult!
-
-  """Sets the billing address for the active Order"""
-  setOrderBillingAddress(input: CreateAddressInput!): ActiveOrderResult!
-
-  """
-  Unsets the shipping address for the active Order. Available since version 3.1.0
-  """
-  unsetOrderShippingAddress: ActiveOrderResult!
-
-  """
-  Unsets the billing address for the active Order. Available since version 3.1.0
-  """
-  unsetOrderBillingAddress: ActiveOrderResult!
-
-  """Allows any custom fields to be set for the active Order"""
-  setOrderCustomFields(input: UpdateOrderInput!): ActiveOrderResult!
-
-  """
-  Sets the shipping method by id, which can be obtained with the `eligibleShippingMethods` query.
-  An Order can have multiple shipping methods, in which case you can pass an array of ids. In this case,
-  you should configure a custom ShippingLineAssignmentStrategy in order to know which OrderLines each
-  shipping method will apply to.
-  """
-  setOrderShippingMethod(shippingMethodId: [ID!]!): SetOrderShippingMethodResult!
-
-  """Add a Payment to the Order"""
-  addPaymentToOrder(input: PaymentInput!): AddPaymentToOrderResult!
-
-  """
-  Set the Customer for the Order. Required only if the Customer is not currently logged in
-  """
-  setCustomerForOrder(input: CreateCustomerInput!): SetCustomerForOrderResult!
-
-  """
-  Authenticates the user using the native authentication strategy. This mutation is an alias for authenticate({ native: { ... }})
-  
-  The `rememberMe` option applies when using cookie-based sessions, and if `true` it will set the maxAge of the session cookie
-  to 1 year.
-  """
-  login(username: String!, password: String!, rememberMe: Boolean): NativeAuthenticationResult!
-
-  """Authenticates the user using a named authentication strategy"""
-  authenticate(input: AuthenticationInput!, rememberMe: Boolean): AuthenticationResult!
-
-  """End the current authenticated session"""
-  logout: Success!
-
-  """
-  Register a Customer account with the given credentials. There are three possible registration flows:
-  
-  _If `authOptions.requireVerification` is set to `true`:_
-  
-  1. **The Customer is registered _with_ a password**. A verificationToken will be created (and typically emailed to the Customer). That
-     verificationToken would then be passed to the `verifyCustomerAccount` mutation _without_ a password. The Customer is then
-     verified and authenticated in one step.
-  2. **The Customer is registered _without_ a password**. A verificationToken will be created (and typically emailed to the Customer). That
-     verificationToken would then be passed to the `verifyCustomerAccount` mutation _with_ the chosen password of the Customer. The Customer is then
-     verified and authenticated in one step.
-  
-  _If `authOptions.requireVerification` is set to `false`:_
-  
-  3. The Customer _must_ be registered _with_ a password. No further action is needed - the Customer is able to authenticate immediately.
-  """
-  registerCustomerAccount(input: RegisterCustomerInput!): RegisterCustomerAccountResult!
-
-  """
-  Regenerate and send a verification token for a new Customer registration. Only applicable if `authOptions.requireVerification` is set to true.
-  """
-  refreshCustomerVerification(emailAddress: String!): RefreshCustomerVerificationResult!
-
-  """Update an existing Customer"""
-  updateCustomer(input: UpdateCustomerInput!): Customer!
-
-  """Create a new Customer Address"""
-  createCustomerAddress(input: CreateAddressInput!): Address!
-
-  """Update an existing Address"""
-  updateCustomerAddress(input: UpdateAddressInput!): Address!
-
-  """Delete an existing Address"""
-  deleteCustomerAddress(id: ID!): Success!
-
-  """
-  Verify a Customer email address with the token sent to that address. Only applicable if `authOptions.requireVerification` is set to true.
-  
-  If the Customer was not registered with a password in the `registerCustomerAccount` mutation, the password _must_ be
-  provided here.
-  """
-  verifyCustomerAccount(token: String!, password: String): VerifyCustomerAccountResult!
-
-  """Update the password of the active Customer"""
-  updateCustomerPassword(currentPassword: String!, newPassword: String!): UpdateCustomerPasswordResult!
-
-  """
-  Request to update the emailAddress of the active Customer. If `authOptions.requireVerification` is enabled
-  (as is the default), then the `identifierChangeToken` will be assigned to the current User and
-  a IdentifierChangeRequestEvent will be raised. This can then be used e.g. by the EmailPlugin to email
-  that verification token to the Customer, which is then used to verify the change of email address.
-  """
-  requestUpdateCustomerEmailAddress(password: String!, newEmailAddress: String!): RequestUpdateCustomerEmailAddressResult!
-
-  """
-  Confirm the update of the emailAddress with the provided token, which has been generated by the
-  `requestUpdateCustomerEmailAddress` mutation.
-  """
-  updateCustomerEmailAddress(token: String!): UpdateCustomerEmailAddressResult!
-
-  """Requests a password reset email to be sent"""
-  requestPasswordReset(emailAddress: String!): RequestPasswordResetResult
-
-  """Resets a Customer's password based on the provided token"""
-  resetPassword(token: String!, password: String!): ResetPasswordResult!
-  becomeSeller(input: BecomeSellerInput!): BecomeSellerResult!
-  addOfferItemToOrder(offerLineItemId: ID!, quantity: Int!, selectedCaseQuantity: Int, buyerNotes: String): Order!
-  adjustOfferItemQuantity(orderLineId: ID!, quantity: Int!): Order!
-}
-
 type Address implements Node {
   id: ID!
   createdAt: DateTime!
@@ -257,6 +20,7 @@ type Asset implements Node {
   id: ID!
   createdAt: DateTime!
   updatedAt: DateTime!
+  languageCode: LanguageCode!
   name: String!
   type: AssetType!
   fileSize: Int!
@@ -267,7 +31,16 @@ type Asset implements Node {
   preview: String!
   focalPoint: Coordinate
   tags: [Tag!]!
+  translations: [AssetTranslation!]!
   customFields: JSON
+}
+
+type AssetTranslation {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  languageCode: LanguageCode!
+  name: String!
 }
 
 type Coordinate {
@@ -434,6 +207,11 @@ enum Permission {
   """Grants permission to update GlobalSettings"""
   UpdateGlobalSettings
 
+  """
+  Grants permission to read the decrypted value of custom fields and config args marked as `secret`
+  """
+  ReadSecret
+
   """Grants permission to create Products, Facets, Assets, Collections"""
   CreateCatalog
 
@@ -477,6 +255,18 @@ enum Permission {
 
   """Grants permission to delete Administrator"""
   DeleteAdministrator
+
+  """Grants permission to create ApiKey"""
+  CreateApiKey
+
+  """Grants permission to read ApiKey"""
+  ReadApiKey
+
+  """Grants permission to update ApiKey"""
+  UpdateApiKey
+
+  """Grants permission to delete ApiKey"""
+  DeleteApiKey
 
   """Grants permission to create Asset"""
   CreateAsset
@@ -739,6 +529,7 @@ enum ErrorCode {
   INELIGIBLE_PAYMENT_METHOD_ERROR
   PAYMENT_FAILED_ERROR
   PAYMENT_DECLINED_ERROR
+  COUPON_REMOVED_DURING_CHECKOUT_ERROR
   ALREADY_LOGGED_IN_ERROR
   MISSING_PASSWORD_ERROR
   PASSWORD_VALIDATION_ERROR
@@ -941,6 +732,7 @@ type ConfigArgDefinition {
   label: String
   description: String
   ui: JSON
+  secret: Boolean
 }
 
 type ConfigurableOperation {
@@ -1072,7 +864,9 @@ input SearchInput {
   facetValueOperator: LogicalOperator @deprecated(reason: "Use `facetValueFilters` instead")
   facetValueFilters: [FacetValueFilterInput!]
   collectionId: ID
+  collectionIds: [ID!]
   collectionSlug: String
+  collectionSlugs: [String!]
   groupByProduct: Boolean
   take: Int
   skip: Int
@@ -1668,6 +1462,7 @@ interface CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   ui: JSON
@@ -1684,6 +1479,7 @@ type StringCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   pattern: String
@@ -1707,6 +1503,7 @@ type LocaleStringCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   pattern: String
@@ -1723,6 +1520,7 @@ type IntCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   min: Int
@@ -1741,6 +1539,7 @@ type FloatCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   min: Float
@@ -1759,6 +1558,7 @@ type BooleanCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   ui: JSON
@@ -1778,6 +1578,7 @@ type DateTimeCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   min: String
@@ -1796,6 +1597,7 @@ type RelationCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   entity: String!
@@ -1813,6 +1615,7 @@ type TextCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   ui: JSON
@@ -1828,6 +1631,7 @@ type LocaleTextCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   ui: JSON
@@ -1925,6 +1729,7 @@ type StructCustomFieldConfig implements CustomField {
   internal: Boolean
   nullable: Boolean
   requiresPermission: [Permission!]
+  secret: Boolean
   deprecated: Boolean
   deprecationReason: String
   ui: JSON
@@ -1995,7 +1800,7 @@ type FacetValue implements Node {
   name: String!
   code: String!
   translations: [FacetValueTranslation!]!
-  customFields: JSON
+  customFields: FacetValueCustomFields
 }
 
 type FacetValueTranslation {
@@ -2095,6 +1900,7 @@ enum HistoryEntryType {
   ORDER_COUPON_REMOVED
   ORDER_MODIFIED
   ORDER_CUSTOMER_UPDATED
+  ORDER_CURRENCY_UPDATED
 }
 
 type HistoryEntryList implements PaginatedList {
@@ -2854,6 +2660,12 @@ type Refund implements Node {
   adjustment: Money!
   total: Money!
   method: String
+
+  """
+  The refund destination code, if a non-default destination was used.
+  When null, the refund was directed to the original payment method.
+  """
+  destination: String
   state: String!
   transactionId: String
   reason: String
@@ -2926,6 +2738,9 @@ type ProductOptionGroup implements Node {
   code: String!
   name: String!
   options: [ProductOption!]!
+
+  """The number of products that use this option group"""
+  productCount: Int!
   translations: [ProductOptionGroupTranslation!]!
   customFields: JSON
 }
@@ -3219,6 +3034,7 @@ type Role implements Node {
   description: String!
   permissions: [Permission!]!
   channels: [Channel!]!
+  customFields: JSON
 }
 
 type RoleList implements PaginatedList {
@@ -3231,7 +3047,19 @@ type Seller implements Node {
   createdAt: DateTime!
   updatedAt: DateTime!
   name: String!
+  translations: [SellerTranslation!]!
   customFields: SellerCustomFields
+}
+
+"""
+Holds a Seller's localized custom field values for one language.
+The Seller's own fields, such as `name`, are not translated.
+"""
+type SellerTranslation {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  languageCode: LanguageCode!
 }
 
 type ShippingMethod implements Node {
@@ -3362,6 +3190,25 @@ type PaymentDeclinedError implements ErrorResult {
 }
 
 """
+Returned by `addPaymentToOrder` when one or more coupon codes were removed
+from the Order during payment-time revalidation and the removal would have
+increased the amount the customer is charged. Refusing the payment in this
+case prevents silently charging the customer more than they agreed to. The
+most common trigger is a usage-limited coupon's slot being claimed by a
+concurrent checkout, but the same protection applies when a coupon is
+stripped because the order no longer meets the promotion's eligibility
+conditions or because the promotion was disabled mid-checkout.
+"""
+type CouponRemovedDuringCheckoutError implements ErrorResult {
+  errorCode: ErrorCode!
+  message: String!
+  removedCouponCodes: [String!]!
+  previousTotalWithTax: Money!
+  newTotalWithTax: Money!
+  currencyCode: CurrencyCode!
+}
+
+"""
 Returned when attempting to set the Customer for an Order when already logged in.
 """
 type AlreadyLoggedInError implements ErrorResult {
@@ -3457,6 +3304,91 @@ type NotVerifiedError implements ErrorResult {
   message: String!
 }
 
+type Query {
+  """The active Channel"""
+  activeChannel: Channel!
+
+  """The active Customer"""
+  activeCustomer: Customer
+
+  """
+  The active Order. Will be `null` until an Order is created via `addItemToOrder`. Once an Order reaches the
+  state of `PaymentAuthorized` or `PaymentSettled`, then that Order is no longer considered "active" and this
+  query will once again return `null`.
+  """
+  activeOrder: Order
+
+  """An array of supported Countries"""
+  availableCountries: [Country!]!
+
+  """A list of Collections available to the shop"""
+  collections(options: CollectionListOptions): CollectionList!
+
+  """
+  Returns a Collection either by its id or slug. If neither 'id' nor 'slug' is specified, an error will result.
+  """
+  collection(id: ID, slug: String): Collection
+
+  """
+  Returns a list of eligible shipping methods based on the current active Order
+  """
+  eligibleShippingMethods: [ShippingMethodQuote!]!
+
+  """
+  Returns a list of payment methods and their eligibility based on the current active Order
+  """
+  eligiblePaymentMethods: [PaymentMethodQuote!]!
+
+  """A list of Facets available to the shop"""
+  facets(options: FacetListOptions): FacetList!
+
+  """Returns a Facet by its id"""
+  facet(id: ID!): Facet
+
+  """Returns information about the current authenticated User"""
+  me: CurrentUser
+
+  """
+  Returns the possible next states that the activeOrder can transition to
+  """
+  nextOrderStates: [String!]!
+
+  """
+  Returns an Order based on the id. Note that in the Shop API, only orders belonging to the
+  currently-authenticated User may be queried.
+  """
+  order(id: ID!): Order
+
+  """
+  Returns an Order based on the order `code`. For guest Orders (i.e. Orders placed by non-authenticated Customers)
+  this query will only return the Order within 2 hours of the Order being placed. This allows an Order confirmation
+  screen to be shown immediately after completion of a guest checkout, yet prevents security risks of allowing
+  general anonymous access to Order data.
+  """
+  orderByCode(code: String!): Order
+
+  """
+  Get a Product either by id or slug. If neither 'id' nor 'slug' is specified, an error will result.
+  """
+  product(id: ID, slug: String): Product
+
+  """Get a list of Products"""
+  products(options: ProductListOptions): ProductList!
+
+  """Search Products based on the criteria set by the `SearchInput`"""
+  search(input: SearchInput!): SearchResponse!
+
+  """Get active payment methods"""
+  activePaymentMethods: [PublicPaymentMethod]!
+
+  """Get active shipping methods"""
+  activeShippingMethods: [PublicShippingMethod]!
+  sellers(activeOffersOnly: Boolean): [ShopSeller!]!
+  sellerBySlug(slug: String!): ShopSeller
+  activeOffers(sellerId: ID): [Offer!]!
+  offerLineItem(id: ID!): OfferLineItem
+}
+
 type PublicPaymentMethod {
   id: ID!
   code: String!
@@ -3473,6 +3405,176 @@ type PublicShippingMethod {
   description: String
   translations: [ShippingMethodTranslation!]!
   customFields: JSON
+}
+
+type Mutation {
+  """
+  Adds an item to the Order. If custom fields are defined on the OrderLine entity, a third argument 'customFields' will be available.
+  """
+  addItemToOrder(productVariantId: ID!, quantity: Int!, customFields: OrderLineCustomFieldsInput = null): UpdateOrderItemsResult!
+
+  """
+  Adds mutliple items to the Order. Returns a list of errors for each item that failed to add. It will still add successful items.
+  """
+  addItemsToOrder(inputs: [AddItemInput!]!): UpdateMultipleOrderItemsResult!
+
+  """Remove an OrderLine from the Order"""
+  removeOrderLine(orderLineId: ID!): RemoveOrderItemsResult!
+
+  """Remove all OrderLine from the Order"""
+  removeAllOrderLines: RemoveOrderItemsResult!
+
+  """
+  Adjusts an OrderLine. If custom fields are defined on the OrderLine entity, a third argument 'customFields' of type `OrderLineCustomFieldsInput` will be available.
+  """
+  adjustOrderLine(orderLineId: ID!, quantity: Int!, customFields: OrderLineCustomFieldsInput = null): UpdateOrderItemsResult!
+
+  """Applies the given coupon code to the active Order"""
+  applyCouponCode(couponCode: String!): ApplyCouponCodeResult!
+
+  """Removes the given coupon code from the active Order"""
+  removeCouponCode(couponCode: String!): Order
+
+  """
+  Transitions an Order to a new state. Valid next states can be found by querying `nextOrderStates`
+  """
+  transitionOrderToState(state: String!): TransitionOrderToStateResult
+
+  """Sets the shipping address for the active Order"""
+  setOrderShippingAddress(input: CreateAddressInput!): ActiveOrderResult!
+
+  """Sets the billing address for the active Order"""
+  setOrderBillingAddress(input: CreateAddressInput!): ActiveOrderResult!
+
+  """
+  Unsets the shipping address for the active Order. Available since version 3.1.0
+  """
+  unsetOrderShippingAddress: ActiveOrderResult!
+
+  """
+  Unsets the billing address for the active Order. Available since version 3.1.0
+  """
+  unsetOrderBillingAddress: ActiveOrderResult!
+
+  """Allows any custom fields to be set for the active Order"""
+  setOrderCustomFields(input: UpdateOrderInput!): ActiveOrderResult!
+
+  """
+  Sets the shipping method by id, which can be obtained with the `eligibleShippingMethods` query.
+  An Order can have multiple shipping methods, in which case you can pass an array of ids. In this case,
+  you should configure a custom ShippingLineAssignmentStrategy in order to know which OrderLines each
+  shipping method will apply to.
+  """
+  setOrderShippingMethod(shippingMethodId: [ID!]!): SetOrderShippingMethodResult!
+
+  """Sets the currency code for the active Order"""
+  setCurrencyCodeForOrder(currencyCode: CurrencyCode!): UpdateOrderItemsResult!
+
+  """Add a Payment to the Order"""
+  addPaymentToOrder(input: PaymentInput!): AddPaymentToOrderResult!
+
+  """
+  Set the Customer for the Order. Required only if the Customer is not currently logged in
+  """
+  setCustomerForOrder(input: CreateCustomerInput!): SetCustomerForOrderResult!
+
+  """
+  Authenticates the user using the native authentication strategy. This mutation is an alias for authenticate({ native: { ... }})
+  
+  The `rememberMe` option applies when using cookie-based sessions, and if `true` it will set the maxAge of the session cookie
+  to 1 year.
+  """
+  login(username: String!, password: String!, rememberMe: Boolean): NativeAuthenticationResult!
+
+  """Authenticates the user using a named authentication strategy"""
+  authenticate(input: AuthenticationInput!, rememberMe: Boolean): AuthenticationResult!
+
+  """End the current authenticated session"""
+  logout: Success!
+
+  """
+  Register a Customer account with the given credentials. There are four possible registration flows:
+  
+  _If `authOptions.requireVerification` is set to `true`:_
+  
+  1. **The Customer is registered _with_ a password**. A verificationToken will be created (and typically emailed to the Customer). That
+     verificationToken would then be passed to the `verifyCustomerAccount` mutation _without_ a password. The Customer is then
+     verified and authenticated in one step.
+  2. **The Customer is registered _without_ a password**. A verificationToken will be created (and typically emailed to the Customer). That
+     verificationToken would then be passed to the `verifyCustomerAccount` mutation _with_ the chosen password of the Customer. The Customer is then
+     verified and authenticated in one step.
+  
+  _If `authOptions.requireVerification` is set to `false`:_
+  
+  3. The Customer _must_ be registered _with_ a password. No further action is needed - the Customer is able to authenticate immediately.
+  
+  _Whatever the setting, if an account already exists for the email address through another authentication strategy
+  (for example an SSO provider) and has no password yet:_
+  
+  4. **The supplied password is never stored.** A verificationToken is created and emailed to the address, and this mutation
+     answers with a generic success so that it does not reveal whether the account exists. The password is set only when that
+     token is passed to the `verifyCustomerAccount` mutation _with_ the chosen password, which proves the caller controls the
+     mailbox. This holds even when `requireVerification` is `false`, so the Customer cannot be authenticated straight after
+     registering. Registering again issues a fresh token and sends the email again.
+  
+  In every flow the caller-supplied `firstName`, `lastName`, `phoneNumber` and custom fields are ignored whenever a User already
+  exists for the email address, since the caller has not proven they own it. This includes an account an administrator created
+  earlier. A Customer with no User, such as one left by a guest checkout, is not an account and its details are still filled in.
+  """
+  registerCustomerAccount(input: RegisterCustomerInput!): RegisterCustomerAccountResult!
+
+  """
+  Regenerate and send a verification token for a new Customer registration. Only applicable if `authOptions.requireVerification` is set to true.
+  """
+  refreshCustomerVerification(emailAddress: String!): RefreshCustomerVerificationResult!
+
+  """Update an existing Customer"""
+  updateCustomer(input: UpdateCustomerInput!): Customer!
+
+  """Create a new Customer Address"""
+  createCustomerAddress(input: CreateAddressInput!): Address!
+
+  """Update an existing Address"""
+  updateCustomerAddress(input: UpdateAddressInput!): Address!
+
+  """Delete an existing Address"""
+  deleteCustomerAddress(id: ID!): Success!
+
+  """
+  Verify a Customer email address with the token sent to that address. Applicable whenever a verificationToken was issued:
+  that is when `authOptions.requireVerification` is set to true, and also when a password was registered against an account
+  that already existed through another authentication strategy, whatever that setting is.
+  
+  If the Customer was not registered with a password in the `registerCustomerAccount` mutation, the password _must_ be
+  provided here.
+  """
+  verifyCustomerAccount(token: String!, password: String): VerifyCustomerAccountResult!
+
+  """Update the password of the active Customer"""
+  updateCustomerPassword(currentPassword: String!, newPassword: String!): UpdateCustomerPasswordResult!
+
+  """
+  Request to update the emailAddress of the active Customer. If `authOptions.requireVerification` is enabled
+  (as is the default), then the `identifierChangeToken` will be assigned to the current User and
+  a IdentifierChangeRequestEvent will be raised. This can then be used e.g. by the EmailPlugin to email
+  that verification token to the Customer, which is then used to verify the change of email address.
+  """
+  requestUpdateCustomerEmailAddress(password: String!, newEmailAddress: String!): RequestUpdateCustomerEmailAddressResult!
+
+  """
+  Confirm the update of the emailAddress with the provided token, which has been generated by the
+  `requestUpdateCustomerEmailAddress` mutation.
+  """
+  updateCustomerEmailAddress(token: String!): UpdateCustomerEmailAddressResult!
+
+  """Requests a password reset email to be sent"""
+  requestPasswordReset(emailAddress: String!): RequestPasswordResetResult
+
+  """Resets a Customer's password based on the provided token"""
+  resetPassword(token: String!, password: String!): ResetPasswordResult!
+  becomeSeller(input: BecomeSellerInput!): BecomeSellerResult!
+  addOfferItemToOrder(offerLineItemId: ID!, quantity: Int!, selectedCaseQuantity: Int, buyerNotes: String): Order!
+  adjustOfferItemQuantity(orderLineId: ID!, quantity: Int!): Order!
 }
 
 input AuthenticationInput {
@@ -3613,7 +3715,7 @@ input ProductVariantListOptions {
   filterOperator: LogicalOperator
 }
 
-union AddPaymentToOrderResult = Order | OrderPaymentStateError | IneligiblePaymentMethodError | PaymentFailedError | PaymentDeclinedError | OrderStateTransitionError | NoActiveOrderError
+union AddPaymentToOrderResult = Order | OrderPaymentStateError | IneligiblePaymentMethodError | PaymentFailedError | PaymentDeclinedError | OrderStateTransitionError | NoActiveOrderError | CouponRemovedDuringCheckoutError
 
 union TransitionOrderToStateResult = Order | OrderStateTransitionError
 
@@ -3694,18 +3796,19 @@ type SellerRegistrationClosedError {
 union BecomeSellerResult = BecomeSellerSuccess | SlugAlreadyTakenError | InvalidSlugError | AlreadyASellerError | SellerRegistrationClosedError
 
 enum FulfillmentOptionType {
-  pickup
-  delivery
+  scheduled_pickup
+  scheduled_delivery
+  shipping
 }
 
-enum RecurrenceType {
-  once
-  daily
-  weekly
-  every_2_weeks
-  every_4_weeks
-  every_8_weeks
-  every_12_weeks
+enum Weekday {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
 }
 
 enum OfferStatus {
@@ -3747,14 +3850,14 @@ type FulfillmentOption implements Node {
   code: String!
   name: String!
   type: FulfillmentOptionType!
-  description: String
-  active: Boolean!
+  notes: String
   sortOrder: Int!
-  recurrence: RecurrenceType
-  fulfillmentStartDate: DateTime
-  fulfillmentEndDate: DateTime
-  fulfillmentTimeDescription: String
-  deadlineOffsetHours: Int
+  fulfillmentWeekday: Weekday
+  fulfillmentTimeWindowStart: Int
+  fulfillmentTimeWindowEnd: Int
+  orderDeadlineWeekday: Weekday
+  orderDeadlineTime: Int
+  deletedAt: DateTime
 }
 
 type OfferLineItem implements Node {
@@ -3844,6 +3947,7 @@ input CustomerFilterParameter {
   _and: [CustomerFilterParameter!]
   _or: [CustomerFilterParameter!]
   notes: StringOperators
+  sellerId: IDOperators
 }
 
 input CustomerSortParameter {
@@ -3857,6 +3961,7 @@ input CustomerSortParameter {
   emailAddress: SortOrder
   seller: SortOrder
   notes: SortOrder
+  sellerId: SortOrder
 }
 
 input OrderFilterParameter {
@@ -3864,17 +3969,43 @@ input OrderFilterParameter {
   createdAt: DateOperators
   updatedAt: DateOperators
   type: StringOperators
+
+  """
+  The date & time that the Order was placed, i.e. the Customer
+  completed the checkout and the Order is no longer "active"
+  """
   orderPlacedAt: DateOperators
+
+  """A unique code for the Order"""
   code: StringOperators
   state: StringOperators
+
+  """
+  An order is active as long as the payment process has not been completed
+  """
   active: BooleanOperators
   totalQuantity: NumberOperators
+
+  """
+  The subTotal is the total of all OrderLines in the Order. This figure also includes any Order-level
+  discounts which have been prorated (proportionally distributed) amongst the items of each OrderLine.
+  To get a total of all OrderLines which does not account for prorated discounts, use the
+  sum of `OrderLine.discountedLinePrice` values.
+  """
   subTotal: NumberOperators
+
+  """Same as subTotal, but inclusive of tax"""
   subTotalWithTax: NumberOperators
   currencyCode: StringOperators
   shipping: NumberOperators
   shippingWithTax: NumberOperators
+
+  """Equal to subTotal plus shipping"""
   total: NumberOperators
+
+  """
+  The final payable amount. Equal to subTotalWithTax plus shippingWithTax
+  """
   totalWithTax: NumberOperators
   _and: [OrderFilterParameter!]
   _or: [OrderFilterParameter!]
@@ -3884,15 +4015,37 @@ input OrderSortParameter {
   id: SortOrder
   createdAt: SortOrder
   updatedAt: SortOrder
+
+  """
+  The date & time that the Order was placed, i.e. the Customer
+  completed the checkout and the Order is no longer "active"
+  """
   orderPlacedAt: SortOrder
+
+  """A unique code for the Order"""
   code: SortOrder
   state: SortOrder
   totalQuantity: SortOrder
+
+  """
+  The subTotal is the total of all OrderLines in the Order. This figure also includes any Order-level
+  discounts which have been prorated (proportionally distributed) amongst the items of each OrderLine.
+  To get a total of all OrderLines which does not account for prorated discounts, use the
+  sum of `OrderLine.discountedLinePrice` values.
+  """
   subTotal: SortOrder
+
+  """Same as subTotal, but inclusive of tax"""
   subTotalWithTax: SortOrder
   shipping: SortOrder
   shippingWithTax: SortOrder
+
+  """Equal to subTotal plus shipping"""
   total: SortOrder
+
+  """
+  The final payable amount. Equal to subTotalWithTax plus shippingWithTax
+  """
   totalWithTax: SortOrder
 }
 
@@ -3906,6 +4059,7 @@ input FacetValueFilterParameter {
   code: StringOperators
   _and: [FacetValueFilterParameter!]
   _or: [FacetValueFilterParameter!]
+  group: StringOperators
 }
 
 input FacetValueSortParameter {
@@ -3915,6 +4069,7 @@ input FacetValueSortParameter {
   facetId: SortOrder
   name: SortOrder
   code: SortOrder
+  group: SortOrder
 }
 
 input HistoryEntryFilterParameter {
@@ -4003,6 +4158,7 @@ input ProductSortParameter {
 type CustomerCustomFields {
   seller: Seller
   notes: String
+  sellerId: ID
 }
 
 input CreateCustomerCustomFieldsInput {
@@ -4017,6 +4173,10 @@ input UpdateCustomerCustomFieldsInput {
 
 type CustomerGroupCustomFields {
   sellerId: String
+}
+
+type FacetValueCustomFields {
+  group: String
 }
 
 type OrderLineCustomFields {
