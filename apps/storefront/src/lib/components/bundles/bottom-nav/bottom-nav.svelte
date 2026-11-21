@@ -36,8 +36,14 @@
 	 * Used to detect when the user is browsing a seller page (e.g. /gathering-together-farm).
 	 */
 	const reservedPaths = new Set([
-		'me', 'cart', 'login', 'register',
-		'forgot-password', 'reset-password', 'verify', 'verify-email-change'
+		'me',
+		'cart',
+		'login',
+		'register',
+		'forgot-password',
+		'reset-password',
+		'verify',
+		'verify-email-change'
 	]);
 
 	/** The current URL split into path segments. */
@@ -47,9 +53,7 @@
 	 * True when the first URL segment is a seller slug (not a reserved path).
 	 * Seller pages are part of "browsing" the marketplace.
 	 */
-	const isSellerPage = $derived(
-		pathSegments.length >= 1 && !reservedPaths.has(pathSegments[0])
-	);
+	const isSellerPage = $derived(pathSegments.length >= 1 && !reservedPaths.has(pathSegments[0]));
 
 	/**
 	 * True when Browse should be highlighted. Active on the home page (/)
@@ -72,7 +76,9 @@
 	Mobile bottom navigation bar. Hidden on md+ screens where the top navbar handles navigation.
 	Uses safe-area padding for iPhone home indicator.
 -->
-<nav class="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
+<nav
+	class="fixed right-0 bottom-0 left-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+>
 	<div class="flex items-stretch justify-around">
 		{#if customer}
 			<!-- Buyer links: Browse, Cart, Orders -->
@@ -87,7 +93,9 @@
 			</a>
 			<a
 				href="/cart"
-				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/cart')
+				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+					'/cart'
+				)
 					? 'text-foreground'
 					: 'text-muted-foreground/60'}"
 			>
@@ -96,7 +104,9 @@
 			</a>
 			<a
 				href="/me/orders"
-				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me/orders')
+				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+					'/me/orders'
+				)
 					? 'text-foreground'
 					: 'text-muted-foreground/60'}"
 			>
@@ -110,7 +120,9 @@
 				<div class="my-2 w-px bg-border"></div>
 				<a
 					href="/me/products"
-					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me/products')
+					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+						'/me/products'
+					)
 						? 'text-foreground'
 						: 'text-muted-foreground/60'}"
 				>
@@ -119,7 +131,9 @@
 				</a>
 				<a
 					href="/me/offers"
-					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me/offers')
+					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+						'/me/offers'
+					)
 						? 'text-foreground'
 						: 'text-muted-foreground/60'}"
 				>
@@ -128,7 +142,9 @@
 				</a>
 				<a
 					href="/me/sales"
-					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me/sales')
+					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+						'/me/sales'
+					)
 						? 'text-foreground'
 						: 'text-muted-foreground/60'}"
 				>
@@ -138,7 +154,10 @@
 			{:else}
 				<a
 					href="/me"
-					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/me', true)
+					class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+						'/me',
+						true
+					)
 						? 'text-foreground'
 						: 'text-muted-foreground/60'}"
 				>
@@ -159,7 +178,9 @@
 			</a>
 			<a
 				href="/cart"
-				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/cart')
+				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+					'/cart'
+				)
 					? 'text-foreground'
 					: 'text-muted-foreground/60'}"
 			>
@@ -168,7 +189,9 @@
 			</a>
 			<a
 				href="/login"
-				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive('/login')
+				class="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors {isActive(
+					'/login'
+				)
 					? 'text-foreground'
 					: 'text-muted-foreground/60'}"
 			>

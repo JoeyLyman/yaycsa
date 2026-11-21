@@ -14,9 +14,13 @@
 		<h1 class="text-2xl font-bold">
 			{isVendureUnavailable ? 'Vendure server unavailable' : 'Something went wrong'}
 		</h1>
-		<p class="text-muted-foreground mt-2">{page.error?.message ?? 'An unexpected error occurred'}</p>
+		<p class="mt-2 text-muted-foreground">
+			{page.error?.message ?? 'An unexpected error occurred'}
+		</p>
 		{#if isVendureUnavailable}
-			<p class="text-muted-foreground mt-2 text-sm">Expected backend: <code>http://localhost:3000</code></p>
+			<p class="mt-2 text-sm text-muted-foreground">
+				Expected backend: <code>http://localhost:3000</code>
+			</p>
 		{/if}
 		<Button class="mt-4" onclick={() => invalidateAll()}>Try again</Button>
 	</div>

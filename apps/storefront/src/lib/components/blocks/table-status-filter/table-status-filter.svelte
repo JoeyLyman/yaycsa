@@ -43,9 +43,7 @@
 
 	/** Toggle an option on/off and notify the parent with the new selection. */
 	function toggle(value: string, checked: boolean) {
-		const next = checked
-			? [...selected, value]
-			: selected.filter((entry) => entry !== value);
+		const next = checked ? [...selected, value] : selected.filter((entry) => entry !== value);
 		selected = next;
 		onchange?.(next);
 	}
@@ -64,7 +62,7 @@
 				<span>{label}</span>
 				{#if isNarrowed}
 					<span
-						class="rounded-sm bg-muted px-1 text-[10px] font-medium tabular-nums text-foreground"
+						class="rounded-sm bg-muted px-1 text-[10px] font-medium text-foreground tabular-nums"
 					>
 						{selected.length}
 					</span>
@@ -96,7 +94,7 @@
 			>
 				<span>{option.label}</span>
 				{#if option.count !== undefined}
-					<span class="ml-auto mr-1 text-muted-foreground tabular-nums">{option.count}</span>
+					<span class="mr-1 ml-auto text-muted-foreground tabular-nums">{option.count}</span>
 				{/if}
 			</DropdownMenu.CheckboxItem>
 		{/each}

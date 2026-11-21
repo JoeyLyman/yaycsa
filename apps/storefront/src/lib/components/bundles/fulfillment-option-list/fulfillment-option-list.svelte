@@ -101,9 +101,10 @@
 	let usageMap = $derived(deriveFulfillmentOptionUsage(offers));
 
 	/** Rows passed to name-uniqueness validation on each row (saved + draft working copies minus self). */
-	let otherRowsForValidation = $derived(
-		[...rows, ...draftKeys.map((draftKey) => ({ id: draftKey, name: '' }) as FulfillmentOptionEditorRow)]
-	);
+	let otherRowsForValidation = $derived([
+		...rows,
+		...draftKeys.map((draftKey) => ({ id: draftKey, name: '' }) as FulfillmentOptionEditorRow)
+	]);
 </script>
 
 <div class="rounded-md border">
@@ -143,7 +144,7 @@
 
 		{#if showDeleted && deletedRows.length > 0}
 			<div
-				class="border-t bg-muted/10 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+				class="border-t bg-muted/10 px-3 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase"
 			>
 				Deleted
 			</div>
@@ -151,7 +152,7 @@
 				<div class="border-b last:border-b-0">
 					<div class="flex items-start gap-3 px-3 py-3 md:px-4">
 						<div class="min-w-0 flex-1 space-y-1">
-							<p class="truncate text-[17px] font-medium leading-tight">
+							<p class="truncate text-[17px] leading-tight font-medium">
 								{fulfillmentOption.name}
 							</p>
 							<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">

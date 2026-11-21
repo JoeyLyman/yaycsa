@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { cn } from "$lib/components/utils.js";
-	import type { HTMLAttributes } from "svelte/elements";
+	import { cn } from '$lib/components/utils.js';
+	import type { HTMLAttributes } from 'svelte/elements';
 
 	let { class: className, ...restProps }: HTMLAttributes<SVGElement> = $props();
 </script>
@@ -8,7 +8,7 @@
 <svg
 	role="status"
 	aria-label="Loading"
-	class={cn("size-4 animate-spin", className)}
+	class={cn('size-4 animate-spin', className)}
 	xmlns="http://www.w3.org/2000/svg"
 	viewBox="0 0 24 24"
 	fill="none"

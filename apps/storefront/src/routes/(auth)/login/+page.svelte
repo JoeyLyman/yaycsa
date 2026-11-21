@@ -40,7 +40,7 @@
 	</Card.Header>
 	<Card.Content>
 		{#if errorMessage}
-			<p class="text-destructive text-sm" data-testid="login-error">{errorMessage}</p>
+			<p class="text-sm text-destructive" data-testid="login-error">{errorMessage}</p>
 		{/if}
 		<form
 			{...login.enhance(async ({ submit }) => {
@@ -59,7 +59,7 @@
 			class="space-y-4"
 		>
 			<div class="space-y-2">
-				<label for="email" class="text-sm font-medium leading-none">Email</label>
+				<label for="email" class="text-sm leading-none font-medium">Email</label>
 				<Input
 					{...login.fields.email.as('email')}
 					id="email"
@@ -67,9 +67,11 @@
 					autocomplete="email"
 				/>
 				{#each login.fields.email.issues() as issue}
-					<p class="text-destructive text-sm">{issue.message}</p>
+					<p class="text-sm text-destructive">{issue.message}</p>
 				{/each}
-				{#if login.fields.email.issues()?.some((i: { message: string }) => i.message.includes('verify'))}
+				{#if login.fields.email
+					.issues()
+					?.some((i: { message: string }) => i.message.includes('verify'))}
 					<Button
 						variant="outline"
 						size="sm"
@@ -88,26 +90,35 @@
 				{/if}
 			</div>
 			<div class="space-y-2">
-				<label for="password" class="text-sm font-medium leading-none">Password</label>
+				<label for="password" class="text-sm leading-none font-medium">Password</label>
 				<Input
 					{...login.fields._password.as('password')}
 					id="password"
 					autocomplete="current-password"
 				/>
 				{#each login.fields._password.issues() as issue}
-					<p class="text-destructive text-sm">{issue.message}</p>
+					<p class="text-sm text-destructive">{issue.message}</p>
 				{/each}
 			</div>
-			<Button type="submit" class="w-full" disabled={!!login.pending || redirecting} data-testid="login-submit">
+			<Button
+				type="submit"
+				class="w-full"
+				disabled={!!login.pending || redirecting}
+				data-testid="login-submit"
+			>
 				{#if login.pending || redirecting}<SpinnerSun class="mr-2" />{/if}
 				{login.pending || redirecting ? 'Logging in...' : 'Log in'}
 			</Button>
 		</form>
 	</Card.Content>
 	<Card.Footer class="flex-col gap-2">
-		<a href="/forgot-password" class="text-muted-foreground text-sm hover:underline">Forgot password?</a>
-		<p class="text-muted-foreground text-sm">
-			Don't have an account? <a href="/register" class="text-foreground font-medium hover:underline">Register</a>
+		<a href="/forgot-password" class="text-sm text-muted-foreground hover:underline"
+			>Forgot password?</a
+		>
+		<p class="text-sm text-muted-foreground">
+			Don't have an account? <a href="/register" class="font-medium text-foreground hover:underline"
+				>Register</a
+			>
 		</p>
 	</Card.Footer>
 </Card.Root>

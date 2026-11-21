@@ -35,28 +35,30 @@
 		<Card.Content>
 			<form {...resetPassword} class="space-y-4">
 				{#each resetPassword.fields.token.issues() as issue}
-					<p class="text-destructive text-sm">{issue.message}</p>
+					<p class="text-sm text-destructive">{issue.message}</p>
 				{/each}
 				<div class="space-y-2">
-					<label for="password" class="text-sm font-medium leading-none">New password</label>
+					<label for="password" class="text-sm leading-none font-medium">New password</label>
 					<Input
 						{...resetPassword.fields._password.as('password')}
 						id="password"
 						autocomplete="new-password"
 					/>
 					{#each resetPassword.fields._password.issues() as issue}
-						<p class="text-destructive text-sm">{issue.message}</p>
+						<p class="text-sm text-destructive">{issue.message}</p>
 					{/each}
 				</div>
 				<div class="space-y-2">
-					<label for="confirmPassword" class="text-sm font-medium leading-none">Confirm password</label>
+					<label for="confirmPassword" class="text-sm leading-none font-medium"
+						>Confirm password</label
+					>
 					<Input
 						{...resetPassword.fields._confirmPassword.as('password')}
 						id="confirmPassword"
 						autocomplete="new-password"
 					/>
 					{#each resetPassword.fields._confirmPassword.issues() as issue}
-						<p class="text-destructive text-sm">{issue.message}</p>
+						<p class="text-sm text-destructive">{issue.message}</p>
 					{/each}
 				</div>
 				<Button type="submit" class="w-full" disabled={!!resetPassword.pending}>

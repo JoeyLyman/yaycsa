@@ -203,7 +203,7 @@ function toSellerProduct(product: AdminProduct): SellerProduct {
 		processes: fvs
 			.filter((fv) => fv.facet.code === 'process' && fv.code !== 'raw')
 			.map(toFacetValueInfo),
-		allergenWarnings: fvs.filter((fv) => fv.facet.code === 'allergen-warning').map(toFacetValueInfo),
+		allergenWarnings: fvs.filter((fv) => fv.facet.code === 'allergen-warning').map(toFacetValueInfo)
 	};
 }
 
@@ -223,7 +223,7 @@ async function fetchSellerAdminProducts(sellerId: number): Promise<AdminProduct[
 async function assertUniqueSellerProductName(
 	sellerId: number,
 	candidateName: string,
-	excludeProductId?: string,
+	excludeProductId?: string
 ): Promise<void> {
 	const normalizedCandidateName = normalizeProductName(candidateName);
 	if (!normalizedCandidateName) return;
@@ -232,7 +232,7 @@ async function assertUniqueSellerProductName(
 	const duplicateProduct = sellerProducts.find(
 		(product) =>
 			product.id !== excludeProductId &&
-			normalizeProductName(product.name) === normalizedCandidateName,
+			normalizeProductName(product.name) === normalizedCandidateName
 	);
 
 	if (duplicateProduct) {
@@ -267,12 +267,12 @@ export const createProduct = command(
 			v.string(),
 			v.nonEmpty('Product name is required'),
 			v.minLength(2, 'Name must be at least 2 characters'),
-			v.maxLength(255),
+			v.maxLength(255)
 		),
 		sku: v.optional(v.pipe(v.string(), v.maxLength(100))),
 		unitType: v.optional(v.string()),
 		/** FacetValue IDs for bits (ingredients), process types, and allergen warnings. */
-		facetValueIds: v.optional(v.array(v.string())),
+		facetValueIds: v.optional(v.array(v.string()))
 	}),
 	async ({ name, sku, unitType, facetValueIds }) => {
 		const { sellerId } = await requireSellerContext();
@@ -285,42 +285,36 @@ export const createProduct = command(
 		// Step 1: Create the product with ownership (in default channel)
 		const createData = await adminMutate<{
 			createProduct: { id: string; name: string; slug: string };
-		}>(
-			CREATE_PRODUCT_MUTATION,
-			{
-				input: {
-					translations: [
-						{
-							languageCode: 'en',
-							name,
-							slug,
-							description: '',
-						},
-					],
-					customFields: { sellerId },
-					...(facetValueIds?.length ? { facetValueIds } : {}),
-				},
-			},
-		);
+		}>(CREATE_PRODUCT_MUTATION, {
+			input: {
+				translations: [
+					{
+						languageCode: 'en',
+						name,
+						slug,
+						description: ''
+					}
+				],
+				customFields: { sellerId },
+				...(facetValueIds?.length ? { facetValueIds } : {})
+			}
+		});
 
 		const productId = createData.createProduct.id;
 
 		// Step 2: Create a single variant
 		try {
-			await adminMutate(
-				CREATE_PRODUCT_VARIANTS_MUTATION,
-				{
-					input: [
-						{
-							productId,
-							translations: [{ languageCode: 'en', name }],
-							sku: finalSku,
-							price: 0,
-							customFields: unitType ? { unitType } : {},
-						},
-					],
-				},
-			);
+			await adminMutate(CREATE_PRODUCT_VARIANTS_MUTATION, {
+				input: [
+					{
+						productId,
+						translations: [{ languageCode: 'en', name }],
+						sku: finalSku,
+						price: 0,
+						customFields: unitType ? { unitType } : {}
+					}
+				]
+			});
 		} catch (err) {
 			// Rollback: delete the orphaned product
 			try {
@@ -338,17 +332,20 @@ export const createProduct = command(
 		// Fetch the created product to return full data (including server-generated variant ID + facets)
 		const productData = await adminQuery<{
 			product: AdminProduct;
-		}>(`query ($id: ID!) {
+		}>(
+			`query ($id: ID!) {
 			product(id: $id) {
 				id name slug
 				customFields { sellerId }
 				facetValues { id code name facet { code } customFields { group } }
 				variants { id name sku customFields { unitType } }
 			}
-		}`, { id: productId });
+		}`,
+			{ id: productId }
+		);
 
 		return toSellerProduct(productData.product);
-	},
+	}
 );
 
 /**
@@ -363,7 +360,7 @@ export const updateProduct = command(
 		sku: v.optional(v.pipe(v.string(), v.maxLength(100))),
 		unitType: v.optional(v.string()),
 		/** Full replacement set of FacetValue IDs (bits + process + allergen-warning). */
-		facetValueIds: v.optional(v.array(v.string())),
+		facetValueIds: v.optional(v.array(v.string()))
 	}),
 	async ({ id, variantId, name, sku, unitType, facetValueIds }) => {
 		const { sellerId } = await requireSellerContext();
@@ -377,15 +374,12 @@ export const updateProduct = command(
 
 		// Update product-level fields (name)
 		if (name !== undefined) {
-			await adminMutate(
-				UPDATE_PRODUCT_MUTATION,
-				{
-					input: {
-						id,
-						translations: [{ languageCode: 'en', name, slug: slugify(name), description: '' }],
-					},
-				},
-			);
+			await adminMutate(UPDATE_PRODUCT_MUTATION, {
+				input: {
+					id,
+					translations: [{ languageCode: 'en', name, slug: slugify(name), description: '' }]
+				}
+			});
 		}
 
 		// Sync facet values via custom mutation that bypasses TypeORM's buggy save().
@@ -397,23 +391,20 @@ export const updateProduct = command(
 				`mutation SyncProductFacetValues($productId: ID!, $facetValueIds: [ID!]!) {
 					syncProductFacetValues(productId: $productId, facetValueIds: $facetValueIds)
 				}`,
-				{ productId: id, facetValueIds },
+				{ productId: id, facetValueIds }
 			);
 		}
 
 		// Also update variant name to match product name (one product = one variant)
 		if (name !== undefined) {
-			await adminMutate(
-				UPDATE_PRODUCT_VARIANTS_MUTATION,
-				{
-					input: [
-						{
-							id: variantId,
-							translations: [{ languageCode: 'en', name }],
-						},
-					],
-				},
-			);
+			await adminMutate(UPDATE_PRODUCT_VARIANTS_MUTATION, {
+				input: [
+					{
+						id: variantId,
+						translations: [{ languageCode: 'en', name }]
+					}
+				]
+			});
 		}
 
 		// Update variant fields if provided
@@ -422,14 +413,11 @@ export const updateProduct = command(
 			if (sku !== undefined) variantInput.sku = sku;
 			if (unitType !== undefined) variantInput.customFields = { unitType };
 
-			await adminMutate(
-				UPDATE_PRODUCT_VARIANTS_MUTATION,
-				{ input: [variantInput] },
-			);
+			await adminMutate(UPDATE_PRODUCT_VARIANTS_MUTATION, { input: [variantInput] });
 		}
 
 		return { success: true as const };
-	},
+	}
 );
 
 // ─── Facet query helpers ───
@@ -469,10 +457,9 @@ interface AdminFacet {
  * Used to populate bits, process, and allergen-warning dropdowns.
  */
 async function fetchFacetValues(facetCode: string): Promise<FacetValueInfo[]> {
-	const data = await adminQuery<{ facets: { items: AdminFacet[] } }>(
-		FACETS_QUERY,
-		{ options: { filter: { code: { eq: facetCode } } } },
-	);
+	const data = await adminQuery<{ facets: { items: AdminFacet[] } }>(FACETS_QUERY, {
+		options: { filter: { code: { eq: facetCode } } }
+	});
 
 	const facet = data.facets.items[0];
 	if (!facet) return [];
@@ -481,7 +468,7 @@ async function fetchFacetValues(facetCode: string): Promise<FacetValueInfo[]> {
 		id: v.id,
 		code: v.code,
 		name: v.name,
-		group: v.customFields?.group ?? null,
+		group: v.customFields?.group ?? null
 	}));
 }
 
@@ -526,8 +513,8 @@ const CREATE_FACET_VALUES_MUTATION = `
  */
 function normalizeBitName(raw: string): string {
 	return raw
-		.replace(/[^a-zA-Z0-9\s&]/g, ' ')  // strip symbols except &
-		.replace(/\s+/g, ' ')                // collapse whitespace
+		.replace(/[^a-zA-Z0-9\s&]/g, ' ') // strip symbols except &
+		.replace(/\s+/g, ' ') // collapse whitespace
 		.trim()
 		.split(' ')
 		.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -546,8 +533,8 @@ export const createBit = command(
 			v.string(),
 			v.nonEmpty('Ingredient name is required'),
 			v.minLength(2, 'Name must be at least 2 characters'),
-			v.maxLength(100),
-		),
+			v.maxLength(100)
+		)
 	}),
 	async ({ name: rawName }): Promise<FacetValueInfo> => {
 		const name = normalizeBitName(rawName);
@@ -557,23 +544,20 @@ export const createBit = command(
 		await requireSellerContext();
 
 		// Find the bits facet and check for existing duplicate
-		const facetData = await adminQuery<{ facets: { items: AdminFacet[] } }>(
-			FACETS_QUERY,
-			{ options: { filter: { code: { eq: 'bits' } } } },
-		);
+		const facetData = await adminQuery<{ facets: { items: AdminFacet[] } }>(FACETS_QUERY, {
+			options: { filter: { code: { eq: 'bits' } } }
+		});
 		const bitsFacet = facetData.facets.items[0];
 		if (!bitsFacet) throw new Error('Bits facet not found — run seed-taxonomy first');
 
 		// Check for existing value with same name (case-insensitive)
-		const existing = bitsFacet.values.find(
-			(v) => v.name.toLowerCase() === name.toLowerCase(),
-		);
+		const existing = bitsFacet.values.find((v) => v.name.toLowerCase() === name.toLowerCase());
 		if (existing) {
 			return {
 				id: existing.id,
 				code: existing.code,
 				name: existing.name,
-				group: existing.customFields?.group ?? null,
+				group: existing.customFields?.group ?? null
 			};
 		}
 
@@ -595,9 +579,9 @@ export const createBit = command(
 					facetId: bitsFacet.id,
 					code,
 					translations: [{ languageCode: 'en', name }],
-					customFields: {},
-				},
-			],
+					customFields: {}
+				}
+			]
 		});
 
 		const created = data.createFacetValues[0];
@@ -605,9 +589,9 @@ export const createBit = command(
 			id: created.id,
 			code: created.code,
 			name: created.name,
-			group: created.customFields?.group ?? null,
+			group: created.customFields?.group ?? null
 		};
-	},
+	}
 );
 
 // ─── Delete ───

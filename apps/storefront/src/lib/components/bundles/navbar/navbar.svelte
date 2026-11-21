@@ -70,9 +70,7 @@
 	 * True when the first URL segment is a seller slug (not a reserved path).
 	 * e.g. /gathering-together-farm → true, /login → false, /me/offers → false.
 	 */
-	const isSellerPage = $derived(
-		pathSegments.length >= 1 && !reservedPaths.has(pathSegments[0])
-	);
+	const isSellerPage = $derived(pathSegments.length >= 1 && !reservedPaths.has(pathSegments[0]));
 
 	/** True when on the marketplace home page (/). */
 	const isHome = $derived(currentPathname === '/');
@@ -82,7 +80,9 @@
 	 * e.g. Joe (linked to gathering-together-farm) is on /gathering-together-farm.
 	 * When true, the navbar shows "yay·me" instead of the seller slug.
 	 */
-	const isMySellerPage = $derived(isSellerPage && mySellerSlug != null && pathSegments[0] === mySellerSlug);
+	const isMySellerPage = $derived(
+		isSellerPage && mySellerSlug != null && pathSegments[0] === mySellerSlug
+	);
 
 	/**
 	 * Maps /me subpage segments to their display text in the navbar suffix.
@@ -109,12 +109,17 @@
 	 * - "csa" on the home page or other non-seller pages
 	 */
 	const navSuffix = $derived(
-		isAuthPage ? 'welcome'
-		: isCartPage ? 'my cart'
-		: isMySellerPage ? 'me'
-		: isMe ? (meSubpageSuffixes[pathSegments[1]] ?? 'me')
-		: isSellerPage ? pathSegments[0]
-		: 'csa'
+		isAuthPage
+			? 'welcome'
+			: isCartPage
+				? 'my cart'
+				: isMySellerPage
+					? 'me'
+					: isMe
+						? (meSubpageSuffixes[pathSegments[1]] ?? 'me')
+						: isSellerPage
+							? pathSegments[0]
+							: 'csa'
 	);
 
 	/**
@@ -141,9 +146,7 @@
 	);
 
 	/** Nav links for the buyer side (visible to all authenticated users). */
-	const buyerLinks = [
-		{ href: '/me/orders', label: 'Orders' }
-	];
+	const buyerLinks = [{ href: '/me/orders', label: 'Orders' }];
 
 	/** Nav links for the seller side (only visible when the user is a seller). */
 	const sellerLinks = [
@@ -158,7 +161,9 @@
 	 * customer has no linked seller (buyer-only accounts don't see this).
 	 */
 	const myPageLink = $derived(
-		mySellerSlug ? { href: resolve('/(app)/[seller]', { seller: mySellerSlug }), label: 'My Page' } : null
+		mySellerSlug
+			? { href: resolve('/(app)/[seller]', { seller: mySellerSlug }), label: 'My Page' }
+			: null
 	);
 
 	/** Returns true if the current page is within the given nav link's path. */
@@ -176,14 +181,32 @@
 </script>
 
 <header class="border-b">
-	<div class="mx-auto max-w-5xl px-4 flex items-center justify-between py-4">
-		<div class="flex items-center min-w-0">
+	<div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+		<div class="flex min-w-0 items-center">
 			<a
 				href="/"
 				class="shrink-0 text-lg font-bold transition-colors {isHome
-					? 'text-foreground cursor-default'
-					: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-			>yay</a><span class="shrink-0 mx-1 text-lg font-bold {isNavSuffixActive ? 'text-foreground' : 'text-muted-foreground/60'}">&middot;</span><Tooltip.Provider><Tooltip.Root delayDuration={0}>{#if isNavSuffixActive}<Tooltip.Trigger class="text-lg font-bold text-foreground truncate max-w-64 sm:max-w-96 cursor-default">{navSuffix}</Tooltip.Trigger>{:else}<Tooltip.Trigger>{#snippet child({ props })}<a {...props} href={navSuffixHref} class="text-lg font-bold transition-colors truncate max-w-64 sm:max-w-96 text-muted-foreground/60 hover:text-muted-foreground">{navSuffix}</a>{/snippet}</Tooltip.Trigger>{/if}<Tooltip.Content>{navSuffix}</Tooltip.Content></Tooltip.Root></Tooltip.Provider>
+					? 'cursor-default text-foreground'
+					: 'text-muted-foreground/60 hover:text-muted-foreground'}">yay</a
+			><span
+				class="mx-1 shrink-0 text-lg font-bold {isNavSuffixActive
+					? 'text-foreground'
+					: 'text-muted-foreground/60'}">&middot;</span
+			><Tooltip.Provider
+				><Tooltip.Root delayDuration={0}
+					>{#if isNavSuffixActive}<Tooltip.Trigger
+							class="max-w-64 cursor-default truncate text-lg font-bold text-foreground sm:max-w-96"
+							>{navSuffix}</Tooltip.Trigger
+						>{:else}<Tooltip.Trigger
+							>{#snippet child({ props })}<a
+									{...props}
+									href={navSuffixHref}
+									class="max-w-64 truncate text-lg font-bold text-muted-foreground/60 transition-colors hover:text-muted-foreground sm:max-w-96"
+									>{navSuffix}</a
+								>{/snippet}</Tooltip.Trigger
+						>{/if}<Tooltip.Content>{navSuffix}</Tooltip.Content></Tooltip.Root
+				></Tooltip.Provider
+			>
 		</div>
 		<div class="flex items-center gap-4">
 			{#if customer}
@@ -192,7 +215,7 @@
 					<a
 						href="/cart"
 						class="mr-1 transition-colors {currentPathname.startsWith('/cart')
-							? 'text-foreground cursor-default'
+							? 'cursor-default text-foreground'
 							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 					>
 						<ShoppingCart class="h-4 w-4" />
@@ -201,7 +224,7 @@
 						<a
 							{href}
 							class="text-sm transition-colors {isNavActive(href)
-								? 'text-foreground font-medium cursor-default'
+								? 'cursor-default font-medium text-foreground'
 								: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 						>
 							{label}
@@ -213,7 +236,7 @@
 							<a
 								{href}
 								class="text-sm transition-colors {isNavActive(href)
-									? 'text-foreground font-medium cursor-default'
+									? 'cursor-default font-medium text-foreground'
 									: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 							>
 								{label}
@@ -223,7 +246,7 @@
 							<a
 								href={myPageLink.href}
 								class="text-sm transition-colors {isMySellerPage
-									? 'text-foreground font-medium cursor-default'
+									? 'cursor-default font-medium text-foreground'
 									: 'text-muted-foreground/60 hover:text-muted-foreground'}"
 							>
 								{myPageLink.label}
@@ -231,11 +254,17 @@
 						{/if}
 					{/if}
 				</nav>
-				<a href="/me/account" class="ml-2 flex items-center {currentPathname.startsWith('/me/account') || currentPathname === '/me' ? 'cursor-default' : ''}">
+				<a
+					href="/me/account"
+					class="ml-2 flex items-center {currentPathname.startsWith('/me/account') ||
+					currentPathname === '/me'
+						? 'cursor-default'
+						: ''}"
+				>
 					<Avatar.Root
 						class={currentPathname.startsWith('/me/account') || currentPathname === '/me'
-							? 'ring-foreground ring-2 ring-offset-2 ring-offset-background'
-							: 'hover:ring-muted-foreground hover:ring-2 hover:ring-offset-2 hover:ring-offset-background transition-shadow'}
+							? 'ring-2 ring-foreground ring-offset-2 ring-offset-background'
+							: 'transition-shadow hover:ring-2 hover:ring-muted-foreground hover:ring-offset-2 hover:ring-offset-background'}
 					>
 						<Avatar.Fallback>{initials}</Avatar.Fallback>
 					</Avatar.Root>
@@ -246,15 +275,15 @@
 					<a
 						href="/login"
 						class="text-sm transition-colors {isLoginActive
-							? 'text-foreground font-medium cursor-default'
-							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-					>Log in</a>
+							? 'cursor-default font-medium text-foreground'
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}">Log in</a
+					>
 					<a
 						href="/register"
 						class="text-sm transition-colors {isRegisterActive
-							? 'text-foreground font-medium cursor-default'
-							: 'text-muted-foreground/60 hover:text-muted-foreground'}"
-					>Register</a>
+							? 'cursor-default font-medium text-foreground'
+							: 'text-muted-foreground/60 hover:text-muted-foreground'}">Register</a
+					>
 				</nav>
 			{/if}
 		</div>

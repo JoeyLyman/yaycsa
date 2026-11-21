@@ -10,7 +10,7 @@
 		/** Callback to clear all selections. */
 		onclear,
 		/** Slot for entity-specific action buttons. */
-		actions,
+		actions
 	}: {
 		selectedCount: number;
 		visible?: boolean;
@@ -36,9 +36,7 @@
 			</div>
 
 			<!-- Clear selection -->
-			<Button size="sm" variant="ghost" onclick={onclear} class="ml-auto">
-				Clear
-			</Button>
+			<Button size="sm" variant="ghost" onclick={onclear} class="ml-auto">Clear</Button>
 		</div>
 	</div>
 {/if}

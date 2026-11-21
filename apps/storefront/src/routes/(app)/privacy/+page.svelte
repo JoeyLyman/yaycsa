@@ -1,5 +1,5 @@
 <h1 class="text-2xl font-bold">Privacy Policy</h1>
-<p class="text-muted-foreground mt-1 text-sm">Last updated: March 15, 2026</p>
+<p class="mt-1 text-sm text-muted-foreground">Last updated: March 15, 2026</p>
 
 <div class="mt-6 space-y-6 text-sm leading-relaxed">
 	<section>
@@ -7,16 +7,16 @@
 		<p class="mt-2">When you use YAY CSA, we may collect:</p>
 		<ul class="mt-1 list-disc space-y-1 pl-5">
 			<li>
-				<strong>Account information</strong> — name, email address, business name, and other details
-				you provide when creating an account
+				<strong>Account information</strong> — name, email address, business name, and other details you
+				provide when creating an account
 			</li>
 			<li>
-				<strong>Transaction data</strong> — order history, purchase and sales records, and related
-				communications between buyers and sellers
+				<strong>Transaction data</strong> — order history, purchase and sales records, and related communications
+				between buyers and sellers
 			</li>
 			<li>
-				<strong>Communications</strong> — messages sent through or processed by the platform,
-				including emails and order-related correspondence
+				<strong>Communications</strong> — messages sent through or processed by the platform, including
+				emails and order-related correspondence
 			</li>
 			<li>
 				<strong>Usage data</strong> — basic information about how you interact with the platform
@@ -69,8 +69,8 @@
 	<section>
 		<h2 class="text-lg font-semibold">6. Data Retention</h2>
 		<p class="mt-2">
-			<strong>Account data</strong> is retained as long as your account is active. If you delete
-			your account, your profile and login credentials are removed.
+			<strong>Account data</strong> is retained as long as your account is active. If you delete your
+			account, your profile and login credentials are removed.
 		</p>
 		<p class="mt-2">
 			<strong>Transaction and sales records are retained indefinitely</strong>, even after account

@@ -16,7 +16,10 @@ export interface MetadataSummarySegment {
 }
 
 /** Builder for the italic muted label segment that opens a section. */
-export function metadataLabel(text: string, options: { section?: boolean } = {}): MetadataSummarySegment {
+export function metadataLabel(
+	text: string,
+	options: { section?: boolean } = {}
+): MetadataSummarySegment {
 	return { text, italic: true, spaced: false, section: options.section ?? false };
 }
 

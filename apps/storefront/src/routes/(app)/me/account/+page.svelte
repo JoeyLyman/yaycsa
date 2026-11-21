@@ -28,9 +28,14 @@
 
 	/** The logged-in seller relation, if this customer has already created a business profile. */
 	const seller = $derived(
-		(data.customer.customFields as {
-			seller?: { name: string; customFields?: { slug?: string | null; timezone?: string | null } } | null;
-		})?.seller ?? null
+		(
+			data.customer.customFields as {
+				seller?: {
+					name: string;
+					customFields?: { slug?: string | null; timezone?: string | null };
+				} | null;
+			}
+		)?.seller ?? null
 	);
 
 	/** The timezone value currently stored on the seller business. Null falls back to UTC in the UI. */
@@ -64,7 +69,9 @@
 		} catch (error) {
 			console.error('Failed to update business timezone:', error);
 			businessTimezoneError =
-				error instanceof Error && error.message ? error.message : 'Failed to update business timezone';
+				error instanceof Error && error.message
+					? error.message
+					: 'Failed to update business timezone';
 		} finally {
 			savingBusinessTimezone = false;
 		}
@@ -105,7 +112,10 @@
 							onValueChange={handleBusinessTimezoneChange}
 							disabled={savingBusinessTimezone}
 						>
-							<Select.Trigger class="w-full justify-start text-left" data-testid="business-timezone-selector">
+							<Select.Trigger
+								class="w-full justify-start text-left"
+								data-testid="business-timezone-selector"
+							>
 								Business Timezone: {businessTimezoneLabel}
 								{#if savingBusinessTimezone}
 									<span class="ml-2 inline-flex align-middle">
@@ -122,8 +132,9 @@
 							</Select.Content>
 						</Select.Root>
 						<p class="text-xs text-muted-foreground">
-							Changing the business timezone updates only the seller timezone setting used for future
-							template interpretation. Existing orders, offers, and fulfillment options are not rewritten.
+							Changing the business timezone updates only the seller timezone setting used for
+							future template interpretation. Existing orders, offers, and fulfillment options are
+							not rewritten.
 						</p>
 						{#if businessTimezoneError}
 							<p class="text-xs text-destructive">{businessTimezoneError}</p>
@@ -187,25 +198,27 @@
 			{:else}
 				<form {...requestUpdateEmail} class="space-y-4">
 					<div class="space-y-2">
-						<label for="currentPasswordEmail" class="text-sm font-medium leading-none">Current password</label>
+						<label for="currentPasswordEmail" class="text-sm leading-none font-medium"
+							>Current password</label
+						>
 						<Input
 							{...requestUpdateEmail.fields._currentPassword.as('password')}
 							id="currentPasswordEmail"
 							autocomplete="current-password"
 						/>
 						{#each requestUpdateEmail.fields._currentPassword.issues() as issue}
-							<p class="text-destructive text-sm">{issue.message}</p>
+							<p class="text-sm text-destructive">{issue.message}</p>
 						{/each}
 					</div>
 					<div class="space-y-2">
-						<label for="newEmail" class="text-sm font-medium leading-none">New email</label>
+						<label for="newEmail" class="text-sm leading-none font-medium">New email</label>
 						<Input
 							{...requestUpdateEmail.fields.newEmail.as('email')}
 							id="newEmail"
 							autocomplete="email"
 						/>
 						{#each requestUpdateEmail.fields.newEmail.issues() as issue}
-							<p class="text-destructive text-sm">{issue.message}</p>
+							<p class="text-sm text-destructive">{issue.message}</p>
 						{/each}
 					</div>
 					<Button type="submit" disabled={!!requestUpdateEmail.pending}>
@@ -227,36 +240,40 @@
 			{:else}
 				<form {...updatePassword} class="space-y-4">
 					<div class="space-y-2">
-						<label for="currentPassword" class="text-sm font-medium leading-none">Current password</label>
+						<label for="currentPassword" class="text-sm leading-none font-medium"
+							>Current password</label
+						>
 						<Input
 							{...updatePassword.fields._currentPassword.as('password')}
 							id="currentPassword"
 							autocomplete="current-password"
 						/>
 						{#each updatePassword.fields._currentPassword.issues() as issue}
-							<p class="text-destructive text-sm">{issue.message}</p>
+							<p class="text-sm text-destructive">{issue.message}</p>
 						{/each}
 					</div>
 					<div class="space-y-2">
-						<label for="newPassword" class="text-sm font-medium leading-none">New password</label>
+						<label for="newPassword" class="text-sm leading-none font-medium">New password</label>
 						<Input
 							{...updatePassword.fields._newPassword.as('password')}
 							id="newPassword"
 							autocomplete="new-password"
 						/>
 						{#each updatePassword.fields._newPassword.issues() as issue}
-							<p class="text-destructive text-sm">{issue.message}</p>
+							<p class="text-sm text-destructive">{issue.message}</p>
 						{/each}
 					</div>
 					<div class="space-y-2">
-						<label for="confirmPassword" class="text-sm font-medium leading-none">Confirm new password</label>
+						<label for="confirmPassword" class="text-sm leading-none font-medium"
+							>Confirm new password</label
+						>
 						<Input
 							{...updatePassword.fields._confirmPassword.as('password')}
 							id="confirmPassword"
 							autocomplete="new-password"
 						/>
 						{#each updatePassword.fields._confirmPassword.issues() as issue}
-							<p class="text-destructive text-sm">{issue.message}</p>
+							<p class="text-sm text-destructive">{issue.message}</p>
 						{/each}
 					</div>
 					<Button type="submit" disabled={!!updatePassword.pending}>
@@ -268,8 +285,13 @@
 		</Card.Content>
 	</Card.Root>
 
-	<div class="pt-6 border-t">
-		<Button variant="destructive" disabled={loggingOut} onclick={handleLogout} data-testid="logout-btn">
+	<div class="border-t pt-6">
+		<Button
+			variant="destructive"
+			disabled={loggingOut}
+			onclick={handleLogout}
+			data-testid="logout-btn"
+		>
 			{#if loggingOut}<SpinnerSun class="mr-2" />{/if}
 			{loggingOut ? 'Logging out...' : 'Log out'}
 		</Button>

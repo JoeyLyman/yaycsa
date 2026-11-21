@@ -144,7 +144,11 @@ async function adminRequest<T>(
 	};
 
 	// Handle auth errors — invalidate token and retry once
-	if (json.errors?.some((e) => e.extensions?.code === 'FORBIDDEN' || e.message.includes('not authenticated'))) {
+	if (
+		json.errors?.some(
+			(e) => e.extensions?.code === 'FORBIDDEN' || e.message.includes('not authenticated')
+		)
+	) {
 		const freshToken = await invalidateAndRefresh();
 
 		const retryHeaders: Record<string, string> = {

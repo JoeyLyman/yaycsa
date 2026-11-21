@@ -12,7 +12,7 @@
 {:else}
 	<h1 class="text-2xl font-bold">Local farms &amp; producers</h1>
 {/if}
-<p class="text-muted-foreground mt-2">Browse offers from local farms and producers.</p>
+<p class="mt-2 text-muted-foreground">Browse offers from local farms and producers.</p>
 
 <div class="mt-4 flex gap-1 text-sm">
 	<button
@@ -35,10 +35,10 @@
 
 <svelte:boundary>
 	{#await sellers({ activeOffersOnly: !showAll })}
-		<div class="text-muted-foreground mt-6 py-12 text-center">Loading sellers...</div>
+		<div class="mt-6 py-12 text-center text-muted-foreground">Loading sellers...</div>
 	{:then sellerList}
 		{#if sellerList.length === 0}
-			<p class="text-muted-foreground mt-6">
+			<p class="mt-6 text-muted-foreground">
 				{showAll ? 'No sellers found.' : 'No sellers with active offers right now.'}
 			</p>
 		{:else}
@@ -57,6 +57,6 @@
 		{/if}
 	{/await}
 	{#snippet failed(error)}
-		<p class="text-destructive mt-4">Error loading sellers.</p>
+		<p class="mt-4 text-destructive">Error loading sellers.</p>
 	{/snippet}
 </svelte:boundary>

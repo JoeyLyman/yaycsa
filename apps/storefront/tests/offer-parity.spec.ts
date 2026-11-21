@@ -112,9 +112,7 @@ test.describe('offer customer/admin data parity', () => {
 			{ sellerId },
 			{ Authorization: `Bearer ${adminToken}` }
 		);
-		const adminOffersById = new Map(
-			adminData.offers.items.map((offer) => [offer.id, offer])
-		);
+		const adminOffersById = new Map(adminData.offers.items.map((offer) => [offer.id, offer]));
 
 		// Every active (customer-visible) offer must exist admin-side and, once
 		// normalized, present an identical buyer-facing view.

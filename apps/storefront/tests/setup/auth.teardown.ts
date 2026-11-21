@@ -29,14 +29,14 @@ teardown('delete test user', async () => {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: `Bearer ${adminToken}`,
+			Authorization: `Bearer ${adminToken}`
 		},
 		body: JSON.stringify({
 			query: `mutation DeleteCustomer($id: ID!) {
 				deleteCustomer(id: $id) { result message }
 			}`,
-			variables: { id },
-		}),
+			variables: { id }
+		})
 	});
 
 	const data = await res.json();

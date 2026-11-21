@@ -28,7 +28,7 @@ export const sellers = query(
 	async (args) => {
 		const event = getRequestEvent();
 		const data = await event.locals.vendure.query(SELLERS_QUERY, {
-			activeOffersOnly: args?.activeOffersOnly ?? true,
+			activeOffersOnly: args?.activeOffersOnly ?? true
 		});
 		return data.sellers;
 	}
@@ -71,13 +71,34 @@ const BECOME_SELLER_MUTATION = graphql(`
 `);
 
 const PROFANITY_BLOCKLIST = new Set([
-	'fuck', 'shit', 'ass', 'asshole', 'bitch', 'bastard', 'damn', 'dick',
-	'cock', 'cunt', 'piss', 'slut', 'whore', 'fag', 'faggot', 'nigger',
-	'nigga', 'retard', 'twat', 'wanker', 'bollocks',
+	'fuck',
+	'shit',
+	'ass',
+	'asshole',
+	'bitch',
+	'bastard',
+	'damn',
+	'dick',
+	'cock',
+	'cunt',
+	'piss',
+	'slut',
+	'whore',
+	'fag',
+	'faggot',
+	'nigger',
+	'nigga',
+	'retard',
+	'twat',
+	'wanker',
+	'bollocks'
 ]);
 
 function containsProfanity(text: string): boolean {
-	const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+	const words = text
+		.toLowerCase()
+		.split(/[^a-z0-9]+/)
+		.filter(Boolean);
 	return words.some((w) => PROFANITY_BLOCKLIST.has(w));
 }
 
@@ -88,16 +109,19 @@ export const becomeSeller = form(
 			v.nonEmpty('Business name is required'),
 			v.minLength(3, 'Name must be at least 3 characters'),
 			v.maxLength(100),
-			v.regex(/^[a-zA-Z0-9 ]+$/, 'Only letters, numbers, and spaces'),
+			v.regex(/^[a-zA-Z0-9 ]+$/, 'Only letters, numbers, and spaces')
 		),
 		slug: v.pipe(
 			v.string(),
 			v.nonEmpty('Slug is required'),
-			v.regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Only lowercase letters, numbers, and hyphens (no leading/trailing hyphens)'),
+			v.regex(
+				/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/,
+				'Only lowercase letters, numbers, and hyphens (no leading/trailing hyphens)'
+			),
 			v.check((s) => !s.includes('--'), 'Cannot have consecutive hyphens'),
 			v.minLength(3, 'Must be at least 3 characters'),
-			v.maxLength(60, 'Must be 60 characters or less'),
-		),
+			v.maxLength(60, 'Must be 60 characters or less')
+		)
 	}),
 	async ({ shopName, slug }, issue) => {
 		if (containsProfanity(shopName)) {
@@ -109,7 +133,7 @@ export const becomeSeller = form(
 
 		const event = getRequestEvent();
 		const data = await event.locals.vendure.mutate(BECOME_SELLER_MUTATION, {
-			input: { shopName, slug },
+			input: { shopName, slug }
 		});
 		const result = data.becomeSeller;
 
@@ -126,5 +150,5 @@ export const becomeSeller = form(
 		}
 
 		return { success: true, slug: (result as { seller: { slug: string } }).seller.slug };
-	},
+	}
 );

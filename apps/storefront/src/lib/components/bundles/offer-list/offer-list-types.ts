@@ -24,13 +24,7 @@ export type OfferFulfillmentType = 'scheduled_pickup' | 'scheduled_delivery' | '
 
 /** Day of week as stored on fulfillment options (server `Weekday` enum). */
 export type OfferWeekday =
-	| 'monday'
-	| 'tuesday'
-	| 'wednesday'
-	| 'thursday'
-	| 'friday'
-	| 'saturday'
-	| 'sunday';
+	'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 /** How an offer line item's price is computed (server `PricingMode` enum). */
 export type OfferPricingMode = 'tiered' | 'case';

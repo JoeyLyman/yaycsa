@@ -43,7 +43,7 @@
 		{value}
 		{placeholder}
 		{disabled}
-		class={cn('h-8 px-2.5 text-[17px] font-medium leading-tight md:text-[17px]', className)}
+		class={cn('h-8 px-2.5 text-[17px] leading-tight font-medium md:text-[17px]', className)}
 		aria-invalid={error ? 'true' : undefined}
 		data-focusable={dataFocusable ? true : undefined}
 		{oninput}

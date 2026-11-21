@@ -22,6 +22,6 @@ export function hasDuplicateProductName(candidateName: string, takenNames: strin
 	if (!normalizedCandidateName) return false;
 
 	return takenNames.some(
-		(takenName) => normalizeProductName(takenName) === normalizedCandidateName,
+		(takenName) => normalizeProductName(takenName) === normalizedCandidateName
 	);
 }

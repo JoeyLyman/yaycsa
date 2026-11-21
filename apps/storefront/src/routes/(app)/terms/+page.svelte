@@ -1,5 +1,5 @@
 <h1 class="text-2xl font-bold">Terms of Service</h1>
-<p class="text-muted-foreground mt-1 text-sm">Last updated: March 15, 2026</p>
+<p class="mt-1 text-sm text-muted-foreground">Last updated: March 15, 2026</p>
 
 <div class="mt-6 space-y-6 text-sm leading-relaxed">
 	<section>

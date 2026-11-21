@@ -17,18 +17,9 @@ import { command, query } from '$app/server';
 import { adminMutate, adminQuery } from '../vendure-admin.js';
 import { assertFulfillmentOptionOwnedBySeller, requireSellerContext } from '../seller-context.js';
 
-export type FulfillmentOptionType =
-	| 'scheduled_pickup'
-	| 'scheduled_delivery'
-	| 'shipping';
+export type FulfillmentOptionType = 'scheduled_pickup' | 'scheduled_delivery' | 'shipping';
 export type Weekday =
-	| 'monday'
-	| 'tuesday'
-	| 'wednesday'
-	| 'thursday'
-	| 'friday'
-	| 'saturday'
-	| 'sunday';
+	'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 /** Simplified fulfillment-option type returned to the UI. */
 export interface SellerFulfillmentOption {
@@ -338,20 +329,23 @@ export const restoreFulfillmentOption = command(
 );
 
 /** Update the seller business timezone used to interpret fulfillment schedule templates. */
-export const updateBusinessTimezone = command(v.string(), async (timezone): Promise<string | null> => {
-	const { sellerId } = await requireSellerContext();
-	const normalizedTimezone = normalizeBusinessTimezone(timezone);
+export const updateBusinessTimezone = command(
+	v.string(),
+	async (timezone): Promise<string | null> => {
+		const { sellerId } = await requireSellerContext();
+		const normalizedTimezone = normalizeBusinessTimezone(timezone);
 
-	const data = await adminMutate<{
-		updateSeller: { id: string; customFields: { timezone: string | null } | null };
-	}>(UPDATE_BUSINESS_TIMEZONE_MUTATION, {
-		input: {
-			id: sellerId,
-			customFields: {
-				timezone: normalizedTimezone
+		const data = await adminMutate<{
+			updateSeller: { id: string; customFields: { timezone: string | null } | null };
+		}>(UPDATE_BUSINESS_TIMEZONE_MUTATION, {
+			input: {
+				id: sellerId,
+				customFields: {
+					timezone: normalizedTimezone
+				}
 			}
-		}
-	});
+		});
 
-	return data.updateSeller.customFields?.timezone ?? null;
-});
+		return data.updateSeller.customFields?.timezone ?? null;
+	}
+);

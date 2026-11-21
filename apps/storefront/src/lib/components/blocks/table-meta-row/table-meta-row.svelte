@@ -45,12 +45,12 @@
 			onclick={handleSummaryClick}
 			data-focusable
 		>
-			<span class="italic text-muted-foreground">{label}</span>
+			<span class="text-muted-foreground italic">{label}</span>
 			<span class="ml-2">{summary}</span>
 		</div>
 	{:else}
 		<div class="inline-flex items-baseline py-1">
-			<span class="italic text-muted-foreground">{label}</span>
+			<span class="text-muted-foreground italic">{label}</span>
 			<span class="ml-2">{summary}</span>
 		</div>
 	{/if}

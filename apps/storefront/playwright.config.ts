@@ -11,31 +11,31 @@ export default defineConfig({
 	reporter: 'list',
 	use: {
 		baseURL: 'http://localhost:5180',
-		trace: 'on-first-retry',
+		trace: 'on-first-retry'
 	},
 	projects: [
 		// 1. Create test user via Admin API + log in via browser → saves storageState
 		{
 			name: 'setup',
-			testMatch: '**/setup/auth.setup.ts',
+			testMatch: '**/setup/auth.setup.ts'
 		},
 		// 2. Tests that don't require auth (login form, public pages, redirects)
 		{
 			name: 'public',
-			testMatch: ['**/auth.spec.ts', '**/seller-page.spec.ts', '**/offer-parity.spec.ts'],
+			testMatch: ['**/auth.spec.ts', '**/seller-page.spec.ts', '**/offer-parity.spec.ts']
 		},
 		// 3. Tests that require a logged-in user — wait for setup to finish first
 		{
 			name: 'authenticated',
 			dependencies: ['setup'],
 			use: { storageState: '.playwright/user.json' },
-			testMatch: ['**/products.spec.ts'],
+			testMatch: ['**/products.spec.ts']
 		},
 		// 4. Delete the test user after all authenticated tests finish
 		{
 			name: 'teardown',
 			dependencies: ['authenticated'],
-			testMatch: '**/setup/auth.teardown.ts',
-		},
-	],
+			testMatch: '**/setup/auth.teardown.ts'
+		}
+	]
 });

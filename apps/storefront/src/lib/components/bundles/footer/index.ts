@@ -1,3 +1,3 @@
-import Footer from "./footer.svelte";
+import Footer from './footer.svelte';
 
 export { Footer };

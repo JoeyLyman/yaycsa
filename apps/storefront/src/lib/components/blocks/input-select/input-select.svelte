@@ -18,23 +18,23 @@
 		green: {
 			badge: 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-300',
 			badgeHover: 'hover:bg-green-600/20',
-			checkbox: 'border-green-600 bg-green-600',
+			checkbox: 'border-green-600 bg-green-600'
 		},
 		blue: {
 			badge: 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300',
 			badgeHover: 'hover:bg-blue-500/20',
-			checkbox: 'border-blue-500 bg-blue-500',
+			checkbox: 'border-blue-500 bg-blue-500'
 		},
 		orange: {
 			badge: 'border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300',
 			badgeHover: 'hover:bg-orange-500/20',
-			checkbox: 'border-orange-500 bg-orange-500',
+			checkbox: 'border-orange-500 bg-orange-500'
 		},
 		neutral: {
 			badge: 'border-border bg-muted text-foreground',
 			badgeHover: 'hover:bg-muted/80',
-			checkbox: 'border-primary bg-primary',
-		},
+			checkbox: 'border-primary bg-primary'
+		}
 	} as const;
 
 	type ColorName = keyof typeof COLOR_CLASSES;
@@ -67,7 +67,7 @@
 		/** Hide the selected-item pills above the input (when parent renders them externally). */
 		hidePills = false,
 		/** Additional class for the outer container. */
-		class: className = '',
+		class: className = ''
 	}: {
 		items: InputSelectItem[];
 		selectedValues: string[];
@@ -158,9 +158,7 @@
 	}
 
 	/** Get the selected items as full objects. */
-	let selectedItems = $derived(
-		items.filter((item) => selectedValues.includes(item.value))
-	);
+	let selectedItems = $derived(items.filter((item) => selectedValues.includes(item.value)));
 
 	/**
 	 * Placeholder passed to the underlying text input.
@@ -328,7 +326,8 @@
 
 	/** Close dropdown when focus leaves the entire InputSelect container. */
 	function handleFocusOut(e: FocusEvent) {
-		const focusLeavingContainer = !e.relatedTarget || !containerEl?.contains(e.relatedTarget as Node);
+		const focusLeavingContainer =
+			!e.relatedTarget || !containerEl?.contains(e.relatedTarget as Node);
 		if (focusLeavingContainer) {
 			open = false;
 			searchQuery = '';
@@ -346,7 +345,13 @@
 	const colors = $derived(COLOR_CLASSES[color]);
 </script>
 
-<div class="relative {className}" bind:this={containerEl} data-dropdown-open={open || undefined} data-input-select onfocusout={handleFocusOut}>
+<div
+	class="relative {className}"
+	bind:this={containerEl}
+	data-dropdown-open={open || undefined}
+	data-input-select
+	onfocusout={handleFocusOut}
+>
 	<!-- Selected pills (multi-select only, shown above the input) -->
 	{#if multiSelect && selectedItems.length > 0 && !hidePills}
 		<div class="mb-1 flex flex-wrap gap-1">
@@ -362,10 +367,7 @@
 				</button>
 			{/each}
 			{#if selectedItems.length > maxVisible}
-				<Badge
-					variant="outline"
-					class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
-				>
+				<Badge variant="outline" class="px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
 					+{selectedItems.length - maxVisible}
 				</Badge>
 			{/if}
@@ -406,7 +408,9 @@
 				{@const isHighlighted = idx === highlightedIndex}
 				<button
 					type="button"
-					class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm outline-none {isHighlighted ? 'bg-accent/50' : ''}"
+					class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm outline-none {isHighlighted
+						? 'bg-accent/50'
+						: ''}"
 					data-item-index={idx}
 					onmousedown={(e) => e.preventDefault()}
 					onmouseenter={() => (highlightedIndex = idx)}
@@ -419,17 +423,29 @@
 					}}
 				>
 					{#if multiSelect}
-						<span class="flex size-3.5 shrink-0 items-center justify-center rounded-sm border {isSelected ? colors.checkbox + ' text-white' : 'border-input'}">
+						<span
+							class="flex size-3.5 shrink-0 items-center justify-center rounded-sm border {isSelected
+								? colors.checkbox + ' text-white'
+								: 'border-input'}"
+						>
 							{#if isSelected}
-								<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="10"
+									height="10"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="3"
+									stroke-linecap="round"
+									stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg
+								>
 							{/if}
 						</span>
+					{:else if isSelected}
+						<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
 					{:else}
-						{#if isSelected}
-							<span class="size-3.5 shrink-0 text-primary">&#10003;</span>
-						{:else}
-							<span class="size-3.5 shrink-0"></span>
-						{/if}
+						<span class="size-3.5 shrink-0"></span>
 					{/if}
 					<span class={!multiSelect && isSelected ? 'font-medium' : ''}>
 						{getDisplayName(item)}
@@ -448,7 +464,9 @@
 				{@const isCreateHighlighted = highlightedIndex === filteredItems.length}
 				<button
 					type="button"
-					class="flex w-full items-center gap-2 border-t px-2 py-1.5 text-left text-sm text-green-700 dark:text-green-300 {isCreateHighlighted ? 'rounded-lg bg-accent/50' : ''}"
+					class="flex w-full items-center gap-2 border-t px-2 py-1.5 text-left text-sm text-green-700 dark:text-green-300 {isCreateHighlighted
+						? 'rounded-lg bg-accent/50'
+						: ''}"
 					data-item-index={filteredItems.length}
 					{disabled}
 					onmousedown={(e) => e.preventDefault()}

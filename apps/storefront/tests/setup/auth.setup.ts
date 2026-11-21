@@ -18,8 +18,8 @@ async function getAdminToken(): Promise<string> {
 					... on CurrentUser { id }
 					... on InvalidCredentialsError { message }
 				}
-			}`,
-		}),
+			}`
+		})
 	});
 	const token = res.headers.get('vendure-auth-token');
 	if (!token) throw new Error('Failed to get admin token — is the Vendure server running?');
@@ -40,7 +40,7 @@ setup('create test user and authenticate', async ({ page }) => {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: `Bearer ${adminToken}`,
+			Authorization: `Bearer ${adminToken}`
 		},
 		body: JSON.stringify({
 			query: `mutation CreateCustomer($input: CreateCustomerInput!, $password: String) {
@@ -53,11 +53,11 @@ setup('create test user and authenticate', async ({ page }) => {
 				input: {
 					firstName: 'Playwright',
 					lastName: 'Test',
-					emailAddress: testEmail,
+					emailAddress: testEmail
 				},
-				password: testPassword,
-			},
-		}),
+				password: testPassword
+			}
+		})
 	});
 
 	const createData = await createRes.json();

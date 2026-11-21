@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Select as SelectPrimitive } from "bits-ui";
-	import { cn } from "$lib/components/utils.js";
+	import { Select as SelectPrimitive } from 'bits-ui';
+	import { cn } from '$lib/components/utils.js';
 
 	let {
 		ref = $bindable(null),
@@ -13,7 +13,7 @@
 <SelectPrimitive.Item
 	bind:ref
 	class={cn(
-		"relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-3 py-1.5 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+		'relative flex w-full cursor-default items-center gap-2 rounded-sm px-3 py-1.5 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
 		className
 	)}
 	{...restProps}

@@ -177,7 +177,12 @@ const REFRESH_VERIFICATION_MUTATION = graphql(`
 
 function safeReturnTo(url: URL): string {
 	const returnTo = url.searchParams.get('returnTo');
-	if (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.includes('\\')) {
+	if (
+		returnTo &&
+		returnTo.startsWith('/') &&
+		!returnTo.startsWith('//') &&
+		!returnTo.includes('\\')
+	) {
 		return returnTo;
 	}
 	return '/';
@@ -324,9 +329,7 @@ export const requestUpdateEmail = form(
 
 		if ('errorCode' in result) {
 			const msg =
-				result.errorCode === 'INVALID_CREDENTIALS_ERROR'
-					? 'Incorrect password'
-					: result.message;
+				result.errorCode === 'INVALID_CREDENTIALS_ERROR' ? 'Incorrect password' : result.message;
 			invalid(issue._currentPassword(msg));
 		}
 
@@ -369,12 +372,9 @@ export const updatePassword = form(
 	}
 );
 
-export const resendVerification = command(
-	v.string(),
-	async (emailAddress) => {
-		const event = getRequestEvent();
-		// Always returns success regardless of whether the email exists (no enumeration)
-		await event.locals.vendure.mutate(REFRESH_VERIFICATION_MUTATION, { emailAddress });
-		return { success: true };
-	}
-);
+export const resendVerification = command(v.string(), async (emailAddress) => {
+	const event = getRequestEvent();
+	// Always returns success regardless of whether the email exists (no enumeration)
+	await event.locals.vendure.mutate(REFRESH_VERIFICATION_MUTATION, { emailAddress });
+	return { success: true };
+});

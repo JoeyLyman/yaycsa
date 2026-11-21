@@ -50,7 +50,7 @@
 			{value}
 			{placeholder}
 			{disabled}
-			class="h-8 px-2.5 text-[17px] font-medium leading-tight md:text-[17px]"
+			class="h-8 px-2.5 text-[17px] leading-tight font-medium md:text-[17px]"
 			aria-invalid={error ? 'true' : undefined}
 			data-focusable={dataFocusable ? true : undefined}
 			{oninput}
@@ -60,7 +60,9 @@
 	{:else}
 		<button
 			type="button"
-			class="-ml-1 inline-flex min-h-8 items-center truncate rounded px-1 py-0.5 text-left text-[17px] font-medium leading-tight outline-none {onopenedit ? 'cursor-text hover:underline focus-visible:underline' : ''}"
+			class="-ml-1 inline-flex min-h-8 items-center truncate rounded px-1 py-0.5 text-left text-[17px] leading-tight font-medium outline-none {onopenedit
+				? 'cursor-text hover:underline focus-visible:underline'
+				: ''}"
 			data-focusable={dataFocusable ? true : undefined}
 			data-auto-open={onopenedit ? true : undefined}
 			onclick={onopenedit}

@@ -39,8 +39,8 @@ export async function getAdminToken(): Promise<string> {
 					... on InvalidCredentialsError { message }
 				}
 			}`,
-			variables: { username: SUPERADMIN_IDENTIFIER, password: SUPERADMIN_PASSWORD },
-		}),
+			variables: { username: SUPERADMIN_IDENTIFIER, password: SUPERADMIN_PASSWORD }
+		})
 	});
 	const token = res.headers.get('vendure-auth-token');
 	if (!token) throw new Error('Failed to get admin token — is the Vendure server running?');
@@ -60,9 +60,9 @@ async function adminGraphql<T = unknown>(
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: `Bearer ${adminToken}`,
+			Authorization: `Bearer ${adminToken}`
 		},
-		body: JSON.stringify({ query, variables }),
+		body: JSON.stringify({ query, variables })
 	});
 	const body = await res.json();
 	if (body.errors?.length) {
@@ -77,11 +77,13 @@ async function adminGraphql<T = unknown>(
  * match on the embedded seller id. Returns null if the seller has no channel
  * (e.g. it was already partially torn down).
  */
-async function findChannelIdForSeller(adminToken: string, sellerId: string): Promise<string | null> {
-	const data = await adminGraphql<{ channels: { items: Array<{ id: string; seller?: { id: string } | null }> } }>(
-		adminToken,
-		`query { channels { items { id seller { id } } } }`
-	);
+async function findChannelIdForSeller(
+	adminToken: string,
+	sellerId: string
+): Promise<string | null> {
+	const data = await adminGraphql<{
+		channels: { items: Array<{ id: string; seller?: { id: string } | null }> };
+	}>(adminToken, `query { channels { items { id seller { id } } } }`);
 	const match = data.channels.items.find((c) => c.seller?.id === sellerId);
 	return match?.id ?? null;
 }

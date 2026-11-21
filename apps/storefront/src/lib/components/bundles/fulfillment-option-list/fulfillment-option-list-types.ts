@@ -1,7 +1,4 @@
-import type {
-	FulfillmentOptionType,
-	Weekday
-} from '$lib/api/admin/fulfillment-options.remote';
+import type { FulfillmentOptionType, Weekday } from '$lib/api/admin/fulfillment-options.remote';
 
 /** Empty-weekday sentinel used in the editor form when no weekday has been chosen yet. */
 export type EditorWeekday = Weekday | '';

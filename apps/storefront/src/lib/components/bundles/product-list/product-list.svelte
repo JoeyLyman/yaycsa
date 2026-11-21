@@ -150,7 +150,9 @@
 		const focusableElements = listEl?.querySelectorAll(
 			`[data-row="${row}"][data-col="${col}"] [data-focusable]`
 		);
-		const focusableElement = focusableElements?.[focusableElements.length - 1] as HTMLElement | null;
+		const focusableElement = focusableElements?.[
+			focusableElements.length - 1
+		] as HTMLElement | null;
 
 		if (!focusableElement) return false;
 
@@ -295,7 +297,10 @@
 				if (isTextInput) {
 					const inputElement = event.target as HTMLInputElement;
 					const inputLength = inputElement.value.length;
-					if (inputElement.selectionStart !== inputLength || inputElement.selectionEnd !== inputLength) {
+					if (
+						inputElement.selectionStart !== inputLength ||
+						inputElement.selectionEnd !== inputLength
+					) {
 						return;
 					}
 				}
@@ -335,7 +340,9 @@
 
 {#if products.length === 0 && productDrafts.length === 0}
 	<div class="flex items-center justify-center rounded-md border py-16">
-		<p class="text-muted-foreground">No products yet. Use Add Product to create your first product.</p>
+		<p class="text-muted-foreground">
+			No products yet. Use Add Product to create your first product.
+		</p>
 	</div>
 {:else}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -367,16 +374,16 @@
 		{#if editMode}
 			{#each productDrafts as draftProduct, draftIndex (draftProduct.id)}
 				<ProductListRowDraft
-				{draftProduct}
-				rowIndex={products.length + draftIndex}
-				{allBits}
-				{allProcesses}
-				{allAllergenWarnings}
-				takenProductNames={getTakenProductNamesForDraftProduct(draftProduct.id)}
-				onsave={onsaveProductDraft}
-				oncancel={oncancelProductDraft}
-				onupdate={onupdateProductDraft}
-				{onCreateBit}
+					{draftProduct}
+					rowIndex={products.length + draftIndex}
+					{allBits}
+					{allProcesses}
+					{allAllergenWarnings}
+					takenProductNames={getTakenProductNamesForDraftProduct(draftProduct.id)}
+					onsave={onsaveProductDraft}
+					oncancel={oncancelProductDraft}
+					onupdate={onupdateProductDraft}
+					{onCreateBit}
 				/>
 			{/each}
 		{/if}

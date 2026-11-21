@@ -35,9 +35,27 @@
 	 * by splitting into words/segments and testing each one.
 	 */
 	const PROFANITY_BLOCKLIST = new Set([
-		'fuck', 'shit', 'ass', 'asshole', 'bitch', 'bastard', 'damn', 'dick',
-		'cock', 'cunt', 'piss', 'slut', 'whore', 'fag', 'faggot', 'nigger',
-		'nigga', 'retard', 'twat', 'wanker', 'bollocks',
+		'fuck',
+		'shit',
+		'ass',
+		'asshole',
+		'bitch',
+		'bastard',
+		'damn',
+		'dick',
+		'cock',
+		'cunt',
+		'piss',
+		'slut',
+		'whore',
+		'fag',
+		'faggot',
+		'nigger',
+		'nigga',
+		'retard',
+		'twat',
+		'wanker',
+		'bollocks'
 	]);
 
 	/**
@@ -45,7 +63,10 @@
 	 * Splits on non-alphanumeric characters and checks each word.
 	 */
 	function containsProfanity(text: string): boolean {
-		const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+		const words = text
+			.toLowerCase()
+			.split(/[^a-z0-9]+/)
+			.filter(Boolean);
 		return words.some((w) => PROFANITY_BLOCKLIST.has(w));
 	}
 
@@ -55,9 +76,7 @@
 	 */
 	function sanitizeNameInput(e: Event) {
 		const input = e.target as HTMLInputElement;
-		const cleaned = input.value
-			.replace(/[^a-zA-Z0-9 ]/g, '')
-			.replace(/ {2,}/g, ' ');
+		const cleaned = input.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/ {2,}/g, ' ');
 		if (cleaned !== input.value) {
 			const pos = Math.min(input.selectionStart ?? cleaned.length, cleaned.length);
 			input.value = cleaned;
@@ -105,9 +124,7 @@
 	 * the user's custom value if they've opened the customize field.
 	 */
 	const effectiveSlug = $derived(
-		customizingSlug
-			? (becomeSeller.fields.slug.value() ?? '')
-			: generatedSlug,
+		customizingSlug ? (becomeSeller.fields.slug.value() ?? '') : generatedSlug
 	);
 
 	/** The current business name value, trimmed for validation purposes. */
@@ -119,7 +136,8 @@
 	 */
 	const nameErrors = $derived.by(() => {
 		const errors: string[] = [];
-		if (shopName.length > 0 && shopName.length < 3) errors.push('Name must be at least 3 characters.');
+		if (shopName.length > 0 && shopName.length < 3)
+			errors.push('Name must be at least 3 characters.');
 		if (containsProfanity(shopName)) errors.push('Please choose an appropriate business name.');
 		return errors;
 	});
@@ -130,18 +148,25 @@
 	 */
 	const slugErrors = $derived.by(() => {
 		const errors: string[] = [];
-		if (effectiveSlug.length > 0 && effectiveSlug.length < 3) errors.push('URL must be at least 3 characters.');
-		if (effectiveSlug.startsWith('-') || effectiveSlug.endsWith('-')) errors.push('URL cannot start or end with a hyphen.');
+		if (effectiveSlug.length > 0 && effectiveSlug.length < 3)
+			errors.push('URL must be at least 3 characters.');
+		if (effectiveSlug.startsWith('-') || effectiveSlug.endsWith('-'))
+			errors.push('URL cannot start or end with a hyphen.');
 		if (/--/.test(effectiveSlug)) errors.push('URL cannot have consecutive hyphens.');
-		if (effectiveSlug.length >= 3 && takenSlugs.has(effectiveSlug)) errors.push('That URL is already taken — try a different name or customize the URL.');
+		if (effectiveSlug.length >= 3 && takenSlugs.has(effectiveSlug))
+			errors.push('That URL is already taken — try a different name or customize the URL.');
 		if (containsProfanity(effectiveSlug)) errors.push('Please choose an appropriate URL.');
 		return errors;
 	});
 
 	/** Whether the submit button should be disabled. */
 	const submitDisabled = $derived(
-		!!becomeSeller.pending || redirecting || shopName.length < 3 || effectiveSlug.length < 3 ||
-		nameErrors.length > 0 || slugErrors.length > 0,
+		!!becomeSeller.pending ||
+			redirecting ||
+			shopName.length < 3 ||
+			effectiveSlug.length < 3 ||
+			nameErrors.length > 0 ||
+			slugErrors.length > 0
 	);
 
 	/**
@@ -155,7 +180,7 @@
 		if (slugInput) {
 			const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
 				window.HTMLInputElement.prototype,
-				'value',
+				'value'
 			)?.set;
 			nativeInputValueSetter?.call(slugInput, generatedSlug);
 			slugInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -168,12 +193,13 @@
 		<Card.Header>
 			<Card.Title class="text-2xl">Start selling</Card.Title>
 			<Card.Description>
-				Farm, restaurant, co-op, distributor, or all of the above? All good, see if our sales flows and tools work for you.
+				Farm, restaurant, co-op, distributor, or all of the above? All good, see if our sales flows
+				and tools work for you.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			{#if errorMessage}
-				<p class="text-destructive mb-4 text-sm">{errorMessage}</p>
+				<p class="mb-4 text-sm text-destructive">{errorMessage}</p>
 			{/if}
 			<form
 				{...becomeSeller.enhance(async ({ submit }) => {
@@ -199,9 +225,7 @@
 				class="space-y-4"
 			>
 				<div class="space-y-2">
-					<label for="shopName" class="text-sm font-medium leading-none">
-						Business name
-					</label>
+					<label for="shopName" class="text-sm leading-none font-medium"> Business name </label>
 					<Input
 						{...becomeSeller.fields.shopName.as('text')}
 						id="shopName"
@@ -213,15 +237,15 @@
 				{#if customizingSlug}
 					<div class="space-y-2">
 						<div class="flex items-center justify-between">
-							<label for="slug" class="text-sm font-medium leading-none">Custom URL</label>
+							<label for="slug" class="text-sm leading-none font-medium">Custom URL</label>
 							<button
 								type="button"
-								class="text-muted-foreground hover:text-foreground text-sm underline underline-offset-2"
+								class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
 								onclick={() => {
 									customizingSlug = false;
 									syncSlugInput();
-								}}
-							>Close</button>
+								}}>Close</button
+							>
 						</div>
 						<Input
 							{...becomeSeller.fields.slug.as('text')}
@@ -236,15 +260,17 @@
 					<input {...becomeSeller.fields.slug.as('text')} id="slug" class="hidden" />
 				{/if}
 				<div class="flex items-center justify-between">
-					<p class="text-muted-foreground text-sm">
-						Your page: yaycsa.com/<span class="text-foreground font-medium">{effectiveSlug || '...'}</span>
+					<p class="text-sm text-muted-foreground">
+						Your page: yaycsa.com/<span class="font-medium text-foreground"
+							>{effectiveSlug || '...'}</span
+						>
 					</p>
 					{#if !customizingSlug}
 						<button
 							type="button"
-							class="text-primary text-sm underline underline-offset-2"
-							onclick={() => (customizingSlug = true)}
-						>Customize URL</button>
+							class="text-sm text-primary underline underline-offset-2"
+							onclick={() => (customizingSlug = true)}>Customize URL</button
+						>
 					{/if}
 				</div>
 				<Button type="submit" class="w-full" disabled={submitDisabled}>
@@ -252,16 +278,16 @@
 					{becomeSeller.pending || redirecting ? 'Setting up...' : 'Start selling'}
 				</Button>
 				{#each becomeSeller.fields.shopName.issues() as issue (issue.message)}
-					<p class="text-destructive text-sm">{issue.message}</p>
+					<p class="text-sm text-destructive">{issue.message}</p>
 				{/each}
 				{#each nameErrors as error (error)}
-					<p class="text-destructive text-sm">{error}</p>
+					<p class="text-sm text-destructive">{error}</p>
 				{/each}
 				{#each becomeSeller.fields.slug.issues() as issue (issue.message)}
-					<p class="text-destructive text-sm">{issue.message}</p>
+					<p class="text-sm text-destructive">{issue.message}</p>
 				{/each}
 				{#each slugErrors as error (error)}
-					<p class="text-destructive text-sm">{error}</p>
+					<p class="text-sm text-destructive">{error}</p>
 				{/each}
 			</form>
 		</Card.Content>

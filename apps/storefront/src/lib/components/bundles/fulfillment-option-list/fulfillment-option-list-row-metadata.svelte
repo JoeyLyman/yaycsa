@@ -65,7 +65,7 @@
 <div class="-mt-[11px] space-y-0.5 overflow-visible px-3 pb-2.5 text-xs md:px-4 md:pb-4">
 	{#if isScheduled}
 		<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-1">
-			<span class="italic text-muted-foreground">{fulfillmentWindowLabel}</span>
+			<span class="text-muted-foreground italic">{fulfillmentWindowLabel}</span>
 			<InlineCombobox
 				items={weekdayComboboxItems}
 				value={row.fulfillmentWeekday}
@@ -104,7 +104,7 @@
 	{/if}
 
 	<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-1">
-		<span class="italic text-muted-foreground">
+		<span class="text-muted-foreground italic">
 			Order Deadline{row.type === 'shipping' ? ' (optional)' : ''}
 		</span>
 		<InlineCombobox

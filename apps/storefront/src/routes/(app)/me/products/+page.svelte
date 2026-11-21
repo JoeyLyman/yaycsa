@@ -89,7 +89,9 @@
 	let rawAllergenWarnings: FacetValueInfo[] = $state([]);
 
 	/** Sorted bit options shared by saved rows and draft rows. */
-	let allBits = $derived(rawBits.map(toItem).sort((left, right) => left.label.localeCompare(right.label)));
+	let allBits = $derived(
+		rawBits.map(toItem).sort((left, right) => left.label.localeCompare(right.label))
+	);
 
 	/** Sorted processing options shared by saved rows and draft rows. */
 	let allProcesses = $derived(rawProcesses.map(toItem));
@@ -226,7 +228,9 @@
 			sku,
 			unitType: null,
 			bits: rawBits.filter((bit) => draftProduct.bitIds.includes(bit.id)),
-			processes: rawProcesses.filter((processItem) => draftProduct.processIds.includes(processItem.id)),
+			processes: rawProcesses.filter((processItem) =>
+				draftProduct.processIds.includes(processItem.id)
+			),
 			allergenWarnings: rawAllergenWarnings.filter((allergen) =>
 				draftProduct.allergenIds.includes(allergen.id)
 			)
@@ -358,11 +362,7 @@
 				{#if products.length > 0 || productDrafts.length > 0}
 					<TableDetailToggle bind:mode={metadataMode} />
 				{/if}
-				<TableEditModeToggle
-					editMode={editMode}
-					hasUnsavedChanges={hasUnsavedChanges}
-					onchange={handleEditModeChange}
-				/>
+				<TableEditModeToggle {editMode} {hasUnsavedChanges} onchange={handleEditModeChange} />
 			</div>
 		</div>
 
@@ -388,7 +388,12 @@
 		{/key}
 
 		{#if editMode}
-			<Button variant="outline" class="w-full" onclick={addProductDraft} data-testid="add-product-button">
+			<Button
+				variant="outline"
+				class="w-full"
+				onclick={addProductDraft}
+				data-testid="add-product-button"
+			>
 				+ Add Product
 			</Button>
 		{/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Avatar as AvatarPrimitive } from "bits-ui";
-	import { cn } from "$lib/components/utils.js";
-	import type { ComponentProps } from "svelte";
+	import { Avatar as AvatarPrimitive } from 'bits-ui';
+	import { cn } from '$lib/components/utils.js';
+	import type { ComponentProps } from 'svelte';
 
 	let {
 		ref = $bindable(null),
@@ -14,8 +14,8 @@
 <AvatarPrimitive.Fallback
 	bind:ref
 	class={cn(
-		"bg-muted flex h-full w-full items-center justify-center rounded-full text-xs",
-		className,
+		'flex h-full w-full items-center justify-center rounded-full bg-muted text-xs',
+		className
 	)}
 	{...restProps}
 >

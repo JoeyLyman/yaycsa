@@ -41,9 +41,7 @@ export function computeMetadataSummary(
 
 	// Allergens (only shown if present)
 	if (allergens.length > 0) {
-		const names = allergens
-			.map((a) => titleCase(a.label.replace(/^May contain /i, '')))
-			.join(', ');
+		const names = allergens.map((a) => titleCase(a.label.replace(/^May contain /i, ''))).join(', ');
 		segments.push(metadataLabel('Allergens', { section: true }));
 		segments.push(metadataValue(names));
 	}

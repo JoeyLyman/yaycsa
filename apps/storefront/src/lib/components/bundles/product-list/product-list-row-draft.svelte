@@ -79,7 +79,9 @@
 </script>
 
 <div data-product-row data-row={rowIndex} class="border-b last:border-b-0">
-	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5">
+	<div
+		class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5"
+	>
 		<div class="min-w-0 flex-1" data-col="name">
 			<ProductListRowFieldsName
 				bind:ref={nameInputEl}

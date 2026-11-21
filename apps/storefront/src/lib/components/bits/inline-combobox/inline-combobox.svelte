@@ -139,7 +139,7 @@
 <Popover.Root bind:open onOpenChange={(nextOpen) => (nextOpen ? openPopover() : closePopover())}>
 	<Popover.Trigger
 		class={cn(
-			'border-0 bg-transparent px-1 py-0 text-sm outline-none transition-colors',
+			'border-0 bg-transparent px-1 py-0 text-sm transition-colors outline-none',
 			interactive && 'cursor-pointer hover:text-primary',
 			disabled && 'cursor-not-allowed opacity-60',
 			!value && !open && (required ? 'text-destructive/80' : 'text-muted-foreground/70'),
@@ -158,12 +158,12 @@
 	<Popover.Portal>
 		<Popover.Content
 			sideOffset={4}
-			class="bg-popover text-popover-foreground z-50 w-56 rounded-md border p-1 shadow-md"
+			class="z-50 w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
 		>
 			<input
 				bind:this={searchInputElement}
 				type="text"
-				class="mb-1 h-7 w-full rounded-sm border border-input bg-background px-2 text-sm outline-none focus-visible:ring-ring/50 focus-visible:ring-2"
+				class="mb-1 h-7 w-full rounded-sm border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
 				{placeholder}
 				value={searchText}
 				oninput={(event) => (searchText = (event.currentTarget as HTMLInputElement).value)}

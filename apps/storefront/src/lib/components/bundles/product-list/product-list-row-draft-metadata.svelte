@@ -42,7 +42,7 @@
 <div class="-mt-2 space-y-0.5 overflow-visible px-3 pb-2.5 text-xs md:px-4 md:pb-4">
 	<div data-row={rowIndex} data-col="bits" class="overflow-visible">
 		<div class="inline-flex w-fit items-baseline py-1">
-			<span class="italic text-muted-foreground">Ingredients</span>
+			<span class="text-muted-foreground italic">Ingredients</span>
 		</div>
 		<div class="max-w-xs pb-1">
 			<ProductListRowFieldsBits
@@ -57,7 +57,7 @@
 
 	<div data-row={rowIndex} data-col="processes" class="overflow-visible">
 		<div class="inline-flex w-fit items-baseline py-1">
-			<span class="italic text-muted-foreground">Processing</span>
+			<span class="text-muted-foreground italic">Processing</span>
 		</div>
 		<div class="max-w-xs pb-1">
 			<ProductListRowFieldsProcesses
@@ -71,7 +71,7 @@
 
 	<div data-row={rowIndex} data-col="allergens" class="overflow-visible">
 		<div class="inline-flex w-fit items-baseline py-1">
-			<span class="italic text-muted-foreground">Allergens</span>
+			<span class="text-muted-foreground italic">Allergens</span>
 		</div>
 		<div class="max-w-xs pb-1">
 			<ProductListRowFieldsAllergenWarnings

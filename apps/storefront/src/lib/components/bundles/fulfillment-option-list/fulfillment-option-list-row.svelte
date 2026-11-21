@@ -186,7 +186,7 @@
 					/>
 				</div>
 			{:else}
-				<span class="text-sm italic text-muted-foreground">
+				<span class="text-sm text-muted-foreground italic">
 					{getFulfillmentOptionTypeLabel(workingRow.type)}
 				</span>
 			{/if}
@@ -194,12 +194,7 @@
 
 		<div class="shrink-0">
 			{#if (dirty || saving) && !confirmingDelete}
-				<TableRowEditActions
-					{saving}
-					{canSave}
-					onsave={handleSave}
-					oncancel={handleCancel}
-				/>
+				<TableRowEditActions {saving} {canSave} onsave={handleSave} oncancel={handleCancel} />
 			{:else if editMode}
 				<TableRowActions
 					open={confirmingDelete}

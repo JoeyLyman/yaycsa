@@ -1,7 +1,4 @@
-import type {
-	FulfillmentOptionType,
-	Weekday
-} from '$lib/api/admin/fulfillment-options.remote';
+import type { FulfillmentOptionType, Weekday } from '$lib/api/admin/fulfillment-options.remote';
 import type {
 	SellerFulfillmentOptionWorkspaceItem,
 	SellerOfferWorkspaceItem
@@ -247,7 +244,9 @@ export function getUsageForOption(
  * (`rowToMutationInput`) clears those fields in the saved payload when type === shipping,
  * so server-side data stays consistent.
  */
-export function buildTypePatch(nextType: FulfillmentOptionType): Partial<FulfillmentOptionEditorRow> {
+export function buildTypePatch(
+	nextType: FulfillmentOptionType
+): Partial<FulfillmentOptionEditorRow> {
 	return { type: nextType };
 }
 
@@ -330,7 +329,9 @@ export function getRowValidationErrors(
 	return errors;
 }
 
-export function rowToMutationInput(row: FulfillmentOptionEditorRow): FulfillmentOptionMutationInput {
+export function rowToMutationInput(
+	row: FulfillmentOptionEditorRow
+): FulfillmentOptionMutationInput {
 	const scheduleTemplate = buildScheduleTemplateSummaryInput(row);
 	const isScheduled = isScheduledFulfillmentOptionType(row.type);
 	return {
@@ -340,9 +341,7 @@ export function rowToMutationInput(row: FulfillmentOptionEditorRow): Fulfillment
 		// Pickup/delivery window only applies to scheduled types — clear in the saved payload
 		// even if the seller's local working state still holds preserved values.
 		fulfillmentWeekday: isScheduled ? scheduleTemplate.fulfillmentWeekday : null,
-		fulfillmentTimeWindowStart: isScheduled
-			? scheduleTemplate.fulfillmentTimeWindowStart
-			: null,
+		fulfillmentTimeWindowStart: isScheduled ? scheduleTemplate.fulfillmentTimeWindowStart : null,
 		fulfillmentTimeWindowEnd: isScheduled ? scheduleTemplate.fulfillmentTimeWindowEnd : null,
 		orderDeadlineWeekday: scheduleTemplate.orderDeadlineWeekday,
 		orderDeadlineTime: scheduleTemplate.orderDeadlineTime

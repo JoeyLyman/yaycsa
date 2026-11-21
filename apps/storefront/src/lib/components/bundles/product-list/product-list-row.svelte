@@ -109,8 +109,8 @@
 	 */
 	let nameError = $derived(
 		editState?.name !== undefined &&
-		trimmedEditedName !== product.name &&
-		hasDuplicateProductName(editState.name, takenProductNames)
+			trimmedEditedName !== product.name &&
+			hasDuplicateProductName(editState.name, takenProductNames)
 			? 'A product with this name already exists'
 			: null
 	);
@@ -178,24 +178,27 @@
 
 	/** Resolved bit items used for the collapsed metadata summary line. */
 	let displayBits = $derived(
-		allBits.filter((bit) => (editState?.bitIds ?? product.bits.map((productBit) => productBit.id)).includes(bit.value))
+		allBits.filter((bit) =>
+			(editState?.bitIds ?? product.bits.map((productBit) => productBit.id)).includes(bit.value)
+		)
 	);
 
 	/** Resolved process items used for the collapsed metadata summary line. */
 	let displayProcesses = $derived(
 		allProcesses.filter((processItem) =>
-			(editState?.processIds ?? product.processes.map((productProcess) => productProcess.id)).includes(
-				processItem.value
-			)
+			(
+				editState?.processIds ?? product.processes.map((productProcess) => productProcess.id)
+			).includes(processItem.value)
 		)
 	);
 
 	/** Resolved allergen items used for the collapsed metadata summary line. */
 	let displayAllergens = $derived(
 		allAllergenWarnings.filter((allergen) =>
-			(editState?.allergenIds ?? product.allergenWarnings.map((productAllergen) => productAllergen.id)).includes(
-				allergen.value
-			)
+			(
+				editState?.allergenIds ??
+				product.allergenWarnings.map((productAllergen) => productAllergen.id)
+			).includes(allergen.value)
 		)
 	);
 
@@ -226,18 +229,26 @@
 		// field on entering edit mode, so "defined" no longer implies "changed."
 		const sortedIds = (ids: string[]) => [...ids].sort();
 		const sameSet = (left: string[] | undefined, right: string[]) =>
-			left !== undefined &&
-			JSON.stringify(sortedIds(left)) === JSON.stringify(sortedIds(right));
+			left !== undefined && JSON.stringify(sortedIds(left)) === JSON.stringify(sortedIds(right));
 
 		const bitsActuallyChanged =
 			editState.bitIds !== undefined &&
-			!sameSet(editState.bitIds, product.bits.map((bit) => bit.id));
+			!sameSet(
+				editState.bitIds,
+				product.bits.map((bit) => bit.id)
+			);
 		const processesActuallyChanged =
 			editState.processIds !== undefined &&
-			!sameSet(editState.processIds, product.processes.map((processItem) => processItem.id));
+			!sameSet(
+				editState.processIds,
+				product.processes.map((processItem) => processItem.id)
+			);
 		const allergensActuallyChanged =
 			editState.allergenIds !== undefined &&
-			!sameSet(editState.allergenIds, product.allergenWarnings.map((allergen) => allergen.id));
+			!sameSet(
+				editState.allergenIds,
+				product.allergenWarnings.map((allergen) => allergen.id)
+			);
 
 		let facetValueIds: string[] | undefined;
 		if (bitsActuallyChanged || processesActuallyChanged || allergensActuallyChanged) {
@@ -288,21 +299,22 @@
 <div
 	data-product-row
 	data-row={rowIndex}
-	class="border-b last:border-b-0 {isPending
-		? 'opacity-50'
-		: isFailed
-			? 'bg-destructive/5'
-			: ''}"
+	class="border-b last:border-b-0 {isPending ? 'opacity-50' : isFailed ? 'bg-destructive/5' : ''}"
 >
-	<div class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5">
+	<div
+		class="flex min-h-11 items-start gap-2 px-3 pt-[8px] pb-1 md:gap-3 md:px-4 md:pt-[10px] md:pb-1.5"
+	>
 		<div class="min-w-0 shrink" data-col="name">
 			{#if isPending}
-				<span class="inline-flex min-h-8 items-center gap-2 text-[17px] font-medium leading-tight">
+				<span class="inline-flex min-h-8 items-center gap-2 text-[17px] leading-tight font-medium">
 					<SpinnerSun class="size-3.5 shrink-0 text-muted-foreground" />
 					<span class="truncate">{product.name}</span>
 				</span>
 			{:else if isFailed}
-				<span class="inline-flex min-h-8 items-center truncate text-[17px] font-medium leading-tight text-destructive">{product.name}</span>
+				<span
+					class="inline-flex min-h-8 items-center truncate text-[17px] leading-tight font-medium text-destructive"
+					>{product.name}</span
+				>
 			{:else}
 				<TableRowHeader
 					value={displayName}
@@ -325,7 +337,13 @@
 				<span class="inline-flex h-8 items-center text-xs text-muted-foreground">Saving...</span>
 			{:else if isFailed}
 				<div class="flex items-center gap-1">
-					<Button size="sm" variant="ghost" data-focusable onclick={() => onretry(product.id)} class="text-xs">
+					<Button
+						size="sm"
+						variant="ghost"
+						data-focusable
+						onclick={() => onretry(product.id)}
+						class="text-xs"
+					>
 						Retry
 					</Button>
 					<Button
@@ -339,15 +357,16 @@
 					</Button>
 				</div>
 			{:else if isEditing}
-				<TableRowEditActions
-					{saving}
-					{canSave}
-					onsave={handleSave}
-					oncancel={cancelEdits}
-				/>
+				<TableRowEditActions {saving} {canSave} onsave={handleSave} oncancel={cancelEdits} />
 			{:else if editMode}
 				<TableRowActions bind:open={confirmingDelete} disabled={deleting}>
-					<Button size="sm" variant="destructive" disabled={deleting} data-focusable onclick={handleDelete}>
+					<Button
+						size="sm"
+						variant="destructive"
+						disabled={deleting}
+						data-focusable
+						onclick={handleDelete}
+					>
 						{#if deleting}<SpinnerSun class="size-3.5" />{:else}Delete{/if}
 					</Button>
 				</TableRowActions>

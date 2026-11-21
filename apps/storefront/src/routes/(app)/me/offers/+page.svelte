@@ -464,7 +464,6 @@
 			pendingRowIds.delete(row.id);
 		}
 	}
-
 </script>
 
 {#if loading}
@@ -516,7 +515,10 @@
 						<label for="scheduled-pickup-filter">Scheduled Pickup</label>
 					</div>
 					<div class="flex items-center gap-2 text-sm text-muted-foreground">
-						<Checkbox id="scheduled-delivery-filter" bind:checked={showingScheduledDeliveryOptions} />
+						<Checkbox
+							id="scheduled-delivery-filter"
+							bind:checked={showingScheduledDeliveryOptions}
+						/>
 						<label for="scheduled-delivery-filter">Scheduled Delivery</label>
 					</div>
 					<div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -541,29 +543,29 @@
 
 				{#key fulfillmentEditSessionId}
 					<FulfillmentOptionList
-					rows={filteredFulfillmentOptionRows}
-					draftKeys={fulfillmentOptionDraftKeys}
-					deletedRows={filteredDeletedFulfillmentOptions}
-					showDeleted={showingDeletedFulfillmentOptions}
-					offers={loadedOffers}
-					metadataMode={fulfillmentMetadataMode}
-					{pendingRowIds}
-					{rowErrors}
-					confirmingDeleteIds={confirmingDeleteRowIds}
-					confirmingPermanentDeleteIds={confirmingDeletedPermanentRowIds}
-					onsaveRow={saveExistingFulfillmentOptionRow}
-					onbegindelete={beginDeleteExistingFulfillmentOptionRow}
-					oncanceldelete={cancelDeleteExistingFulfillmentOptionRow}
-					onconfirmdelete={confirmDeleteExistingFulfillmentOptionRow}
-					oncreateDraft={createFulfillmentOptionFromDraft}
-					oncancelDraft={cancelFulfillmentOptionDraftRow}
-					onadddraft={addFulfillmentOptionDraftRow}
-					onrestoreDeleted={restoreDeletedFulfillmentOptionRow}
-					onbeginpermanentdelete={beginPermanentDeleteDeletedRow}
-					oncancelpermanentdelete={cancelPermanentDeleteDeletedRow}
-					onconfirmpermanentdelete={permanentlyDeleteDeletedFulfillmentOptionRow}
-					{formatDeletedDate}
-				/>
+						rows={filteredFulfillmentOptionRows}
+						draftKeys={fulfillmentOptionDraftKeys}
+						deletedRows={filteredDeletedFulfillmentOptions}
+						showDeleted={showingDeletedFulfillmentOptions}
+						offers={loadedOffers}
+						metadataMode={fulfillmentMetadataMode}
+						{pendingRowIds}
+						{rowErrors}
+						confirmingDeleteIds={confirmingDeleteRowIds}
+						confirmingPermanentDeleteIds={confirmingDeletedPermanentRowIds}
+						onsaveRow={saveExistingFulfillmentOptionRow}
+						onbegindelete={beginDeleteExistingFulfillmentOptionRow}
+						oncanceldelete={cancelDeleteExistingFulfillmentOptionRow}
+						onconfirmdelete={confirmDeleteExistingFulfillmentOptionRow}
+						oncreateDraft={createFulfillmentOptionFromDraft}
+						oncancelDraft={cancelFulfillmentOptionDraftRow}
+						onadddraft={addFulfillmentOptionDraftRow}
+						onrestoreDeleted={restoreDeletedFulfillmentOptionRow}
+						onbeginpermanentdelete={beginPermanentDeleteDeletedRow}
+						oncancelpermanentdelete={cancelPermanentDeleteDeletedRow}
+						onconfirmpermanentdelete={permanentlyDeleteDeletedFulfillmentOptionRow}
+						{formatDeletedDate}
+					/>
 				{/key}
 			</div>
 		{/if}

@@ -67,24 +67,27 @@
 
 	/** Resolved bit items for display from edit state when present, otherwise product data. */
 	let displayBits = $derived(
-		allBits.filter((bit) => (editState?.bitIds ?? product.bits.map((productBit) => productBit.id)).includes(bit.value))
+		allBits.filter((bit) =>
+			(editState?.bitIds ?? product.bits.map((productBit) => productBit.id)).includes(bit.value)
+		)
 	);
 
 	/** Resolved processing items for display from edit state when present, otherwise product data. */
 	let displayProcesses = $derived(
 		allProcesses.filter((processItem) =>
-			(editState?.processIds ?? product.processes.map((productProcess) => productProcess.id)).includes(
-				processItem.value
-			)
+			(
+				editState?.processIds ?? product.processes.map((productProcess) => productProcess.id)
+			).includes(processItem.value)
 		)
 	);
 
 	/** Resolved allergen items for display from edit state when present, otherwise product data. */
 	let displayAllergens = $derived(
 		allAllergenWarnings.filter((allergen) =>
-			(editState?.allergenIds ?? product.allergenWarnings.map((productAllergen) => productAllergen.id)).includes(
-				allergen.value
-			)
+			(
+				editState?.allergenIds ??
+				product.allergenWarnings.map((productAllergen) => productAllergen.id)
+			).includes(allergen.value)
 		)
 	);
 
@@ -99,12 +102,16 @@
 	<div data-row={rowIndex} data-col="bits" class="overflow-visible">
 		{#if isPending || isFailed}
 			<div class="inline-flex items-baseline py-1">
-				<span class="italic text-muted-foreground">Ingredients</span>
-				<span class="ml-2">{product.bits.length > 0 ? product.bits.map((bit) => titleCase(bit.name)).join(', ') : '–'}</span>
+				<span class="text-muted-foreground italic">Ingredients</span>
+				<span class="ml-2"
+					>{product.bits.length > 0
+						? product.bits.map((bit) => titleCase(bit.name)).join(', ')
+						: '–'}</span
+				>
 			</div>
 		{:else}
 			<div class="inline-flex w-fit items-baseline py-1">
-				<span class="italic text-muted-foreground">Ingredients</span>
+				<span class="text-muted-foreground italic">Ingredients</span>
 				<span class="ml-2">{formatList(displayBits, '–')}</span>
 			</div>
 
@@ -125,14 +132,16 @@
 	<div data-row={rowIndex} data-col="processes" class="overflow-visible">
 		{#if isPending || isFailed}
 			<div class="inline-flex items-baseline py-1">
-				<span class="italic text-muted-foreground">Processing</span>
-				<span class="ml-2">{product.processes.length > 0
-					? product.processes.map((processItem) => titleCase(processItem.name)).join(', ')
-					: '–'}</span>
+				<span class="text-muted-foreground italic">Processing</span>
+				<span class="ml-2"
+					>{product.processes.length > 0
+						? product.processes.map((processItem) => titleCase(processItem.name)).join(', ')
+						: '–'}</span
+				>
 			</div>
 		{:else}
 			<div class="inline-flex w-fit items-baseline py-1">
-				<span class="italic text-muted-foreground">Processing</span>
+				<span class="text-muted-foreground italic">Processing</span>
 				<span class="ml-2">{formatList(displayProcesses, '–')}</span>
 			</div>
 
@@ -140,7 +149,8 @@
 				<div class="max-w-xs pb-1">
 					<ProductListRowFieldsProcesses
 						items={allProcesses}
-						selectedValues={editState?.processIds ?? product.processes.map((processItem) => processItem.id)}
+						selectedValues={editState?.processIds ??
+							product.processes.map((processItem) => processItem.id)}
 						onchange={onProcessesChange}
 						hidePills={true}
 					/>
@@ -152,28 +162,33 @@
 	<div data-row={rowIndex} data-col="allergens" class="overflow-visible">
 		{#if isPending || isFailed}
 			<div class="inline-flex items-baseline py-1">
-				<span class="italic text-muted-foreground">Allergens</span>
-				<span class="ml-2">{product.allergenWarnings.length > 0
-					? product.allergenWarnings
-							.map((allergen) => titleCase(allergen.name.replace(/^May contain /i, '')))
-							.join(', ')
-					: '–'}</span>
+				<span class="text-muted-foreground italic">Allergens</span>
+				<span class="ml-2"
+					>{product.allergenWarnings.length > 0
+						? product.allergenWarnings
+								.map((allergen) => titleCase(allergen.name.replace(/^May contain /i, '')))
+								.join(', ')
+						: '–'}</span
+				>
 			</div>
 		{:else}
 			<div class="inline-flex w-fit items-baseline py-1">
-				<span class="italic text-muted-foreground">Allergens</span>
-				<span class="ml-2">{displayAllergens.length > 0
-					? displayAllergens
-							.map((allergen) => titleCase(allergen.label.replace(/^May contain /i, '')))
-							.join(', ')
-					: '–'}</span>
+				<span class="text-muted-foreground italic">Allergens</span>
+				<span class="ml-2"
+					>{displayAllergens.length > 0
+						? displayAllergens
+								.map((allergen) => titleCase(allergen.label.replace(/^May contain /i, '')))
+								.join(', ')
+						: '–'}</span
+				>
 			</div>
 
 			{#if allFieldsOpen}
 				<div class="max-w-xs pb-1">
 					<ProductListRowFieldsAllergenWarnings
 						items={allAllergenWarnings}
-						selectedValues={editState?.allergenIds ?? product.allergenWarnings.map((allergen) => allergen.id)}
+						selectedValues={editState?.allergenIds ??
+							product.allergenWarnings.map((allergen) => allergen.id)}
 						onchange={onAllergensChange}
 						hidePills={true}
 					/>
