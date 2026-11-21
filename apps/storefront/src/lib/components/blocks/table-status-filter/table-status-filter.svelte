@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Button } from '$lib/components/bits/button';
-	import * as DropdownMenu from '$lib/components/bits/dropdown-menu';
-	import { cn } from '$lib/components/utils.js';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import * as DropdownMenu from '#lib/components/bits/dropdown-menu/index.ts';
+	import { cn } from '#lib/components/utils.js';
 	import type { TableStatusFilterOption } from './table-status-filter-types';
 
 	let {

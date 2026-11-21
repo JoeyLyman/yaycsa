@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
-	import { HeaderTabs } from '$lib/components/bits/header-tabs';
-	import { Input } from '$lib/components/bits/input';
-	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
-	import type { FulfillmentOptionType } from '$lib/api/admin/fulfillment-options.remote';
+	import { HeaderTabs } from '#lib/components/bits/header-tabs/index.ts';
+	import { Input } from '#lib/components/bits/input/index.ts';
+	import { TableRowEditActions } from '#lib/components/blocks/table-row-edit-actions/index.ts';
+	import type { FulfillmentOptionType } from '#lib/api/admin/fulfillment-options.remote.ts';
 	import FulfillmentOptionListRowMetadata from './fulfillment-option-list-row-metadata.svelte';
-	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
+	import { getTableEditModeContext } from '#lib/components/blocks/table-edit-mode/index.ts';
 	import {
 		buildTypePatch,
 		createBlankFulfillmentOptionEditorRow,

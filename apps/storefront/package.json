@@ -58,5 +58,9 @@
 		"mode-watcher": "^1.1.0",
 		"tailwind-merge": "^3.7.1",
 		"valibot": "^1.5.0"
+	},
+	"imports": {
+		"#lib": "./src/lib/index.js",
+		"#lib/*": "./src/lib/*"
 	}
 }

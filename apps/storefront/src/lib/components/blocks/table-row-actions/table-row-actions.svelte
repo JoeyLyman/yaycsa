@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Button } from '$lib/components/bits/button';
+	import { Button } from '#lib/components/bits/button/index.ts';
 
 	let {
 		/** Whether the action menu is currently open. Bindable so parents can also drive it via callbacks. */

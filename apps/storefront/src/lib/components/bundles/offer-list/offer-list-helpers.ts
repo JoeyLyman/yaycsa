@@ -7,7 +7,7 @@
  * parity test (`tests/offer-parity.spec.ts`) leans on {@link buyerFacingOfferView}
  * to assert that guarantee against real data from both APIs.
  *
- * This module is intentionally free of `$app` / `$lib` imports so it can be used
+ * This module is intentionally free of `$app` / `#lib` imports so it can be used
  * from remote functions (server) AND imported directly by the Playwright test
  * runner (node) without pulling in SvelteKit server internals.
  */

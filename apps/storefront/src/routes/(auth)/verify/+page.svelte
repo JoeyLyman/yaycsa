@@ -1,6 +1,6 @@
 <script lang="ts">
-	import * as Card from '$lib/components/bits/card';
-	import { Button } from '$lib/components/bits/button';
+	import * as Card from '#lib/components/bits/card/index.ts';
+	import { Button } from '#lib/components/bits/button/index.ts';
 
 	let { data } = $props();
 </script>

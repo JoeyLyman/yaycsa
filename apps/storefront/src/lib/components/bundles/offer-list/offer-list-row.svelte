@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTableViewContext } from '$lib/components/blocks/table-view-toggle';
+	import { getTableViewContext } from '#lib/components/blocks/table-view-toggle/index.ts';
 	import OfferListRowLineItems from './offer-list-row-line-items.svelte';
 	import {
 		fulfillmentOptionTypeLabel,

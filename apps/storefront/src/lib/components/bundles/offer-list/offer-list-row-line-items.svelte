@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { formatMoney } from '$lib/utils/money';
+	import { formatMoney } from '#lib/utils/money.ts';
 	import { pricingModeLabel } from './offer-list-helpers';
 	import type { OfferLineItemView } from './offer-list-types';
-	import type { TableAudience } from '$lib/components/blocks/table-view-toggle';
+	import type { TableAudience } from '#lib/components/blocks/table-view-toggle/index.ts';
 
 	let {
 		/** The offer's line items, already ordered by the normalizer. */

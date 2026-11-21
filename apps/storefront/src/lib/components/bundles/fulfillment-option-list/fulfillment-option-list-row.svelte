@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Button } from '$lib/components/bits/button';
-	import { HeaderTabs } from '$lib/components/bits/header-tabs';
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
-	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
-	import { TableRowActions } from '$lib/components/blocks/table-row-actions';
-	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
-	import { TableRowMetadataSummary } from '$lib/components/blocks/table-row-metadata-summary';
-	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
-	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
-	import type { FulfillmentOptionType } from '$lib/api/admin/fulfillment-options.remote';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import { HeaderTabs } from '#lib/components/bits/header-tabs/index.ts';
+	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import { TableRowHeader } from '#lib/components/blocks/table-row-header/index.ts';
+	import { TableRowActions } from '#lib/components/blocks/table-row-actions/index.ts';
+	import { TableRowEditActions } from '#lib/components/blocks/table-row-edit-actions/index.ts';
+	import { TableRowMetadataSummary } from '#lib/components/blocks/table-row-metadata-summary/index.ts';
+	import { getTableEditModeContext } from '#lib/components/blocks/table-edit-mode/index.ts';
+	import type { TableDetailMode } from '#lib/components/blocks/table-detail-toggle/index.ts';
+	import type { FulfillmentOptionType } from '#lib/api/admin/fulfillment-options.remote.ts';
 	import FulfillmentOptionListRowMetadata from './fulfillment-option-list-row-metadata.svelte';
 	import {
 		buildTypePatch,

@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { InlineCombobox, type InlineComboboxItem } from '$lib/components/bits/inline-combobox';
-	import { Textarea } from '$lib/components/bits/textarea';
-	import { TableMetaRow } from '$lib/components/blocks/table-meta-row';
+	import {
+		InlineCombobox,
+		type InlineComboboxItem
+	} from '#lib/components/bits/inline-combobox/index.ts';
+	import { Textarea } from '#lib/components/bits/textarea/index.ts';
+	import { TableMetaRow } from '#lib/components/blocks/table-meta-row/index.ts';
 	import {
 		isScheduledFulfillmentOptionType,
 		summarizeNotes,

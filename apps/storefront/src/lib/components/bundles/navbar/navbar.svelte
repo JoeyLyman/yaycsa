@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page, navigating } from '$app/state';
 	import { resolve } from '$app/paths';
-	import * as Avatar from '$lib/components/bits/avatar';
-	import * as Tooltip from '$lib/components/bits/tooltip';
+	import * as Avatar from '#lib/components/bits/avatar/index.ts';
+	import * as Tooltip from '#lib/components/bits/tooltip/index.ts';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 
 	type Props = {

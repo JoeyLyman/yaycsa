@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { cn } from '$lib/components/utils.js';
+	import { cn } from '#lib/components/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
 
 	let { class: className, ...restProps }: HTMLAttributes<SVGElement> = $props();

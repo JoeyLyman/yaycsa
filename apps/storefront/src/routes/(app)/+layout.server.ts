@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { graphql, readFragment } from '../../graphql';
-import { ActiveCustomerFields } from '$lib/api/shop/fragments';
-import { VendureConnectionError } from '$lib/api/vendure';
+import { ActiveCustomerFields } from '#lib/api/shop/fragments.ts';
+import { VendureConnectionError } from '#lib/api/vendure.ts';
 
 const ACTIVE_CUSTOMER_QUERY = graphql(
 	`

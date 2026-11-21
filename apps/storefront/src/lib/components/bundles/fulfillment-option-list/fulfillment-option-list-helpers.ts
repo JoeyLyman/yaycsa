@@ -1,13 +1,13 @@
-import type { FulfillmentOptionType, Weekday } from '$lib/api/admin/fulfillment-options.remote';
+import type { FulfillmentOptionType, Weekday } from '#lib/api/admin/fulfillment-options.remote.ts';
 import type {
 	SellerFulfillmentOptionWorkspaceItem,
 	SellerOfferWorkspaceItem
-} from '$lib/api/admin/offers.remote';
+} from '#lib/api/admin/offers.remote.ts';
 import {
 	metadataLabel,
 	metadataValue,
 	type MetadataSummarySegment
-} from '$lib/components/blocks/table-row-metadata-summary';
+} from '#lib/components/blocks/table-row-metadata-summary/index.ts';
 import {
 	fulfillmentOptionTypeOptions,
 	weekdayOptions,

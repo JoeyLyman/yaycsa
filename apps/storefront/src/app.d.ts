@@ -1,6 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import type { VendureClient } from '$lib/api/vendure';
+import type { VendureClient } from '#lib/api/vendure.ts';
 
 declare global {
 	namespace App {

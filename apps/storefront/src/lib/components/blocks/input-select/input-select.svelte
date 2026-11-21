@@ -7,8 +7,8 @@
 </script>
 
 <script lang="ts">
-	import { Input } from '$lib/components/bits/input';
-	import { Badge } from '$lib/components/bits/badge';
+	import { Input } from '#lib/components/bits/input/index.ts';
+	import { Badge } from '#lib/components/bits/badge/index.ts';
 
 	/**
 	 * Color theme config for badges and checkboxes.

@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
-	import { Button } from '$lib/components/bits/button';
-	import type { InputSelectItem } from '$lib/components/blocks/input-select';
-	import { TableRowHeader } from '$lib/components/blocks/table-row-header';
-	import { TableRowActions } from '$lib/components/blocks/table-row-actions';
-	import { TableRowEditActions } from '$lib/components/blocks/table-row-edit-actions';
-	import { TableRowMetadataSummary } from '$lib/components/blocks/table-row-metadata-summary';
-	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
-	import type { SellerProduct } from '$lib/api/admin/products.remote';
-	import { hasDuplicateProductName } from '$lib/utils/product-name.js';
-	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
+	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import type { InputSelectItem } from '#lib/components/blocks/input-select/index.ts';
+	import { TableRowHeader } from '#lib/components/blocks/table-row-header/index.ts';
+	import { TableRowActions } from '#lib/components/blocks/table-row-actions/index.ts';
+	import { TableRowEditActions } from '#lib/components/blocks/table-row-edit-actions/index.ts';
+	import { TableRowMetadataSummary } from '#lib/components/blocks/table-row-metadata-summary/index.ts';
+	import { getTableEditModeContext } from '#lib/components/blocks/table-edit-mode/index.ts';
+	import type { SellerProduct } from '#lib/api/admin/products.remote.ts';
+	import { hasDuplicateProductName } from '#lib/utils/product-name.js';
+	import type { TableDetailMode } from '#lib/components/blocks/table-detail-toggle/index.ts';
 	import ProductListRowMetadata from './product-list-row-metadata.svelte';
 	import { computeMetadataSummary } from './product-list-row-metadata-summary';
 

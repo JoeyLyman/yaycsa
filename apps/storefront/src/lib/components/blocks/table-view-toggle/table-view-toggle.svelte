@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button } from '$lib/components/bits/button';
-	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import { getTableEditModeContext } from '#lib/components/blocks/table-edit-mode/index.ts';
 	import { nextTableAudience, type TableAudience } from './table-view-toggle-types';
 
 	let {

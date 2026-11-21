@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Accordion as AccordionPrimitive } from 'bits-ui';
-	import { cn } from '$lib/components/utils';
+	import { cn } from '#lib/components/utils.ts';
 	import type { AccordionItemProps } from 'bits-ui';
 
 	let {

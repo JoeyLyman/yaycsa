@@ -10,8 +10,8 @@
 		type TableOptions,
 		type Table
 	} from '@tanstack/table-core';
-	import * as TablePrimitives from '$lib/components/bits/table';
-	import { cn } from '$lib/components/utils.js';
+	import * as TablePrimitives from '#lib/components/bits/table/index.ts';
+	import { cn } from '#lib/components/utils.js';
 
 	interface Props {
 		/** Column definitions for the table. */

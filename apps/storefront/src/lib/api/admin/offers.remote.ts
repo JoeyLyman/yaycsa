@@ -17,8 +17,8 @@ import type {
 import {
 	normalizeAdminOffer,
 	type RawOffer
-} from '$lib/components/bundles/offer-list/offer-list-helpers';
-import type { OfferListItem } from '$lib/components/bundles/offer-list/offer-list-types';
+} from '#lib/components/bundles/offer-list/offer-list-helpers.ts';
+import type { OfferListItem } from '#lib/components/bundles/offer-list/offer-list-types.ts';
 
 export type OfferStatus = 'draft' | 'active' | 'paused' | 'expired';
 

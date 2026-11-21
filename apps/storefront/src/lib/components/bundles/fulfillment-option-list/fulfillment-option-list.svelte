@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { Button } from '$lib/components/bits/button';
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
 	import type {
 		SellerFulfillmentOptionWorkspaceItem,
 		SellerOfferWorkspaceItem
-	} from '$lib/api/admin/offers.remote';
+	} from '#lib/api/admin/offers.remote.ts';
 	import FulfillmentOptionListRowDraft from './fulfillment-option-list-row-draft.svelte';
 	import FulfillmentOptionListRow from './fulfillment-option-list-row.svelte';
-	import { getTableEditModeContext } from '$lib/components/blocks/table-edit-mode';
-	import type { TableDetailMode } from '$lib/components/blocks/table-detail-toggle';
+	import { getTableEditModeContext } from '#lib/components/blocks/table-edit-mode/index.ts';
+	import type { TableDetailMode } from '#lib/components/blocks/table-detail-toggle/index.ts';
 	import {
 		deriveFulfillmentOptionUsage,
 		getFulfillmentOptionTypeLabel,

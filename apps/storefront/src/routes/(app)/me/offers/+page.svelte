@@ -6,13 +6,13 @@
 		mySellerOffers,
 		type SellerFulfillmentOptionWorkspaceItem,
 		type SellerOffersWorkspaceData
-	} from '$lib/api/admin/offers.remote';
-	import { OfferList, type OfferListItem } from '$lib/components/bundles/offer-list';
+	} from '#lib/api/admin/offers.remote.ts';
+	import { OfferList, type OfferListItem } from '#lib/components/bundles/offer-list/index.ts';
 	import {
 		TableViewToggle,
 		setTableViewContext,
 		type TableAudience
-	} from '$lib/components/blocks/table-view-toggle';
+	} from '#lib/components/blocks/table-view-toggle/index.ts';
 
 	import {
 		createFulfillmentOption,
@@ -20,11 +20,11 @@
 		restoreFulfillmentOption,
 		updateFulfillmentOption,
 		type FulfillmentOptionType
-	} from '$lib/api/admin/fulfillment-options.remote';
-	import { Button } from '$lib/components/bits/button';
-	import { Checkbox } from '$lib/components/bits/checkbox';
-	import { HeaderTabs } from '$lib/components/bits/header-tabs';
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	} from '#lib/api/admin/fulfillment-options.remote.ts';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import { Checkbox } from '#lib/components/bits/checkbox/index.ts';
+	import { HeaderTabs } from '#lib/components/bits/header-tabs/index.ts';
+	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
 	import {
 		FulfillmentOptionList,
 		deriveFulfillmentOptionUsage,
@@ -33,19 +33,19 @@
 		toEditorRow,
 		type FulfillmentOptionEditorRow,
 		type FulfillmentOptionMutationInput
-	} from '$lib/components/bundles/fulfillment-option-list';
+	} from '#lib/components/bundles/fulfillment-option-list/index.ts';
 	import {
 		TableEditModeToggle,
 		setTableEditModeContext
-	} from '$lib/components/blocks/table-edit-mode';
+	} from '#lib/components/blocks/table-edit-mode/index.ts';
 	import {
 		TableDetailToggle,
 		type TableDetailMode
-	} from '$lib/components/blocks/table-detail-toggle';
+	} from '#lib/components/blocks/table-detail-toggle/index.ts';
 	import {
 		TableStatusFilter,
 		type TableStatusFilterOption
-	} from '$lib/components/blocks/table-status-filter';
+	} from '#lib/components/blocks/table-status-filter/index.ts';
 	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 

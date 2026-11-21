@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { updateBusinessTimezone } from '$lib/api/admin/fulfillment-options.remote';
-	import { requestUpdateEmail, updatePassword, logout } from '$lib/api/shop/auth.remote';
-	import { Button } from '$lib/components/bits/button';
-	import * as Card from '$lib/components/bits/card';
-	import { Input } from '$lib/components/bits/input';
-	import * as Select from '$lib/components/bits/select';
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	import { updateBusinessTimezone } from '#lib/api/admin/fulfillment-options.remote.ts';
+	import { requestUpdateEmail, updatePassword, logout } from '#lib/api/shop/auth.remote.ts';
+	import { Button } from '#lib/components/bits/button/index.ts';
+	import * as Card from '#lib/components/bits/card/index.ts';
+	import { Input } from '#lib/components/bits/input/index.ts';
+	import * as Select from '#lib/components/bits/select/index.ts';
+	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
 	import {
 		buildBusinessTimezoneOptions,
 		getBusinessTimezoneDisplayName
-	} from '$lib/utils/business-timezone';
+	} from '#lib/utils/business-timezone.ts';
 	import Sun from '@lucide/svelte/icons/sun';
 	import Moon from '@lucide/svelte/icons/moon';
 	import { toggleMode, mode } from 'mode-watcher';

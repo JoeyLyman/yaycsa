@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { activeOffers } from '$lib/api/shop/offers.remote';
+	import { activeOffers } from '#lib/api/shop/offers.remote.ts';
 	import {
 		OfferList,
 		normalizeShopOffer,
 		type OfferListItem,
 		type RawOffer
-	} from '$lib/components/bundles/offer-list';
-	import { SpinnerSun } from '$lib/components/bits/spinner-sun';
+	} from '#lib/components/bundles/offer-list/index.ts';
+	import { SpinnerSun } from '#lib/components/bits/spinner-sun/index.ts';
 
 	let { data } = $props();
 

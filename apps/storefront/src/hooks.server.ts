@@ -1,5 +1,5 @@
 import type { Handle } from '@sveltejs/kit/hooks';
-import { createVendureClient } from '$lib/api/vendure';
+import { createVendureClient } from '#lib/api/vendure.ts';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.vendure = createVendureClient(event.cookies);

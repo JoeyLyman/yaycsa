@@ -14,7 +14,7 @@
 
 import * as v from 'valibot';
 import { query, command } from '$app/server';
-import { normalizeProductName } from '$lib/utils/product-name.js';
+import { normalizeProductName } from '#lib/utils/product-name.js';
 import { adminQuery, adminMutate } from '../vendure-admin.js';
 import { requireSellerContext, assertProductOwnedBySeller } from '../seller-context.js';
 

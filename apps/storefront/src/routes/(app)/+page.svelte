@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sellers } from '$lib/api/shop/sellers.remote';
+	import { sellers } from '#lib/api/shop/sellers.remote.ts';
 
 	let { data } = $props();
 
