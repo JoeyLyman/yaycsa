@@ -64,6 +64,10 @@ Claude works on feature branches. Joe owns `main`.
 
 **Enforcement:** `~/.claude/hooks/block-destructive.py` (a PreToolUse hook) blocks the Joe-only actions, and `.claude/settings.local.json` has the matching allow / ask / deny rules. If the hook blocks a command, stop and tell Joe. Don't look for a workaround.
 
+- The hook allows plain `rm` only when every target is inside `/tmp` (which holds Claude's scratchpad), and `git rm` without `-f` outside `apps/docs`. Any other `rm` is blocked.
+- A git command the hook can't parse (nested quotes, `$(...)`) prompts Joe instead of being blocked. Keep commands short and simple so they parse and match the allowlist.
+- `.claude/settings.json` (shared, committed) holds a small read-only allowlist: `npm ls`, `npm run check`, `npx prettier --check .`, `npx playwright test`, and the Svelte MCP docs/autofixer tools.
+
 ## Plan Library
 
 When asked to "save this plan" or "save to plan library", save the current plan as a formatted markdown file to library/yaycsa/plans/<descriptive-name>.md in the apps/docs submodule. don't commit or push, but instead prompt me by saying "plan is locally saved to the plan library - feel free to commit and push."
